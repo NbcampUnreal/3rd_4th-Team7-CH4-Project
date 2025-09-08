@@ -3,6 +3,7 @@
 
 #include "UI/THMainMenuWidget.h"
 #include "Components/Button.h"
+#include "Components/EditableTextBox.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Player/THPlayerController.h"
 
@@ -16,6 +17,10 @@ void UTHMainMenuWidget::NativeConstruct()
 	if (QuitButton)
 	{
 		QuitButton->OnClicked.AddDynamic(this, &ThisClass::HandleQuitClicked);
+	}
+	if (EditableTextBox_Nickname)
+	{
+		EditableTextBox_Nickname->OnTextCommitted.AddDynamic(this, &ThisClass::OnNickNameCommitted);
 	}
 }
 
@@ -44,4 +49,17 @@ void UTHMainMenuWidget::HandleGameStartClicked()
 void UTHMainMenuWidget::HandleQuitClicked()
 {
 	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
+}
+
+void UTHMainMenuWidget::OnNickNameCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+	if (CommitMethod == ETextCommit::OnEnter || CommitMethod == ETextCommit::OnUserMovedFocus)
+	{
+		Nickname = Text.ToString();
+	}
+}
+
+FString UTHMainMenuWidget::GetNickName() const
+{
+	return Nickname;
 }
