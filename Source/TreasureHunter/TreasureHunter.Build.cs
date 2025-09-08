@@ -17,7 +17,8 @@ public class TreasureHunter : ModuleRules
 			"AnimGraphRuntime", 
 			"GameplayAbilities", 
 			"GameplayTags", 
-			"GameplayTasks" });
+			"GameplayTasks",
+			"UMG"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 		
