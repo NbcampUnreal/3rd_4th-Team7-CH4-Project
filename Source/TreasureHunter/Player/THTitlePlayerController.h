@@ -4,6 +4,7 @@
 #include "GameFramework/PlayerController.h"
 #include "THTitlePlayerController.generated.h"
 
+class UTHWidgetManager;
 
 UCLASS()
 class TREASUREHUNTER_API ATHTitlePlayerController : public APlayerController
@@ -11,16 +12,21 @@ class TREASUREHUNTER_API ATHTitlePlayerController : public APlayerController
 	GENERATED_BODY()
 	
 private:
+
+	TObjectPtr<UTHWidgetManager> WidgetManager;
+
 	FString CustomUniqueId;
 
 public:
 	virtual void BeginPlay() override;
 
-	void AssignPlayerUniqueId(FString InStr);
-
+	//Join
 	void JoinServer(const FString& InIPAddress);
 
-	FString GetCustomId() const;
+	//CustomId
+	void AssignPlayerUniqueId(FString InStr);
 
 	void SetCustomId(const FString& CustomId);
+
+	FString GetCustomId() const;
 };

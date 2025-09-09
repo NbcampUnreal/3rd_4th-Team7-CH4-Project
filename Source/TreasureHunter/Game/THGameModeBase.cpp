@@ -1,8 +1,7 @@
 #include "Game/THGameModeBase.h"
+#include "Game/THGameModeEnum.h"
 #include "Player/THPlayerState.h"
 #include "Player/THTitlePlayerController.h"
-
-#include "Blueprint/UserWidget.h"
 
 ATHGameModeBase::ATHGameModeBase()
 {
@@ -22,11 +21,6 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 		FString GuidStr = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);
 		NewPlayerController->AssignPlayerUniqueId(GuidStr);
 		SetPlayerData(NewPlayerController, GuidStr);
-
-		if (IsValid(TitleWidgetClass))
-		{
-			CreateTitleWidget(NewPlayerController);
-		}
 	}
 }
 
@@ -45,9 +39,11 @@ void ATHGameModeBase::Logout(AController* Exiting)
 
 void ATHGameModeBase::SetGameModeFlow(EGameFlow GameFlow)
 {
-	GameModeFlow = GameFlow;
-	switch (GameModeFlow)
+	if (HasAuthority())
 	{
+		GameModeFlow = GameFlow;
+		switch (GameModeFlow)
+		{
 		case EGameFlow::Wait:
 			WaitGame();
 			break;
@@ -65,6 +61,7 @@ void ATHGameModeBase::SetGameModeFlow(EGameFlow GameFlow)
 		case EGameFlow::Result:
 			ShowResult();
 			break;
+		}
 	}
 }
 
@@ -80,6 +77,7 @@ void ATHGameModeBase::StartMatchGame(ATHTitlePlayerController* PC)
 	if (FoundData)
 	{
 		SetGameModeFlow(EGameFlow::Match);
+		//Match Logic
 	}
 	else
 	{
@@ -130,25 +128,8 @@ void ATHGameModeBase::SetPlayerData(APlayerController* PS, FString& UniqueId)
 {
 	FPlayerData NewPD;
 	NewPD.PlayerUniqueId = UniqueId;
-	NewPD.PlayerState = PS->PlayerState;
-	NewPD.PlayerController = PS;
 
 	LoginPlayerData.Add(NewPD);
-}
-
-void ATHGameModeBase::CreateTitleWidget(APlayerController* PC)
-{
-	TitleWidgetInstance = CreateWidget<UUserWidget>(PC, TitleWidgetClass);
-	if (IsValid(TitleWidgetInstance))
-	{
-		TitleWidgetInstance->AddToViewport();
-
-		FInputModeUIOnly Mode;
-		Mode.SetWidgetToFocus(TitleWidgetInstance->GetCachedWidget());
-		PC->SetInputMode(Mode);
-
-		PC->bShowMouseCursor = true;
-	}
 }
 
 bool ATHGameModeBase::CheckEnoughPlayer()

@@ -1,5 +1,8 @@
 #include "Player/THTitlePlayerController.h"
+#include "Game/THWidgetManager.h"
+
 #include "Kismet/GameplayStatics.h"
+
 void ATHTitlePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
@@ -8,6 +11,8 @@ void ATHTitlePlayerController::BeginPlay()
 	{
 		return;
 	}
+
+	WidgetManager = NewObject<UTHWidgetManager>(this);
 }
 
 void ATHTitlePlayerController::AssignPlayerUniqueId(FString InStr)
@@ -17,15 +22,16 @@ void ATHTitlePlayerController::AssignPlayerUniqueId(FString InStr)
 
 void ATHTitlePlayerController::JoinServer(const FString& InIPAddress)
 {
+	//IP
 	FName NextLevelName = FName(*InIPAddress);
 	UGameplayStatics::OpenLevel(GetWorld(), NextLevelName, true);
+}
+
+void ATHTitlePlayerController::SetCustomId(const FString& CustomId)
+{
 }
 
 FString ATHTitlePlayerController::GetCustomId() const
 {
 	return FString();
-}
-
-void ATHTitlePlayerController::SetCustomId(const FString& CustomId)
-{
 }
