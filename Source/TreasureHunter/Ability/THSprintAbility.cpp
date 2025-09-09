@@ -4,12 +4,15 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
+#include "GameplayTagContainer.h"
 
 UTHSprintAbility::UTHSprintAbility()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+
+	ActivationOwnedTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Ability.Sprint")));
 }
 
 bool UTHSprintAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, OUT FGameplayTagContainer* OptionalRelevantTags) const
