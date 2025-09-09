@@ -3,24 +3,30 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "AbilitySystemInterface.h"
-#include "AbilitySystemComponent.h"
 
 #include "THPlayerState.generated.h"
 
 class UGameplayEffect;
 class UTHAttributeSet;
+class UAbilitySystemComponent;
+class UGameplayAbility;
 
 UCLASS()
-class TREASUREHUNTER_API ATHPlayerState : public APlayerState
+class TREASUREHUNTER_API ATHPlayerState : public APlayerState, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
 
 public:
 	ATHPlayerState();
 
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const;
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
+	UFUNCTION(BlueprintCallable, Category = "GAS")
 	UTHAttributeSet* GetAttributeSet() const;
+
+	void InitializeAbilityActorInfo(APawn* NewPawn);
+
+	void GiveStartupAbilities();
 
 protected:
 	virtual void BeginPlay() override;
@@ -38,5 +44,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayEffect> StaminaRegenEffect;
 	
-	
+private:
+	bool bStartupAbilitiesGiven;
 };
