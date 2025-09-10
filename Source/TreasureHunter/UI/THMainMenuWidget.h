@@ -7,6 +7,7 @@
 
 class UButton;
 class UEditableTextBox;
+class UTextBlock;
 
 UCLASS()
 class TREASUREHUNTER_API UTHMainMenuWidget : public UUserWidget
@@ -35,6 +36,14 @@ protected:
 	UButton* QuitButton;
 	UPROPERTY(meta = (BindWidget))
 	UEditableTextBox* EditableTextBox_Nickname;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* NicknameWarningText;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Nickname")
+	int32 MinNicknameLength = 2;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Nickname")
+	int32 MaxNicknameLength = 12;
 
 private:
 	FString Nickname;

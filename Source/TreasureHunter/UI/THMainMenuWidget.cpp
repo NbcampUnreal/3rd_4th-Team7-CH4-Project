@@ -4,6 +4,7 @@
 #include "UI/THMainMenuWidget.h"
 #include "Components/Button.h"
 #include "Components/EditableTextBox.h"
+#include "Components/TextBlock.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Player/THTitlePlayerController.h"
 
@@ -39,7 +40,39 @@ void UTHMainMenuWidget::NativeDestruct()
 
 void UTHMainMenuWidget::HandleGameStartClicked()
 {
-	if (Nickname.TrimStartAndEnd().IsEmpty()) return;
+	FString Trimmed = Nickname.TrimStartAndEnd();
+
+	if (Trimmed.IsEmpty())
+	{
+		if (NicknameWarningText)
+		{
+			NicknameWarningText->SetText(FText::FromString(TEXT("Please Enter Your NICKNAME")));
+		}
+		return;
+	}
+
+	if (Trimmed.Len() < MinNicknameLength)
+	{
+		if (NicknameWarningText)
+		{
+			NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("닉네임은 최소 %d자 이상이어야 합니다."), MinNicknameLength)));
+		}
+		return;
+	}
+
+	if (Trimmed.Len() > MaxNicknameLength)
+	{
+		if (NicknameWarningText)
+		{
+			NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("닉네임은 최대 %d자까지 가능합니다."), MaxNicknameLength)));
+		}
+		return;
+	}
+
+	if (NicknameWarningText)
+	{
+		NicknameWarningText->SetText(FText::GetEmpty());
+	}
 
 	if (auto* PC = GetOwningPlayer<ATHTitlePlayerController>())
 	{
