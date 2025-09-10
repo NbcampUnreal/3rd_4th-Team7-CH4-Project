@@ -119,7 +119,7 @@ void UTHPlayerHUDWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
-
+#pragma region Stamina
 // ----------------------------------- Stamina -----------------------------------------------
 void UTHPlayerHUDWidget::OnMaxStaminaChanged(const FOnAttributeChangeData& Data)
 {
@@ -259,7 +259,9 @@ void UTHPlayerHUDWidget::OnSprintingTagChanged(FGameplayTag Tag, int32 NewCount)
 {
 	bIsSprinting = (NewCount > 0);
 }
+#pragma endregion
 
+#pragma region Speed
 // ----------------------------------- Speed -----------------------------------------------
 void UTHPlayerHUDWidget::OnWalkSpeedChanged(const FOnAttributeChangeData& Data)
 {
@@ -332,3 +334,69 @@ void UTHPlayerHUDWidget::ApplySpeedLevelVisuals()
 		Img->SetBrush(Brush);
 	}
 }
+#pragma endregion
+
+#pragma region Inveontory
+
+void UTHPlayerHUDWidget::SetInventoryIcon(int32 SlotIndex, UTexture2D* Icon)
+{
+	if (!Icon) return;
+
+	FSlateBrush Brush;
+	Brush.SetResourceObject(Icon);
+	Brush.ImageSize = FVector2D(80.f, 80.f);
+	(SlotIndex == 1) ? Inventory001Icon->SetBrush(Brush) : Inventory002Icon->SetBrush(Brush);
+}
+
+void UTHPlayerHUDWidget::ClearInventoryIcon(int32 SlotIndex, float CoolTime)
+{
+	UImage* TargetIcon = nullptr;
+	(SlotIndex == 1) ? TargetIcon = Inventory001Icon : TargetIcon = Inventory002Icon;
+
+	if (TargetIcon)
+	{
+		if (InventoryCoolTimeIcon)
+		{
+			InventoryCoolTimeIcon->SetBrush(TargetIcon->Brush);
+			TargetIcon->SetBrush(FSlateBrush());
+		}
+		StartCoolTimeTimer(CoolTime);
+	}
+}
+
+void UTHPlayerHUDWidget::StartCoolTimeTimer(float Duration)
+{
+	if (!CoolTimeProgressBar) return;
+	
+	(Duration <= 0.5f) ? CoolTimeDuration = 0.5f : CoolTimeDuration = Duration;
+	CoolTimeElapsed = 0.f;
+
+	CoolTimeProgressBar->SetRenderOpacity(1.f);
+	GetWorld()->GetTimerManager().SetTimer(
+		CoolTimeTimer, this, &UTHPlayerHUDWidget::UpdateCoolTime, 0.02f, true
+	);
+}
+
+void UTHPlayerHUDWidget::UpdateCoolTime()
+{
+	CoolTimeElapsed += 0.02f;
+	float Percent = FMath::Clamp(CoolTimeElapsed / CoolTimeDuration, 0.f, 1.f);
+
+	if (CoolTimeProgressBar)
+	{
+		CoolTimeProgressBar->GetDynamicMaterial()->SetScalarParameterValue(TEXT("Percentage"), Percent);
+	}
+
+	if (Percent >= 1.f)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(CoolTimeTimer);
+		if (InventoryCoolTimeIcon)
+		{
+			InventoryCoolTimeIcon->SetBrush(FSlateBrush());
+		}
+
+		CoolTimeProgressBar->SetRenderOpacity(0.f);
+	}
+}
+
+#pragma endregion
