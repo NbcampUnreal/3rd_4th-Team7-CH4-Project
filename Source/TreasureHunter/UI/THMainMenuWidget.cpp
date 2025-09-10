@@ -55,7 +55,7 @@ void UTHMainMenuWidget::HandleGameStartClicked()
 	{
 		if (NicknameWarningText)
 		{
-			NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("닉네임은 최소 %d자 이상이어야 합니다."), MinNicknameLength)));
+			NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("Nickname must be at least %d characters long."), MinNicknameLength)));
 		}
 		return;
 	}
@@ -64,7 +64,7 @@ void UTHMainMenuWidget::HandleGameStartClicked()
 	{
 		if (NicknameWarningText)
 		{
-			NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("닉네임은 최대 %d자까지 가능합니다."), MaxNicknameLength)));
+			NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("Nickname cannot exceed %d characters."), MaxNicknameLength)));
 		}
 		return;
 	}
