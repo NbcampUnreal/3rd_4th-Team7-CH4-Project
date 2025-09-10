@@ -11,6 +11,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
 #include "TimerManager.h"
+#include "Game/GameFlowTags.h"
 
 UTHPlayerHUDWidget::UTHPlayerHUDWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
@@ -53,7 +54,7 @@ void UTHPlayerHUDWidget::BindToAbilitySystem(UAbilitySystemComponent* InASC, con
 
 	BindAttributeDelegates();
 
-	TagSprint = FGameplayTag::RequestGameplayTag(TEXT("Ability.Sprint"));
+	TagSprint = TAG_State_Movement_Sprinting;
 	bIsSprinting = AbilitySystem->HasMatchingGameplayTag(TagSprint);
 	{
 		auto& Ev = AbilitySystem->RegisterGameplayTagEvent(TagSprint, EGameplayTagEventType::NewOrRemoved);
