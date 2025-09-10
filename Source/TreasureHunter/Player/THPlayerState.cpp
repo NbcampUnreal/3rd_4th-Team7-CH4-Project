@@ -4,6 +4,7 @@
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
 #include "Abilities/GameplayAbility.h"
+#include "Net/UnrealNetwork.h"
 
 ATHPlayerState::ATHPlayerState()
 	: bStartupAbilitiesGiven(false)
@@ -62,31 +63,23 @@ void ATHPlayerState::GiveStartupAbilities()
 	bStartupAbilitiesGiven = true;
 }
 
+void ATHPlayerState::OnRep_Nickname()
+{
+	// Change UI When Nickname Changed
+}
+
+void ATHPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ATHPlayerState, Nickname);
+}
+
 void ATHPlayerState::BeginPlay()
 {
 	Super::BeginPlay();
 	
 	if (HasAuthority())
 	{
-		for (const auto& AbilityClass : StartupAbilities)
-		{
-			if (AbilityClass)
-			{
-				FGameplayAbilitySpec Spec(AbilityClass, 1, 0, this);
-				AbilitySystemComponent->GiveAbility(Spec);
-			}
-		}
-		
-		if (StaminaRegenEffect)
-		{
-			FGameplayEffectContextHandle EffectContext = AbilitySystemComponent->MakeEffectContext();
-			EffectContext.AddSourceObject(this);
-			FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(StaminaRegenEffect, 1, EffectContext);
-
-			if (SpecHandle.IsValid())
-			{
-				AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-			}
-		}
+		GiveStartupAbilities();
 	}
 }

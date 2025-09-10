@@ -5,7 +5,7 @@
 #include "Components/Button.h"
 #include "Components/EditableTextBox.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "Player/THPlayerController.h"
+#include "Player/THTitlePlayerController.h"
 
 void UTHMainMenuWidget::NativeConstruct()
 {
@@ -39,10 +39,11 @@ void UTHMainMenuWidget::NativeDestruct()
 
 void UTHMainMenuWidget::HandleGameStartClicked()
 {
-	if (auto* PC = GetOwningPlayer<ATHPlayerController>())
+	if (Nickname.TrimStartAndEnd().IsEmpty()) return;
+
+	if (auto* PC = GetOwningPlayer<ATHTitlePlayerController>())
 	{
-		// Request Match to Server
-		// Go to Matchmaking UI
+		PC->Server_RequestMatchAndSetNickname(Nickname);
 	}
 }
 
