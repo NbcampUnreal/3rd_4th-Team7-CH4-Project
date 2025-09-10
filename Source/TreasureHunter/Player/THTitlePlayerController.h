@@ -1,32 +1,56 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "GameplayTagContainer.h"
 #include "THTitlePlayerController.generated.h"
 
-class UTHWidgetManager;
+class UUserWidget;
+class ATHGameState;
 
 UCLASS()
 class TREASUREHUNTER_API ATHTitlePlayerController : public APlayerController
 {
 	GENERATED_BODY()
 	
-private:
-
-	TObjectPtr<UTHWidgetManager> WidgetManager;
-
-	FString CustomUniqueId;
+//private:
+//
+//	TObjectPtr<UTHWidgetManager> WidgetManager;
+//
+//	FString CustomUniqueId;
 
 public:
 	virtual void BeginPlay() override;
+	virtual void OnPossess(APawn* aPawn) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-	//Join
-	void JoinServer(const FString& InIPAddress);
+	UFUNCTION(Server, Reliable)
+	void Server_RequestMatchAndSetNickname(const FString& InNickname);
 
-	//CustomId
-	void AssignPlayerUniqueId(FString InStr);
+	UFUNCTION()
+	void HandlePhaseChange(FGameplayTag NewPhase);
 
-	void SetCustomId(const FString& CustomId);
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UUserWidget> MainMenuWidgetClass;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UUserWidget> MatchmakingWidgetClass;
 
-	FString GetCustomId() const;
+private:
+	UPROPERTY()
+	UUserWidget* ActiveWidget = nullptr;
+
+	void ShowMainMenu();
+	void ShowMatchmakingMenu();
+
+	FDelegateHandle PhaseChangedHandle;
+
+	////Join
+	//void JoinServer(const FString& InIPAddress);
+
+	////CustomId
+	//void AssignPlayerUniqueId(FString InStr);
+
+	//void SetCustomId(const FString& CustomId);
+
+	//FString GetCustomId() const;
 };

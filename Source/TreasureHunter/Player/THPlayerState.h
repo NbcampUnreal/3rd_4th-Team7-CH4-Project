@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "AbilitySystemInterface.h"
+#include "GameplayTagContainer.h"
 
 #include "THPlayerState.generated.h"
 
@@ -28,7 +29,14 @@ public:
 
 	void GiveStartupAbilities();
 
+	UPROPERTY(ReplicatedUsing = OnRep_Nickname, BlueprintReadOnly)
+	FString Nickname;
+
+	UFUNCTION() void OnRep_Nickname();
+
 protected:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	virtual void BeginPlay() override;
 
 protected:

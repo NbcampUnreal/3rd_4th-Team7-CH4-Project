@@ -1,6 +1,7 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "GameplayEffectExtension.h"
 #include "Net/UnrealNetwork.h"
+#include "Game/GameFlowTags.h"
 
 UTHAttributeSet::UTHAttributeSet()
 {
@@ -27,6 +28,17 @@ void UTHAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModC
 
 	if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
 	{
+		if (auto* ASC = GetOwningAbilitySystemComponent())
+		{
+			if (GetStamina() <= KINDA_SMALL_NUMBER)
+			{
+				ASC->AddLooseGameplayTag(TAG_Status_Stamina_Empty);
+			}
+			else
+			{
+				ASC->RemoveLooseGameplayTag(TAG_Status_Stamina_Empty);
+			}
+		}
 		SetStamina(FMath::Clamp(GetStamina(), 0.f, GetMaxStamina()));
 	}
 }

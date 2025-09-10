@@ -12,6 +12,8 @@ UCLASS()
 class TREASUREHUNTER_API UTHMatchmakingWidget : public UUserWidget
 {
 	GENERATED_BODY()
+protected:
+	virtual void NativeConstruct() override;
 
 protected:
 	UPROPERTY(meta = (BindWidget))
