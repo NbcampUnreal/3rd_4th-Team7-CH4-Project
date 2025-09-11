@@ -100,7 +100,8 @@ void UTHPushAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		this, 
 		NAME_None, 
 		PushMontage, 
-		1.0f);
+		1.2f
+		);
 
 		Task->OnCompleted.AddDynamic(this, &UTHPushAbility::OnMontageCompleted);
 

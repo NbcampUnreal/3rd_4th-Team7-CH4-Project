@@ -9,6 +9,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "GameplayEffect.h"
+#include "Components/CapsuleComponent.h"
 #include "Item/THItemInventory.h"
 
 ATHPlayerCharacter::ATHPlayerCharacter()
@@ -35,6 +36,9 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 	GetCharacterMovement()->MaxWalkSpeed = 200.f;
 	
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+
+	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
+
 }
 
 void ATHPlayerCharacter::BeginPlay()
@@ -285,6 +289,12 @@ void ATHPlayerCharacter::OnSprintSpeedChanged(const FOnAttributeChangeData& Data
 	{
 		GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
 	}
+}
+
+void ATHPlayerCharacter::OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("CapsuleHit")));
 }
 
 
