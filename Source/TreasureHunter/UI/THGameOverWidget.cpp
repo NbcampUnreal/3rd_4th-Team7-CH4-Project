@@ -5,6 +5,7 @@
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
 #include "Player/THPlayerController.h"
+#include "Game/GameFlowTags.h"
 
 void UTHGameOverWidget::NativeConstruct()
 {
@@ -16,6 +17,11 @@ void UTHGameOverWidget::NativeConstruct()
 	if (MainMenuButton)
 	{
 		MainMenuButton->OnClicked.AddDynamic(this, &ThisClass::HandleMainMenuClicked);
+	}
+
+	if (ButtonAppearingAnim)
+	{
+		PlayAnimation(ButtonAppearingAnim);
 	}
 }
 

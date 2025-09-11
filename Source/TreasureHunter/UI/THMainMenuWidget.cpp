@@ -5,6 +5,7 @@
 #include "Components/Button.h"
 #include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
+#include "Components/Image.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Player/THTitlePlayerController.h"
 
@@ -22,6 +23,10 @@ void UTHMainMenuWidget::NativeConstruct()
 	if (EditableTextBox_Nickname)
 	{
 		EditableTextBox_Nickname->OnTextCommitted.AddDynamic(this, &ThisClass::OnNickNameCommitted);
+	}
+	if (LoadingIcon)
+	{
+		LoadingIcon->SetVisibility(ESlateVisibility::Hidden);
 	}
 }
 
@@ -78,6 +83,12 @@ void UTHMainMenuWidget::HandleGameStartClicked()
 	{
 		PC->Server_RequestMatchAndSetNickname(Nickname);
 	}
+
+	if (LoadingIcon)
+	{
+		LoadingIcon->SetVisibility(ESlateVisibility::Visible);
+		PlayAnimation(LoadingAnim, 0.0f, 0, EUMGSequencePlayMode::Forward, 1.0f, false);
+	}
 }
 
 void UTHMainMenuWidget::HandleQuitClicked()
@@ -93,7 +104,22 @@ void UTHMainMenuWidget::OnNickNameCommitted(const FText& Text, ETextCommit::Type
 	}
 }
 
+
 FString UTHMainMenuWidget::GetNickName() const
 {
 	return Nickname;
+}
+
+void UTHMainMenuWidget::StopLoading()
+{
+	if (LoadingIcon && LoadingIcon->GetVisibility() == ESlateVisibility::Visible)
+	{
+		StopAnimation(LoadingAnim);
+		LoadingIcon->SetVisibility(ESlateVisibility::Hidden);
+	}
+
+	if (NicknameWarningText)
+	{
+		NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("Failed to match."), MaxNicknameLength)));
+	}
 }

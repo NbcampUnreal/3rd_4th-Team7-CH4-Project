@@ -82,7 +82,7 @@ void ATHTitlePlayerController::ShowMainMenu()
 	{
 		ActiveWidget->AddToViewport();
 		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(ActiveWidget->TakeWidget());
+		//InputMode.SetWidgetToFocus(ActiveWidget->TakeWidget());
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 	}
@@ -102,7 +102,7 @@ void ATHTitlePlayerController::ShowMatchmakingMenu()
 	{
 		ActiveWidget->AddToViewport();
 		FInputModeUIOnly InputMode;
-		InputMode.SetWidgetToFocus(ActiveWidget->TakeWidget());
+		//InputMode.SetWidgetToFocus(ActiveWidget->TakeWidget());
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 	}

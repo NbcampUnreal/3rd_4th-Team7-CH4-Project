@@ -6,10 +6,10 @@
 #include "THGameOverWidget.generated.h"
 
 class UButton;
-class UWorld;
-/**
- * 
- */
+class UImage;
+class UWidgetAnimation;
+
+
 UCLASS()
 class TREASUREHUNTER_API UTHGameOverWidget : public UUserWidget
 {
@@ -29,4 +29,10 @@ protected:
 	UButton* RestartButton;
 	UPROPERTY(meta = (BindWidget))
 	UButton* MainMenuButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* PlayerPreview;
+
+	UPROPERTY(Transient, meta = (BindWidgetAnim))
+	UWidgetAnimation* ButtonAppearingAnim;
 };

@@ -8,6 +8,8 @@
 class UButton;
 class UEditableTextBox;
 class UTextBlock;
+class UImage;
+class UWidgetAnimation;
 
 UCLASS()
 class TREASUREHUNTER_API UTHMainMenuWidget : public UUserWidget
@@ -28,6 +30,8 @@ private:
 
 public:
 	FString GetNickName() const;
+
+	void StopLoading();
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -44,6 +48,11 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Nickname")
 	int32 MaxNicknameLength = 12;
+
+	UPROPERTY(meta = (BindWidget))
+	UImage* LoadingIcon;
+	UPROPERTY(Transient, meta = (BindWidgetAnim))
+	UWidgetAnimation* LoadingAnim;
 
 private:
 	FString Nickname;
