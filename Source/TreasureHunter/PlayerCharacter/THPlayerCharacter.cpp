@@ -1,4 +1,4 @@
-#include "PlayerCharacter/THPlayerCharacter.h"
+﻿#include "PlayerCharacter/THPlayerCharacter.h"
 #include "Player/THPlayerState.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -9,6 +9,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "GameplayEffect.h"
+#include "Item/ItemInventory.h"
 
 ATHPlayerCharacter::ATHPlayerCharacter()
 {
@@ -87,6 +88,11 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EIC->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::RequestSprint);
 	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::RequestSprint);
+
+	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
+	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
+	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
+
 }
 
 void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
@@ -184,6 +190,9 @@ void ATHPlayerCharacter::BindToAttributeChanges()
 		{
 			ASC->GetGameplayAttributeValueChangeDelegate(AS->GetStaminaAttribute()).AddUObject(this, &ATHPlayerCharacter::OnStaminaChanged);
 		}
+
+		ASC->GetGameplayAttributeValueChangeDelegate(AS->GetWalkSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnWalkSpeedChanged);
+		ASC->GetGameplayAttributeValueChangeDelegate(AS->GetSprintSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnSprintSpeedChanged);
 	}
 }
 
@@ -199,4 +208,70 @@ UAbilitySystemComponent* ATHPlayerCharacter::GetAbilitySystemComponent() const
 	}
 	return nullptr;
 }
+
+
+
+//임시추가	
+
+void ATHPlayerCharacter::SetInteractableActor(AItemBox* NewItemBox)
+{
+	InteractableItemBox = NewItemBox;
+}
+void ATHPlayerCharacter::SetInteractableBaseItem(ABaseItem* NewBaseItem)
+{
+	InteractableBaseItem = NewBaseItem;
+}
+
+void ATHPlayerCharacter::OnInteract()
+{
+	if (InteractableItemBox)
+	{
+		InteractableItemBox->OpenBox();
+		
+		InteractableItemBox = nullptr;
+	}
+
+	if (InteractableBaseItem)
+	{
+		if (InteractableBaseItem->bIsPickedUp)
+		{
+			InteractableBaseItem->ItemPickup(this);
+
+			InteractableBaseItem = nullptr;
+		}
+	}
+}
+
+void ATHPlayerCharacter::OnUseItemSlot1()
+{
+	if (UItemInventory* Inventory = FindComponentByClass<UItemInventory>())
+	{
+		Inventory->UseItem(1);
+	}
+}
+
+void ATHPlayerCharacter::OnUseItemSlot2()
+{
+	if (UItemInventory* Inventory = FindComponentByClass<UItemInventory>())
+	{
+		Inventory->UseItem(2);
+	}
+}
+
+void ATHPlayerCharacter::OnWalkSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (!bIsSprinting) // 스프린트 중이 아닐 때만 워킹 속도를 업데이트
+	{
+		GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
+	}
+}
+
+void ATHPlayerCharacter::OnSprintSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (bIsSprinting) // 스프린트 중일 때만 업데이트
+	{
+		GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
+	}
+}
+
 
