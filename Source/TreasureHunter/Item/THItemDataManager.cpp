@@ -1,7 +1,7 @@
-﻿#include "Item/ItemDataManager.h"
-#include "ItemData.h"
+﻿#include "Item/THItemDataManager.h"
+#include "THItemData.h"
 
-TSubclassOf<UGameplayAbility> AItemDataManager::GetItemAbilityClassByID(const FString& ItemID)
+TSubclassOf<UGameplayAbility> ATHItemDataManager::GetItemAbilityClassByID(const FString& ItemID)
 {
     if (!IsValid(ItemDataTable))
     {
@@ -10,7 +10,7 @@ TSubclassOf<UGameplayAbility> AItemDataManager::GetItemAbilityClassByID(const FS
     }
 
     // FindItemDataByItemID 함수를 사용해 FItemData를 가져옵니다.
-    const FItemData& ItemData = FindItemDataByItemID(ItemID);
+    const FTHItemData& ItemData = FindItemDataByItemID(ItemID);
 
     if (IsValid(ItemData.GameplayAbilityClass))
     {
@@ -23,19 +23,19 @@ TSubclassOf<UGameplayAbility> AItemDataManager::GetItemAbilityClassByID(const FS
 
 
 
-const FItemData& AItemDataManager::FindItemDataByItemID(const FString& ItemIDToFind)
+const FTHItemData& ATHItemDataManager::FindItemDataByItemID(const FString& ItemIDToFind)
 {
-    static FItemData EmptyData; // 기본값 객체
+    static FTHItemData EmptyData; // 기본값 객체
 
     if (!IsValid(ItemDataTable))
     {
         return EmptyData;
     }
 
-    TArray<FItemData*> AllRows;
-    ItemDataTable->GetAllRows<FItemData>(TEXT("FindItemDataByItemID"), AllRows);
+    TArray<FTHItemData*> AllRows;
+    ItemDataTable->GetAllRows<FTHItemData>(TEXT("FindItemDataByItemID"), AllRows);
 
-    for (const FItemData* Row : AllRows)
+    for (const FTHItemData* Row : AllRows)
     {
         if (Row && Row->ItemID.Equals(ItemIDToFind, ESearchCase::IgnoreCase))
         {

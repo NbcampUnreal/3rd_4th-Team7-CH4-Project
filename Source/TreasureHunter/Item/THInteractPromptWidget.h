@@ -2,11 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "InteractPromptWidget.generated.h"
+#include "THInteractPromptWidget.generated.h"
 
 
 UCLASS()
-class TREASUREHUNTER_API UInteractPromptWidget : public UUserWidget
+class TREASUREHUNTER_API UTHInteractPromptWidget : public UUserWidget
 {
 	GENERATED_BODY()
 

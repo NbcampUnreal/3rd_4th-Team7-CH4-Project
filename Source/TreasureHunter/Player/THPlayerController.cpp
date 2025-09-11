@@ -1,12 +1,12 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+ï»¿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "THPlayerController.h"
 #include "UI/THPlayerHUDWidget.h"
 #include "THPlayerState.h"
-#include "Item/ItemInventory.h"
-#include "Item/ItemDataManager.h"
-#include "Item/ItemData.h"
+#include "Item/THItemInventory.h"
+#include "Item/THItemDataManager.h"
+#include "Item/THItemData.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
@@ -123,12 +123,12 @@ void ATHPlayerController::InitHUDBindingsFromPlayerState()
 
 #pragma region Inventory
 
-void ATHPlayerController::BindInventoryDelegates(APawn* Pawn)
+void ATHPlayerController::BindInventoryDelegates(APawn* InPawn)
 {
-	if (!Pawn) return;
-	if (UItemInventory* Inv = Pawn->FindComponentByClass<UItemInventory>())
+	if (!InPawn) return;
+	if (UTHItemInventory* Inv = InPawn->FindComponentByClass<UTHItemInventory>())
 	{
-		// ¿©±â¼­ delegate Âü°í ±¸ÇöÈÄ¿¡ ÁÖ¼® ¾ø¾ÖÁÖ¼¼¿ä  
+		// ì—¬ê¸°ì„œ delegate ì°¸ê³  êµ¬í˜„í›„ì— ì£¼ì„ ì—†ì• ì£¼ì„¸ìš”  
 		//Inv->OnInventorySlotChanged.AddUObject(this, &ThisClass::HandleInventorySlotChanged);
 	}
 } 
@@ -151,16 +151,16 @@ void ATHPlayerController::HandleItemCooldownClient(int32 SlotIndex, float Coolti
 {
 	if (PlayerHUD)
 	{
-		// Client RPC °°Àº °Å ÇÏ³ª ¸¸µå¼Å¼­ ÄÁÆ®·Ñ·¯¿¡¼­ HUD ¾÷µ¥ÀÌÆ® µÉ ¼ö ÀÖ°Ô ÇÔ¼ö ¼±¾ðÇØÁÖ¼¼¿ä. ±×·¡¼­ UseItem ¼º°øÇÏ¸é ºÒ·ÁÁú ¼ö ÀÖµµ·Ï ÇØÁÖ½Ã¸é ³¡.
+		// Client RPC ê°™ì€ ê±° í•˜ë‚˜ ë§Œë“œì…”ì„œ ì»¨íŠ¸ë¡¤ëŸ¬ì—ì„œ HUD ì—…ë°ì´íŠ¸ ë  ìˆ˜ ìžˆê²Œ í•¨ìˆ˜ ì„ ì–¸í•´ì£¼ì„¸ìš”. ê·¸ëž˜ì„œ UseItem ì„±ê³µí•˜ë©´ ë¶ˆë ¤ì§ˆ ìˆ˜ ìžˆë„ë¡ í•´ì£¼ì‹œë©´ ë.
 		PlayerHUD->ClearInventoryIcon(SlotIndex, Cooltime);
 	}
 }
 
 UTexture2D* ATHPlayerController::ResolveItemIcon(const FString& ItemID) const
 {
-	if (AItemDataManager* DM = Cast<AItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AItemDataManager::StaticClass())))
+	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
 	{
-		/* ¾ÆÀÌÅÛ À¯È¿¼º °Ë»ç (IsValid()) ¸¦ ÇØ¾ßÇØ¼­, ÂüÁ¶¸»°í Æ÷ÀÎÅÍ·Î ¹ÝÈ¯ Å¸ÀÔ ¹Ù²ãÁÖ¼¼¿ä!! FindItemDataByItemID ÇÔ¼ö 
+		/* ì•„ì´í…œ ìœ íš¨ì„± ê²€ì‚¬ (IsValid()) ë¥¼ í•´ì•¼í•´ì„œ, ì°¸ì¡°ë§ê³  í¬ì¸í„°ë¡œ ë°˜í™˜ íƒ€ìž… ë°”ê¿”ì£¼ì„¸ìš”!! FindItemDataByItemID í•¨ìˆ˜ 
 		const FItemData* Data = DM->FindItemDataByItemID(ItemID);
 		if (Data && Data->ItemIcon.IsValid())
 		{

@@ -1,30 +1,30 @@
-﻿#include "Item/ItemInventory.h"
-#include "Item/ItemDataManager.h"
+﻿#include "Item/THItemInventory.h"
+#include "Item/THItemDataManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "AbilitySystemComponent.h"
 #include "GameFramework/Character.h"	
 #include "PlayerCharacter/THPlayerCharacter.h"
 #include "Abilities/GameplayAbility.h"
-#include "Item/ItemData.h"
+#include "Item/THItemData.h"
 #include "UI/THPlayerHUDWidget.h"
 #include "GameFramework/HUD.h"
 
 
 
-UItemInventory::UItemInventory()
+UTHItemInventory::UTHItemInventory()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 }
 
 
-void UItemInventory::BeginPlay()
+void UTHItemInventory::BeginPlay()
 {
 	Super::BeginPlay();
 }
 
 
 
-bool UItemInventory::AddItem(FString NewItemID)
+bool UTHItemInventory::AddItem(FString NewItemID)
 {
 	if (ItemSlot1.IsEmpty())
 	{
@@ -47,64 +47,36 @@ bool UItemInventory::AddItem(FString NewItemID)
 	}
 }
 
-void UItemInventory::UpdateItemImage(int32 SlotIndex, const FString& ItemID)
+void UTHItemInventory::UpdateItemImage(int32 SlotIndex, const FString& ItemID)
 {
-	/*if (!ItemDataManager)
-	{
-		ItemDataManager = Cast<AItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AItemDataManager::StaticClass()));
-		if (!ItemDataManager)
-		{
-			UE_LOG(LogTemp, Error, TEXT("ItemDataManager not found in the world!"));
-			return;
-		}
-	}
+	////컨트롤러를 통해서 업데이트		
+	//if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetOwner()))
+	//{
+	//	if (APlayerController* PC = Cast<APlayerController>(PlayerCharacter->GetController()))
+	//	{
+	//		if (AHUD* HUD = PC->GetHUD())
+	//		{
+	//			SetInventoryIcon(SlotIndex);
 
-	const FItemData& ItemData = ItemDataManager->FindItemDataByItemID(ItemID);
-	if (!ItemData)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Item data not found for ItemID: %s"), *ItemID);
-		return;
-	}
-
-	TSoftObjectPtr<UTexture2D> ItemIconSoftPtr = ItemData.ItemIcon;
-
-	if (!ItemIconSoftPtr.IsValid())
-	{
-		UE_LOG(LogTemp, Warning, TEXT("ItemIcon for %s is not valid."), *ItemID);
-		return;
-	}
-
-	UTexture2D* ItemIconTexture = ItemIconSoftPtr.LoadSynchronous();
-	if (!ItemIconTexture)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Failed to load ItemIcon for %s."), *ItemID);
-		return;
-	}
-
-	ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner());
-	if (OwnerCharacter)
-	{
-		APlayerController* PlayerController = Cast<APlayerController>(OwnerCharacter->GetController());
-		if (PlayerController)
-		{
-			UTHPlayerHUDWidget* InventoryWidget = Cast<UTHPlayerHUDWidget>(PlayerController->GetHUD());
-			if (InventoryWidget)
-			{
-				InventoryWidget->SetItemImage(SlotIndex, ItemIconTexture);
-				UE_LOG(LogTemp, Log, TEXT("Successfully updated UI for slot %d with texture."), SlotIndex);
-			}
-			else
-			{
-				UE_LOG(LogTemp, Error, TEXT("InventoryWidget (HUD) not found."));
-			}
-		}
-	}*/
+	//			if (UTHPlayerHUDWidget* HUDWidget = Cast<UTHPlayerHUDWidget>(HUD->GetUserWidgetObject()))
+	//			{
+	//				if (AItemDataManager* DataManager = Cast<AItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AItemDataManager::StaticClass())))
+	//				{
+	//					if (UItemData* ItemData = DataManager->GetItemDataByID(ItemID))
+	//					{
+	//						HUDWidget->SetInventoryIcon(SlotIndex, ItemData->ItemIcon);
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 }
 
 
 
 
-void UItemInventory::UseItem(int32 SlotIndex)
+void UTHItemInventory::UseItem(int32 SlotIndex)
 {
 	if (UseTimeCheck)
 	{
@@ -112,7 +84,7 @@ void UItemInventory::UseItem(int32 SlotIndex)
 	}
 	UseTimeCheck = true;
 	//타이머 설정
-	GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &UItemInventory::ResetUseTime, 0.3f, false);
+	GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &UTHItemInventory::ResetUseTime, 0.3f, false);
 
 
 	FString ItemID;
@@ -132,7 +104,7 @@ void UItemInventory::UseItem(int32 SlotIndex)
 		UE_LOG(LogTemp, Warning, TEXT("No item in Slot %d to use."), SlotIndex);
 		return;
 	}
-	AItemDataManager* DataManager = Cast<AItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AItemDataManager::StaticClass()));
+	ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 
 	if (IsValid(DataManager))
 	{
@@ -176,7 +148,7 @@ void UItemInventory::UseItem(int32 SlotIndex)
 
 
 
-void UItemInventory::ResetUseTime()
+void UTHItemInventory::ResetUseTime()
 {
 	UseTimeCheck = false;
 }
