@@ -1,14 +1,14 @@
-﻿#include "Item/ItemBox.h"
-#include "ItemData.h"
-#include "Item/ItemDataManager.h"
+﻿#include "Item/THItemBox.h"
+#include "THItemData.h"
+#include "Item/THItemDataManager.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
-#include "Item/BaseItem.h"
+#include "Item/THBaseItem.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
 
 
-AItemBox::AItemBox()
+ATHItemBox::ATHItemBox()
 {
 	PrimaryActorTick.bCanEverTick = true;
     ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
@@ -25,13 +25,13 @@ AItemBox::AItemBox()
     
 }
 
-void AItemBox::BeginPlay()
+void ATHItemBox::BeginPlay()
 {
 	Super::BeginPlay();
     if (OverlapSphere)
     {
-        OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &AItemBox::OnOverlapBegin);
-        OverlapSphere->OnComponentEndOverlap.AddDynamic(this, &AItemBox::OnOverlapEnd);
+        OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &ATHItemBox::OnOverlapBegin);
+        OverlapSphere->OnComponentEndOverlap.AddDynamic(this, &ATHItemBox::OnOverlapEnd);
         UE_LOG(LogTemp, Warning, TEXT("OverlapSphere is valid and OnComponentBeginOverlap is bound."));
     }
     else
@@ -40,13 +40,13 @@ void AItemBox::BeginPlay()
 	}
 }
 
-void AItemBox::Tick(float DeltaTime)
+void ATHItemBox::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 }
 
-void AItemBox::OpenBox()
+void ATHItemBox::OpenBox()
 {
     if (UseTimeCheck)
     {
@@ -54,7 +54,7 @@ void AItemBox::OpenBox()
     }
 	UseTimeCheck = true;
 	//타이머 설정
-	GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &AItemBox::ResetUseTime, 0.3f, false);
+	GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &ATHItemBox::ResetUseTime, 0.3f, false);
 
 
 	//아이템 생성 및 드랍
@@ -66,16 +66,16 @@ void AItemBox::OpenBox()
 	//Destroy();
 }
 
-void AItemBox::ResetUseTime()
+void ATHItemBox::ResetUseTime()
 {
     UseTimeCheck = false;
 }
 
 
-FString AItemBox::RandomItemGenerate(EItemType DropType)
+FString ATHItemBox::RandomItemGenerate(EItemType DropType)
 {
-    AItemDataManager* DataManager = Cast<AItemDataManager>(
-        UGameplayStatics::GetActorOfClass(GetWorld(), AItemDataManager::StaticClass()));
+    ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(
+        UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 
     if (!IsValid(DataManager))
     {
@@ -83,10 +83,10 @@ FString AItemBox::RandomItemGenerate(EItemType DropType)
         return TEXT("Invalid");
     }
 
-    TArray<const FItemData*> FilteredItems;
+    TArray<const FTHItemData*> FilteredItems;
     int32 TotalWeight = 0;
 
-    TArray<FItemData*> AllItemData;
+    TArray<FTHItemData*> AllItemData;
 
     //DataManager->ItemDataTable이 유효한지 체크
     if (!IsValid(DataManager->ItemDataTable))
@@ -97,7 +97,7 @@ FString AItemBox::RandomItemGenerate(EItemType DropType)
 
     DataManager->ItemDataTable->GetAllRows(TEXT(""), AllItemData);
 
-    for (const FItemData* ItemData : AllItemData)
+    for (const FTHItemData* ItemData : AllItemData)
     {
         if ((DropType == EItemType::Equipment && ItemData->ItemDropType == EItemType::Consumable) ||
             (DropType == EItemType::Consumable && ItemData->ItemDropType == EItemType::Equipment))
@@ -118,7 +118,7 @@ FString AItemBox::RandomItemGenerate(EItemType DropType)
     int32 RandomValue = FMath::RandRange(1, TotalWeight);
     int32 CurrentWeight = 0;
 
-    for (const FItemData* SelectedItem : FilteredItems)
+    for (const FTHItemData* SelectedItem : FilteredItems)
     {
         CurrentWeight += static_cast<int32>(SelectedItem->DropWeight);
         if (RandomValue <= CurrentWeight)
@@ -131,7 +131,7 @@ FString AItemBox::RandomItemGenerate(EItemType DropType)
 }
 
 
-void AItemBox::DropItem(FString RandomItemID)
+void ATHItemBox::DropItem(FString RandomItemID)
 {	
     if (RandomItemID == TEXT("Invalid"))
     {
@@ -139,19 +139,19 @@ void AItemBox::DropItem(FString RandomItemID)
         return;
     }
 
-    AItemDataManager* DataManager = Cast<AItemDataManager>(
-        UGameplayStatics::GetActorOfClass(GetWorld(), AItemDataManager::StaticClass()));
+    ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(
+        UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 	if (!IsValid(DataManager))
 	{
 		UE_LOG(LogTemp, Error, TEXT("ItemDataManager subsystem is not valid."));
 		return;
 	}
 
-    const FItemData* ItemData = nullptr;
-    TArray<FItemData*> AllRows;
+    const FTHItemData* ItemData = nullptr;
+    TArray<FTHItemData*> AllRows;
     DataManager->ItemDataTable->GetAllRows(TEXT(""), AllRows);
 
-    for (const FItemData* Row : AllRows)
+    for (const FTHItemData* Row : AllRows)
     {
         if (Row && Row->ItemID == RandomItemID)
         {
@@ -171,7 +171,7 @@ void AItemBox::DropItem(FString RandomItemID)
 
 	Location.Z += DropHeight; // 드랍 높이 조정
 
-    ABaseItem* DroppedItem = GetWorld()->SpawnActor<ABaseItem>(ItemData->BaseItemClass, Location, Rotation);
+    ATHBaseItem* DroppedItem = GetWorld()->SpawnActor<ATHBaseItem>(ItemData->BaseItemClass, Location, Rotation);
     if (DroppedItem)
     {
         DroppedItem->SetItemID(RandomItemID);
@@ -179,10 +179,10 @@ void AItemBox::DropItem(FString RandomItemID)
     }
 }
 
-void AItemBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ATHItemBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {   
     APawn* PlayerPawn = Cast<APawn>(OtherActor);
-    InteractPromptWidget = CreateWidget<UInteractPromptWidget>(GetWorld(), InteractPromptClass);
+    InteractPromptWidget = CreateWidget<UTHInteractPromptWidget>(GetWorld(), InteractPromptClass);
     if (InteractPromptWidget)
     {
         InteractPromptWidget->AddToViewport();
@@ -196,7 +196,7 @@ void AItemBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* 
     }
 }
 
-void AItemBox::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void ATHItemBox::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
     APawn* PlayerPawn = Cast<APawn>(OtherActor);
     if (PlayerPawn && InteractPromptWidget)

@@ -2,42 +2,37 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "THItemData.h"
 #include "Components/SphereComponent.h"
-#include "InteractPromptWidget.h"
-#include "BaseItem.generated.h"
+#include "THInteractPromptWidget.h"
+#include "THItemBox.generated.h"
 
-class UStaticMeshComponent;
-class ATHPlayerCharacter;
 
 UCLASS()
-class TREASUREHUNTER_API ABaseItem : public AActor
+class TREASUREHUNTER_API ATHItemBox : public AActor
 {
 	GENERATED_BODY()
 	
 public:
-	ABaseItem();
+	ATHItemBox();
 
 protected:
 	virtual void BeginPlay() override;
 
-
 public:
+	virtual void Tick(float DeltaTime) override;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* ItemMesh;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Data")
+	int32 DropHeight;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Data")
-	FString ItemID;
+	void OpenBox();
+	FString RandomItemGenerate(EItemType DropType);
+	void DropItem(FString RandomItemID);
 
-	void SetItemID(FString NewItemID);
-
-
-	virtual void Tick(float DeltaTime) override;
-
-	//아이템 매쉬가 있고 상호작용하여 획득(인벤토리에 이전 이 후 삭제)
-
-
-
+public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USphereComponent* OverlapSphere;
@@ -54,10 +49,10 @@ public:
 
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UInteractPromptWidget> InteractPromptClass;
+	TSubclassOf<UTHInteractPromptWidget> InteractPromptClass;
 
 	UPROPERTY()
-	UInteractPromptWidget* InteractPromptWidget;
+	UTHInteractPromptWidget* InteractPromptWidget;
 
 	UFUNCTION()
 	void OnOverlapEnd(
@@ -67,10 +62,10 @@ public:
 		int32 OtherBodyIndex
 	);
 
+	bool UseTimeCheck = false;
 
-	void ItemPickup(ATHPlayerCharacter* PlayerCharacter);
+	FTimerHandle UseTimerHandle;
+	void ResetUseTime();
 
-	bool bIsPickedUp;
-	FTimerHandle PickedUpTimerHandle;
-	void PickedUpTime();
+	
 };

@@ -1,11 +1,11 @@
-﻿#include "GA_UseSpeedBoostAbility.h"
+﻿#include "THUseSpeedBoostAbility.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
 #include "AttributeSet/THAttributeSet.h"
 #include "GameplayEffectTypes.h"
-#include "GE_SpeedBoost.h"
+#include "Item/ItemEffect/THSpeedBoostEffect.h"
 
-void UGA_UseSpeedBoostAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
+void UTHUseSpeedBoostAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
     const FGameplayAbilityActorInfo* ActorInfo,
     const FGameplayAbilityActivationInfo ActivationInfo,
     const FGameplayEventData* TriggerEventData)
@@ -24,7 +24,7 @@ void UGA_UseSpeedBoostAbility::ActivateAbility(const FGameplayAbilitySpecHandle 
         UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
         int32 Level = GetAbilityLevel(Handle, ActorInfo);
 
-        FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(UGE_SpeedBoost::StaticClass(), Level);
+        FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(UTHSpeedBoostEffect::StaticClass(), Level);
 
         if (SpecHandle.IsValid() && SpecHandle.Data.IsValid())
         {

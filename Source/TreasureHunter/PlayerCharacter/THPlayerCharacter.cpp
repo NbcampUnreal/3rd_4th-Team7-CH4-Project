@@ -9,7 +9,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "GameplayEffect.h"
-#include "Item/ItemInventory.h"
+#include "Item/THItemInventory.h"
 
 ATHPlayerCharacter::ATHPlayerCharacter()
 {
@@ -213,11 +213,11 @@ UAbilitySystemComponent* ATHPlayerCharacter::GetAbilitySystemComponent() const
 
 //임시추가	
 
-void ATHPlayerCharacter::SetInteractableActor(AItemBox* NewItemBox)
+void ATHPlayerCharacter::SetInteractableActor(ATHItemBox* NewItemBox)
 {
 	InteractableItemBox = NewItemBox;
 }
-void ATHPlayerCharacter::SetInteractableBaseItem(ABaseItem* NewBaseItem)
+void ATHPlayerCharacter::SetInteractableBaseItem(ATHBaseItem* NewBaseItem)
 {
 	InteractableBaseItem = NewBaseItem;
 }
@@ -244,7 +244,7 @@ void ATHPlayerCharacter::OnInteract()
 
 void ATHPlayerCharacter::OnUseItemSlot1()
 {
-	if (UItemInventory* Inventory = FindComponentByClass<UItemInventory>())
+	if (UTHItemInventory* Inventory = FindComponentByClass<UTHItemInventory>())
 	{
 		Inventory->UseItem(1);
 	}
@@ -252,7 +252,7 @@ void ATHPlayerCharacter::OnUseItemSlot1()
 
 void ATHPlayerCharacter::OnUseItemSlot2()
 {
-	if (UItemInventory* Inventory = FindComponentByClass<UItemInventory>())
+	if (UTHItemInventory* Inventory = FindComponentByClass<UTHItemInventory>())
 	{
 		Inventory->UseItem(2);
 	}

@@ -1,8 +1,8 @@
-﻿#include "Item/BaseItem.h"
+﻿#include "Item/THBaseItem.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
-#include "Item/ItemInventory.h"
+#include "Item/THItemInventory.h"
 
-ABaseItem::ABaseItem()
+ATHBaseItem::ATHBaseItem()
 {
 	PrimaryActorTick.bCanEverTick = true;
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
@@ -20,38 +20,38 @@ ABaseItem::ABaseItem()
     bIsPickedUp = false;    
 }
 
-void ABaseItem::BeginPlay()
+void ATHBaseItem::BeginPlay()
 {
 	Super::BeginPlay();
 
-	OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &ABaseItem::OnOverlapBegin);
-	OverlapSphere->OnComponentEndOverlap.AddDynamic(this, &ABaseItem::OnOverlapEnd);
+	OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &ATHBaseItem::OnOverlapBegin);
+	OverlapSphere->OnComponentEndOverlap.AddDynamic(this, &ATHBaseItem::OnOverlapEnd);
 
-    GetWorld()->GetTimerManager().SetTimer(PickedUpTimerHandle, this, &ABaseItem::PickedUpTime, 0.3f, false);
+    GetWorld()->GetTimerManager().SetTimer(PickedUpTimerHandle, this, &ATHBaseItem::PickedUpTime, 0.3f, false);
 }
 
-void ABaseItem::SetItemID(FString NewItemID)
+void ATHBaseItem::SetItemID(FString NewItemID)
 {
 	ItemID = NewItemID;
 }
 
-void ABaseItem::Tick(float DeltaTime)
+void ATHBaseItem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 }
 
 
-void ABaseItem::PickedUpTime()
+void ATHBaseItem::PickedUpTime()
 {
     bIsPickedUp = true;
 }
 
 
-void ABaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ATHBaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
     APawn* PlayerPawn = Cast<APawn>(OtherActor);
-    InteractPromptWidget = CreateWidget<UInteractPromptWidget>(GetWorld(), InteractPromptClass);
+    InteractPromptWidget = CreateWidget<UTHInteractPromptWidget>(GetWorld(), InteractPromptClass);
     if (InteractPromptWidget)
     {
         InteractPromptWidget->AddToViewport();
@@ -65,7 +65,7 @@ void ABaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor*
     }
 }
 
-void ABaseItem::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void ATHBaseItem::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
     APawn* PlayerPawn = Cast<APawn>(OtherActor);
     if (PlayerPawn && InteractPromptWidget)
@@ -82,13 +82,13 @@ void ABaseItem::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* O
     }
 }
 
-void ABaseItem::ItemPickup(ATHPlayerCharacter* PlayerCharacter)
+void ATHBaseItem::ItemPickup(ATHPlayerCharacter* PlayerCharacter)
 {
     UE_LOG(LogTemp, Warning, TEXT("Item Pickup"));
     if (PlayerCharacter)
     {
 		UE_LOG(LogTemp, Warning, TEXT("PlayerCharacter is valid"));
-        UItemInventory* Inventory = PlayerCharacter->FindComponentByClass<UItemInventory>();
+        UTHItemInventory* Inventory = PlayerCharacter->FindComponentByClass<UTHItemInventory>();
         if (Inventory)
         {
 			UE_LOG(LogTemp, Warning, TEXT("Inventory is valid"));

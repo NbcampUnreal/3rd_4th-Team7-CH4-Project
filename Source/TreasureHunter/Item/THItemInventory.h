@@ -2,18 +2,18 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "ItemInventory.generated.h"
+#include "THItemInventory.generated.h"
 
-class AItemDataManager;
+class ATHItemDataManager;
 class UTexture2D;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class TREASUREHUNTER_API UItemInventory : public UActorComponent
+class TREASUREHUNTER_API UTHItemInventory : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:
-	UItemInventory();
+	UTHItemInventory();
 
 protected:
 	virtual void BeginPlay() override;
@@ -46,5 +46,5 @@ public:
 	void UpdateItemImage(int32 SlotIndex, const FString& ItemID);
 
 	UPROPERTY()
-	TObjectPtr<AItemDataManager> ItemDataManager;
+	TObjectPtr<ATHItemDataManager> ItemDataManager;
 };

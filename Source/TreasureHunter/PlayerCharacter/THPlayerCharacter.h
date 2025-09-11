@@ -9,8 +9,8 @@
 
 
 #include "GameplayEffectTypes.h"
-#include "Item/ItemBox.h"
-#include "Item/BaseItem.h"
+#include "Item/THItemBox.h"
+#include "Item/THBaseItem.h"
 
 #include "THPlayerCharacter.generated.h"
 
@@ -100,15 +100,15 @@ protected:
 	//임시추가 -> 통합하는 방향으로 수정
 private:
 	UPROPERTY()
-	AItemBox* InteractableItemBox;
+	ATHItemBox* InteractableItemBox;
 	UPROPERTY()
-	ABaseItem* InteractableBaseItem;
+	ATHBaseItem* InteractableBaseItem;
 
 
 
 public:	
-	void SetInteractableActor(AItemBox* NewItemBox);
-	void SetInteractableBaseItem(ABaseItem* NewBaseItem);
+	void SetInteractableActor(ATHItemBox* NewItemBox);
+	void SetInteractableBaseItem(ATHBaseItem* NewBaseItem);
 
 	UFUNCTION()
 	void OnInteract();

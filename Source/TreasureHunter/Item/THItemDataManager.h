@@ -3,14 +3,14 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "Engine/DataTable.h"
-#include "ItemDataManager.generated.h"
+#include "THItemDataManager.generated.h"
 
 
-struct FItemData;
+struct FTHItemData;
 class UGameplayAbility;
 
 UCLASS(Blueprintable)
-class TREASUREHUNTER_API AItemDataManager : public AActor
+class TREASUREHUNTER_API ATHItemDataManager : public AActor
 {
     GENERATED_BODY()
 
@@ -25,7 +25,7 @@ public:
     TSubclassOf<UGameplayAbility> GetItemAbilityClassByID(const FString& ItemID);
 
     UFUNCTION(BlueprintCallable)
-    const FItemData& FindItemDataByItemID(const FString& ItemIDToFind);
+    const FTHItemData& FindItemDataByItemID(const FString& ItemIDToFind);
 
 
     // ID를 통해 아이템 데이터를 가져오는 함수

@@ -4,7 +4,7 @@
 #include "Engine/DataTable.h"
 #include "Abilities/GameplayAbility.h"
 
-#include "ItemData.generated.h"
+#include "THItemData.generated.h"
 
 
 UENUM(BlueprintType)
@@ -17,7 +17,7 @@ enum class EItemType : uint8
 
 
 USTRUCT(BlueprintType)
-struct FItemData : public FTableRowBase
+struct FTHItemData : public FTableRowBase
 {
     GENERATED_BODY()
 
@@ -41,7 +41,7 @@ public:
     TSubclassOf<class UGameplayAbility> GameplayAbilityClass;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Data")
-    TSubclassOf<class ABaseItem> BaseItemClass;
+    TSubclassOf<class ATHBaseItem> BaseItemClass;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Data")
 	int32 CoolTime;

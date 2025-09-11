@@ -3,17 +3,17 @@
 #include "CoreMinimal.h"
 #include "GameplayEffect.h"
 #include "AttributeSet/THAttributeSet.h"
-#include "GE_SpeedBoost.generated.h"
+#include "THSpeedBoostEffect.generated.h"
 
 
 UCLASS()
-class TREASUREHUNTER_API UGE_SpeedBoost : public UGameplayEffect
+class TREASUREHUNTER_API UTHSpeedBoostEffect : public UGameplayEffect
 {
 	GENERATED_BODY()
 
 public:
 
-	UGE_SpeedBoost()
+	UTHSpeedBoostEffect()
 	{
 		DurationPolicy = EGameplayEffectDurationType::HasDuration;
 		DurationMagnitude=FScalableFloat(10.0f); // 10초 지속
