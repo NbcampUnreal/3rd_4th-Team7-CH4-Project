@@ -1,16 +1,10 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "InputActionValue.h"
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
-
-
-
-#include "GameplayEffectTypes.h"
-#include "Item/ItemBox.h"
-#include "Item/BaseItem.h"
 
 #include "THPlayerCharacter.generated.h"
 
@@ -86,43 +80,4 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SprintAction;
-
-
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> InteractAction;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> SlotUse1Action;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> SlotUse2Action;
-
-	//임시추가 -> 통합하는 방향으로 수정
-private:
-	UPROPERTY()
-	AItemBox* InteractableItemBox;
-	UPROPERTY()
-	ABaseItem* InteractableBaseItem;
-
-
-
-public:	
-	void SetInteractableActor(AItemBox* NewItemBox);
-	void SetInteractableBaseItem(ABaseItem* NewBaseItem);
-
-	UFUNCTION()
-	void OnInteract();
-	
-	UFUNCTION()
-	void OnUseItemSlot1();
-	UFUNCTION()
-	void OnUseItemSlot2();
-
-	
-	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
-
-	
-	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
-
-	bool bIsSprinting = false;
 };
