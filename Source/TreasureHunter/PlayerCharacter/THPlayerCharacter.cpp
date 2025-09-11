@@ -92,6 +92,7 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EIC->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::RequestSprint);
 	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::RequestSprint);
+	EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
 	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
 	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
 	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
@@ -167,12 +168,9 @@ void ATHPlayerCharacter::RequestSprint(const FInputActionValue& InValue)
 	
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
 	{
-		FGameplayTag SprintTag = FGameplayTag::RequestGameplayTag(FName("Ability.Sprint"));
-
-		FGameplayTagContainer SprintTagContainer(SprintTag);
+		FGameplayTagContainer SprintTagContainer(TAG_Ability_Sprint);
 		
 		if (bIsPressed == true)
-
 		{
 			ASC->TryActivateAbilitiesByTag(SprintTagContainer);
 		}
@@ -195,6 +193,15 @@ void ATHPlayerCharacter::RequestPush(const FInputActionValue& InValue)
 		ASC->TryActivateAbilitiesByTag(PushTagContainer);
 	}
 
+}
+
+void ATHPlayerCharacter::RequestMantle(const FInputActionValue& InValue)
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		FGameplayTagContainer MantleTagContainer(TAG_Ability_Mantle);
+		ASC->TryActivateAbilitiesByTag(MantleTagContainer);
+	}
 }
 
 void ATHPlayerCharacter::BindToAttributeChanges()

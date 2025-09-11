@@ -10,7 +10,6 @@
 UTHSprintAbility::UTHSprintAbility()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
 	AbilityTags.AddTag(TAG_Ability_Sprint);
@@ -26,7 +25,6 @@ bool UTHSprintAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
 	}
 	
 	const UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	
 	if (!ensure(ASC))
 	{
 		return false;
@@ -44,18 +42,19 @@ bool UTHSprintAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
 void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
-
+	
 	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		
 		return;
 	}
 
 	
 	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
+	
 	checkf(PlayerCharacter, TEXT("ATHPlayerCharacter is null in UTHSprintAbility."));
-
+	
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
 
 	PlayerCharacter->bIsSprinting = true;	//추가
@@ -86,7 +85,6 @@ void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 			StaminaCostEffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
 		}
 	}
-
 	
 	if (const UTHAttributeSet* AttributeSet = Cast<UTHAttributeSet>(ASC->GetAttributeSet(UTHAttributeSet::StaticClass())); ensure(AttributeSet))
 	{
@@ -140,7 +138,6 @@ void UTHSprintAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 			}
 		}
 	}
-
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 

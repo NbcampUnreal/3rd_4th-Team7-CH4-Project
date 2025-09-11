@@ -12,16 +12,18 @@ USTRUCT(BlueprintType)
 struct FMantleInfo
 {
 	GENERATED_BODY()
-
-	UPROPERTY(BlueprintReadOnly) FVector LedgeLocation;
 	
-	UPROPERTY(BlueprintReadOnly) FVector LedgeNormal;
+	UPROPERTY(BlueprintReadOnly)
+	FVector LedgeLocation;
 	
-	UPROPERTY(BlueprintReadOnly) FVector TargetLocation;
+	UPROPERTY(BlueprintReadOnly)
+	FVector TargetLocation;
 	
-	UPROPERTY(BlueprintReadOnly) FRotator TargetRotation;
+	UPROPERTY(BlueprintReadOnly)
+	FRotator TargetRotation;
 	
-	UPROPERTY(BlueprintReadOnly) TWeakObjectPtr<UPrimitiveComponent> TargetComponent;
+	UPROPERTY(BlueprintReadOnly)
+	TWeakObjectPtr<UPrimitiveComponent> TargetComponent;
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
@@ -33,32 +35,28 @@ public:
 	UTHParkourComponent();
 
 	bool CheckMantle(FMantleInfo& OutMantleInfo) const;
-
+	
 	UAnimMontage* GetMantlingMontage() const { return MantlingMontage; }
-	
-	float GetMantleTraceDistance() const { return MantleTraceDistance; }
-	
-	float GetMinMantleHeight() const { return MinMantleHeight; }
-	
-	float GetMaxMantleHeight() const { return MaxMantleHeight; }
 
 protected:
-	virtual void BeginPlay() override;
-	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
 	TObjectPtr<UAnimMontage> MantlingMontage;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
+	float MantleTraceDistance = 150.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
+	float MinMantleHeight = 25.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
+	float MaxMantleHeight = 500.f;
 
 private:
-	UPROPERTY(VisibleAnywhere, Category = "Mantle")
-	float MantleTraceDistance;
+	UPROPERTY(Transient)
+	TObjectPtr<ACharacter> OwnerCharacter;
 
-	UPROPERTY(VisibleAnywhere, Category = "Mantle")
-	float MinMantleHeight;
+	UPROPERTY(Transient)
+	TObjectPtr<UCharacterMovementComponent> OwnerMovementComponent;
 
-	UPROPERTY(VisibleAnywhere, Category = "Mantle")
-	float MaxMantleHeight;
-
-	UPROPERTY(Transient) TObjectPtr<ACharacter> OwnerCharacter;
-	
-	UPROPERTY(Transient) TObjectPtr<UCharacterMovementComponent> OwnerMovementComponent;
+	virtual void BeginPlay() override;
 };

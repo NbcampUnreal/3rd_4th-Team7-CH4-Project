@@ -55,6 +55,8 @@ private:
 
 	void RequestSprint(const FInputActionValue& InValue);
 
+	void RequestMantle(const FInputActionValue& InValue);
+
 	void RequestPush(const FInputActionValue& InValue);
 
 	void BindToAttributeChanges();
@@ -138,4 +140,7 @@ public:
 
 	bool bIsSprinting = false;
 
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> MantleAction;
 };

@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
-#include "ParkourComponent/THParkourComponent.h"
 #include "THMantleAbility.generated.h"
 
 UCLASS()
@@ -14,19 +13,19 @@ public:
 	UTHMantleAbility();
 
 	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, OUT FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
-
+	
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 
 	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
 
 protected:
-	UPROPERTY(EditDefaultsOnly, Category = "Mantle")
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
 	TSubclassOf<UGameplayEffect> StaminaCostEffect;
 
-protected:
+private:
 	UFUNCTION()
-	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	void OnMontageCompleted();
 
-	UPROPERTY()
-	FMantleInfo MantleInfo;
+	UFUNCTION()
+	void OnMontageInterrupted();
 };
