@@ -1,4 +1,4 @@
-#include "Ability/THSprintAbility.h"
+﻿#include "Ability/THSprintAbility.h"
 #include "AttributeSet/THAttributeSet.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -57,6 +57,8 @@ void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 	checkf(PlayerCharacter, TEXT("ATHPlayerCharacter is null in UTHSprintAbility."));
 
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
+
+	PlayerCharacter->bIsSprinting = true;	//추가
 	
 	PlayerCharacter->GetCharacterMovement()->MaxWalkSpeed = PlayerCharacter->GetSprintSpeed();
 	
@@ -102,6 +104,8 @@ void UTHSprintAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 		
 		if (PlayerCharacter && ASC)
 		{
+			PlayerCharacter->bIsSprinting = false; //추가
+
 			PlayerCharacter->GetCharacterMovement()->MaxWalkSpeed = PlayerCharacter->GetWalkSpeed();
 			
 			if (StaminaCostEffectHandle.IsValid())
