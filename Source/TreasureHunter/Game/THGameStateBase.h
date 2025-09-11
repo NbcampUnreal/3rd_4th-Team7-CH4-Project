@@ -23,10 +23,14 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnPhaseChangedSig OnPhaseChanged;
 
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = "GameState")
+	FGameplayTag WinnerTag;
+
 	UFUNCTION(BlueprintCallable)
 	void SetPhase(const FGameplayTag& NewPhase);
 
-	UFUNCTION() void OnRep_PhaseTag();
+	UFUNCTION() 
+	void OnRep_PhaseTag();
 	
 protected:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out) const override;

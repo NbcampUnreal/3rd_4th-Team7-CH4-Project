@@ -87,7 +87,7 @@ void UTHMainMenuWidget::HandleGameStartClicked()
 	if (LoadingIcon)
 	{
 		LoadingIcon->SetVisibility(ESlateVisibility::Visible);
-		PlayAnimation(LoadingAnim);
+		PlayAnimation(LoadingAnim, 0.0f, 0, EUMGSequencePlayMode::Forward, 1.0f, false);
 	}
 }
 

@@ -9,6 +9,7 @@ void ATHGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(ATHGameStateBase, PhaseTag);
+	DOREPLIFETIME(ATHGameStateBase, WinnerTag);
 }
 
 void ATHGameStateBase::BeginPlay()
