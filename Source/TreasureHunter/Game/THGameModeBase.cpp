@@ -1,27 +1,40 @@
 #include "Game/THGameModeBase.h"
-#include "Game/THGameModeEnum.h"
+#include "Game/THGameStateBase.h"
 #include "Player/THPlayerState.h"
 #include "Player/THTitlePlayerController.h"
+#include "Game/GameFlowTags.h"
 
 ATHGameModeBase::ATHGameModeBase()
 {
-	GameModeFlow = EGameFlow::Wait;
+	MaxMatchPlayerNum = 2;
+	SetGameModeFlow(TAG_Game_Phase_Wait);
 }
 
 void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	//ATHTitlePlayerController* NewPlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
-	//if (IsValid(NewPlayerController))
-	//{
-	//	++EnterPlayerNum;
-	//	LoginPlayerControllers.Add(NewPlayerController);
+	ATHTitlePlayerController* NewPlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
+	if (IsValid(NewPlayerController) && IsValid(NewPlayer->Player))
+	{
+		++EnterPlayerNum;
+		LoginPlayerControllers.Add(NewPlayerController);
 
-	//	FString GuidStr = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);
-	//	NewPlayerController->AssignPlayerUniqueId(GuidStr);
-	//	SetPlayerData(NewPlayerController, GuidStr);
-	//}
+		UNetConnection* NewConnection = Cast<UNetConnection>(NewPlayer->Player);
+		FString Address;
+		if (IsValid(NewConnection))
+		{
+			Address = NewConnection->GetRemoteAddr()->ToString(false);
+		}
+		else
+		{
+			Logout(NewPlayer);
+			return;
+		}
+
+		FString GuidStr = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);;
+		SetPlayerData(Address, GuidStr);
+	}
 }
 
 void ATHGameModeBase::Logout(AController* Exiting)
@@ -37,53 +50,77 @@ void ATHGameModeBase::Logout(AController* Exiting)
 	}
 }
 
-void ATHGameModeBase::SetGameModeFlow(EGameFlow GameFlow)
+void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 {
 	if (HasAuthority())
 	{
-		GameModeFlow = GameFlow;
-		switch (GameModeFlow)
+		GameModeFlow = NewPhase;
+		if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 		{
-		case EGameFlow::Wait:
+			GS->SetPhase(GameModeFlow);
+		}
+
+		if (GameModeFlow == TAG_Game_Phase_Wait)
+		{
 			WaitGame();
-			break;
-		case EGameFlow::Load:
+		}
+		else if (GameModeFlow == TAG_Game_Phase_Match)
+		{
+			
+		}
+		else if (GameModeFlow == TAG_Game_Phase_Loading)
+		{
 			LoadGame();
-			break;
-		case EGameFlow::Match:
-			break;
-		case EGameFlow::Play:
+		}
+		else if (GameModeFlow == TAG_Game_Phase_Play)
+		{
 			GameStart();
-			break;
-		case EGameFlow::Finish:
+		}
+		else if (GameModeFlow == TAG_Game_Phase_Finish)
+		{
 			FinishGame();
-			break;
-		case EGameFlow::Result:
-			ShowResult();
-			break;
 		}
 	}
 }
 
 void ATHGameModeBase::StartMatchGame(ATHTitlePlayerController* PC)
 {
-	//FString UniqueId = PC->GetCustomId();
-	//FPlayerData* FoundData = LoginPlayerData.FindByPredicate(
-	//	[&UniqueId](const FPlayerData& Data)
-	//	{
-	//		return Data.PlayerUniqueId == UniqueId;
-	//	});
+	UNetConnection* MatchConnection = Cast<UNetConnection>(PC->Player);
+	FString PCAddress = MatchConnection->GetRemoteAddr()->ToString(false);
 
-	//if (FoundData)
-	//{
-	//	SetGameModeFlow(EGameFlow::Match);
-	//	//Match Logic
-	//}
-	//else
-	//{
-	//	UE_LOG(LogTemp, Warning, TEXT("Not Found PlayerData"));
-	//	return;
-	//}
+	FPlayerData* FoundData = LoginPlayerData.FindByPredicate(
+		[&PCAddress](const FPlayerData& Data)
+		{
+			return Data.PlayerAddress == PCAddress;
+		});
+
+	if (FoundData)
+	{
+		if (GameModeFlow == TAG_Game_Phase_Wait)
+		{
+			ATHPlayerState* MatchPS = Cast<ATHPlayerState>(PC->PlayerState);
+			FoundData->PlayerName = MatchPS->Nickname;
+			MatchPS->OnRep_Nickname();
+
+			++CurMatchWaitPlayerNum;
+			MatchWaitPlayerControllers.Add(PC);
+			if (CheckEnoughPlayer())
+			{
+				MatchGame();
+			}
+		}
+		else
+		{
+			//if players playing Game now
+			UE_LOG(LogTemp, Warning, TEXT("Now Other Users Playing Game. Wait Please"));
+			return;
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Not Found PlayerData"));
+		return;
+	}
 }
 
 void ATHGameModeBase::DecidePlayCharacter()
@@ -95,8 +132,20 @@ void ATHGameModeBase::WaitGame()
 	//Initial Game Data
 }
 
+void ATHGameModeBase::MatchGame()
+{
+	for (int i = 0; i < 2; ++i)
+	{
+		ATHTitlePlayerController* MatchPlayer = MatchWaitPlayerControllers[i];
+		MatchPlayerControllers.Add(MatchPlayer);
+	}
+
+	SetGameModeFlow(TAG_Game_Phase_Match);
+}
+
 void ATHGameModeBase::LoadGame()
 {
+	
 }
 
 void ATHGameModeBase::GameStart()
@@ -119,14 +168,15 @@ void ATHGameModeBase::ManipluateController(bool Manipulate)
 {
 }
 
-EGameFlow ATHGameModeBase::GetGameModeFlow() const
+FGameplayTag ATHGameModeBase::GetGameModeFlow() const
 {
 	return GameModeFlow;
 }
 
-void ATHGameModeBase::SetPlayerData(APlayerController* PS, FString& UniqueId)
+void ATHGameModeBase::SetPlayerData(FString& Adrress, FString& UniqueId)
 {
 	FPlayerData NewPD;
+	NewPD.PlayerAddress = Adrress;
 	NewPD.PlayerUniqueId = UniqueId;
 
 	LoginPlayerData.Add(NewPD);
@@ -134,5 +184,12 @@ void ATHGameModeBase::SetPlayerData(APlayerController* PS, FString& UniqueId)
 
 bool ATHGameModeBase::CheckEnoughPlayer()
 {
-	return false;
+	if (MatchWaitPlayerControllers.Num() >= MaxMatchPlayerNum)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }

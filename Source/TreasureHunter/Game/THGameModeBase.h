@@ -2,15 +2,14 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "Game/THGameModeEnum.h"
+#include "GameplayTagContainer.h"
 #include "THGameModeBase.generated.h"
 
 struct FPlayerData
 {
+	FString PlayerAddress;
 	FString PlayerName;
 	FString PlayerUniqueId;
-	TWeakPtr<APlayerState> PlayerState;
-	TWeakPtr<APlayerController> PlayerController;
 };
 
 class UUserWidget;
@@ -28,13 +27,15 @@ public:
 
 	virtual void Logout(AController* Exiting) override;
 
-	void SetGameModeFlow(EGameFlow GameFlow);
+	void SetGameModeFlow(const FGameplayTag& NewPhase);
 
 	void StartMatchGame(ATHTitlePlayerController* PC);
 
 	void DecidePlayCharacter();
 
 	void WaitGame();
+
+	void MatchGame();
 
 	void LoadGame();
 
@@ -49,14 +50,14 @@ public:
 	void ManipluateController(bool Manipulate);
 
 private:
-	EGameFlow GetGameModeFlow() const;
+	FGameplayTag GetGameModeFlow() const;
 
-	void SetPlayerData(APlayerController* PS, FString& UniqueId);
+	void SetPlayerData(FString& Adrress, FString& UniqueId);
 
 	bool CheckEnoughPlayer();
 
 private:
-	EGameFlow GameModeFlow;
+	FGameplayTag GameModeFlow;
 
 	int32 EnterPlayerNum;
 
@@ -68,4 +69,8 @@ public:
 	TArray<FPlayerData> LoginPlayerData;
 
 	TArray<APlayerController*> LoginPlayerControllers;
+
+	TArray<ATHTitlePlayerController*> MatchWaitPlayerControllers;
+
+	TArray<ATHTitlePlayerController*> MatchPlayerControllers;
 };
