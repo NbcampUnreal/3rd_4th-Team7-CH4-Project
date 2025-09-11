@@ -8,6 +8,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Sprint);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Mantle);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Push);
 
+// ----- CoolDown -----
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Cooldown_Ability_Push);
 
 // ----- Effect -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effect_Stamina_Regen);
