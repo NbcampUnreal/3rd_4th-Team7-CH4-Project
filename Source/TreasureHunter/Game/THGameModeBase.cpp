@@ -55,6 +55,7 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 	if (HasAuthority())
 	{
 		GameModeFlow = NewPhase;
+		UE_LOG(LogTemp, Error, TEXT("Change GameFlow Phase"));
 		if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 		{
 			GS->SetPhase(GameModeFlow);
@@ -85,40 +86,51 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 
 void ATHGameModeBase::StartMatchGame(ATHTitlePlayerController* PC)
 {
-	UNetConnection* MatchConnection = Cast<UNetConnection>(PC->Player);
-	FString PCAddress = MatchConnection->GetRemoteAddr()->ToString(false);
+	UNetConnection* MatchConnection = nullptr;
 
-	FPlayerData* FoundData = LoginPlayerData.FindByPredicate(
-		[&PCAddress](const FPlayerData& Data)
-		{
-			return Data.PlayerAddress == PCAddress;
-		});
-
-	if (FoundData)
+	if (IsValid(PC))
 	{
-		if (GameModeFlow == TAG_Game_Phase_Wait)
+		MatchConnection = Cast<UNetConnection>(PC->Player);
+		if (IsValid(MatchConnection))
 		{
-			ATHPlayerState* MatchPS = Cast<ATHPlayerState>(PC->PlayerState);
-			FoundData->PlayerName = MatchPS->Nickname;
-			MatchPS->OnRep_Nickname();
+			FString PCAddress = MatchConnection->GetRemoteAddr()->ToString(false);
+			FPlayerData* FoundData = LoginPlayerData.FindByPredicate(
+				[&PCAddress](const FPlayerData& Data)
+				{
+					return Data.PlayerAddress == PCAddress;
+				});
 
-			++CurMatchWaitPlayerNum;
-			MatchWaitPlayerControllers.Add(PC);
-			if (CheckEnoughPlayer())
+			if (FoundData)
 			{
-				MatchGame();
+				if (GameModeFlow == TAG_Game_Phase_Wait)
+				{
+					ATHPlayerState* MatchPS = Cast<ATHPlayerState>(PC->PlayerState);
+					FoundData->PlayerName = MatchPS->Nickname;
+					MatchPS->OnRep_Nickname();
+
+					++CurMatchWaitPlayerNum;
+					MatchWaitPlayerControllers.Add(PC);
+					if (CheckEnoughPlayer())
+					{
+						MatchGame();
+					}
+				}
+				else
+				{
+					//if players playing Game now
+					UE_LOG(LogTemp, Warning, TEXT("Now Other Users Playing Game. Wait Please"));
+					return;
+				}
 			}
-		}
-		else
-		{
-			//if players playing Game now
-			UE_LOG(LogTemp, Warning, TEXT("Now Other Users Playing Game. Wait Please"));
-			return;
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Not Found PlayerData"));
+				return;
+			}
 		}
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Not Found PlayerData"));
 		return;
 	}
 }
