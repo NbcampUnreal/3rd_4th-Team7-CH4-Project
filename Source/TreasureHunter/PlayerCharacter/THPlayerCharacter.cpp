@@ -88,7 +88,7 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EIC->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::RequestSprint);
 	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::RequestSprint);
-
+	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
 	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
 	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
 	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
@@ -178,6 +178,19 @@ void ATHPlayerCharacter::RequestSprint(const FInputActionValue& InValue)
 			ASC->CancelAbilities(&SprintTagContainer);
 		}
 	}
+}
+
+void ATHPlayerCharacter::RequestPush(const FInputActionValue& InValue)
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		FGameplayTag PushTag = FGameplayTag::RequestGameplayTag(FName("Ability.Push"));
+
+		FGameplayTagContainer PushTagContainer(PushTag);
+		
+		ASC->TryActivateAbilitiesByTag(PushTagContainer);
+	}
+
 }
 
 void ATHPlayerCharacter::BindToAttributeChanges()

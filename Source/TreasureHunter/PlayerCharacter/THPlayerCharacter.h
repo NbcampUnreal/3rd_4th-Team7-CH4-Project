@@ -5,9 +5,6 @@
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
-
-
-
 #include "GameplayEffectTypes.h"
 #include "Item/THItemBox.h"
 #include "Item/THBaseItem.h"
@@ -58,6 +55,8 @@ private:
 
 	void RequestSprint(const FInputActionValue& InValue);
 
+	void RequestPush(const FInputActionValue& InValue);
+
 	void BindToAttributeChanges();
 
 	void ToggleCrouch();
@@ -87,7 +86,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SprintAction;
 
-
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> PushAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> InteractAction;
@@ -103,7 +103,6 @@ private:
 	ATHItemBox* InteractableItemBox;
 	UPROPERTY()
 	ATHBaseItem* InteractableBaseItem;
-
 
 
 public:	
@@ -125,4 +124,5 @@ public:
 	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
 
 	bool bIsSprinting = false;
+
 };
