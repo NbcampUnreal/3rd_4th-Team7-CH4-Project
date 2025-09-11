@@ -27,31 +27,20 @@ public:
 	UStaticMeshComponent* ItemMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item Data")
-	FString ItemID;
+	FName ItemID;
 
-	void SetItemID(FString NewItemID);
+	void SetItemID(FName NewItemID);
 
 
 	virtual void Tick(float DeltaTime) override;
 
-	//아이템 매쉬가 있고 상호작용하여 획득(인벤토리에 이전 이 후 삭제)
+	
 
 
 
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USphereComponent* OverlapSphere;
-
-	UFUNCTION()
-	void OnOverlapBegin(
-		UPrimitiveComponent* OverlappedComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex,
-		bool bFromSweep,
-		const FHitResult& SweepResult
-	);
-
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UTHInteractPromptWidget> InteractPromptClass;
@@ -60,17 +49,21 @@ public:
 	UTHInteractPromptWidget* InteractPromptWidget;
 
 	UFUNCTION()
-	void OnOverlapEnd(
-		UPrimitiveComponent* OverlappedComponent,
-		AActor* OtherActor,
-		UPrimitiveComponent* OtherComp,
-		int32 OtherBodyIndex
-	);
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 
-	void ItemPickup(ATHPlayerCharacter* PlayerCharacter);
+	bool ItemPickup(ATHPlayerCharacter* PlayerCharacter);
 
+	UPROPERTY(Replicated)
 	bool bIsPickedUp;
 	FTimerHandle PickedUpTimerHandle;
-	void PickedUpTime();
+	void EnablePickup();
+
+
+
+
+
 };

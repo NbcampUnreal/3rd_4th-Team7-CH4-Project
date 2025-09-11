@@ -11,13 +11,14 @@
 ATHItemBox::ATHItemBox()
 {
 	PrimaryActorTick.bCanEverTick = true;
+    bReplicates = true;
     ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
     RootComponent = ItemMesh;
 
     OverlapSphere = CreateDefaultSubobject<USphereComponent>(TEXT("OverlapSphere"));
-    OverlapSphere->SetupAttachment(RootComponent); // ItemMesh에 붙이기
+    OverlapSphere->SetupAttachment(RootComponent);
 
-    OverlapSphere->InitSphereRadius(100.f); // 원하는 반경
+    OverlapSphere->InitSphereRadius(100.f);
     OverlapSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     OverlapSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
     OverlapSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
@@ -32,39 +33,14 @@ void ATHItemBox::BeginPlay()
     {
         OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &ATHItemBox::OnOverlapBegin);
         OverlapSphere->OnComponentEndOverlap.AddDynamic(this, &ATHItemBox::OnOverlapEnd);
-        UE_LOG(LogTemp, Warning, TEXT("OverlapSphere is valid and OnComponentBeginOverlap is bound."));
     }
-    else
-    {
-        UE_LOG(LogTemp, Error, TEXT("OverlapSphere is null!"));
-	}
 }
 
 void ATHItemBox::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
-void ATHItemBox::OpenBox()
-{
-    if (UseTimeCheck)
-    {
-        return;
-    }
-	UseTimeCheck = true;
-	//타이머 설정
-	GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &ATHItemBox::ResetUseTime, 0.3f, false);
-
-
-	//아이템 생성 및 드랍
-	FString RandomItemID = RandomItemGenerate(EItemType::Equipment);
-	DropItem(RandomItemID);
-    
-    
-    //상자 삭제
-	//Destroy();
-}
 
 void ATHItemBox::ResetUseTime()
 {
@@ -72,15 +48,14 @@ void ATHItemBox::ResetUseTime()
 }
 
 
-FString ATHItemBox::RandomItemGenerate(EItemType DropType)
+FName ATHItemBox::RandomItemGenerate(EItemType DropType)
 {
     ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(
         UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 
     if (!IsValid(DataManager))
     {
-        UE_LOG(LogTemp, Error, TEXT("ItemDataManager is not valid."));
-        return TEXT("Invalid");
+        return FName("Invalid");
     }
 
     TArray<const FTHItemData*> FilteredItems;
@@ -88,10 +63,8 @@ FString ATHItemBox::RandomItemGenerate(EItemType DropType)
 
     TArray<FTHItemData*> AllItemData;
 
-    //DataManager->ItemDataTable이 유효한지 체크
     if (!IsValid(DataManager->ItemDataTable))
     {
-        UE_LOG(LogTemp, Error, TEXT("ItemDataTable is not valid."));
         return TEXT("Invalid");
 	}
 
@@ -111,7 +84,6 @@ FString ATHItemBox::RandomItemGenerate(EItemType DropType)
 
     if (FilteredItems.Num() == 0 || TotalWeight <= 0)
     {
-        UE_LOG(LogTemp, Warning, TEXT("No valid items to drop or total weight is zero."));
         return TEXT("Invalid");
     }
 
@@ -131,11 +103,10 @@ FString ATHItemBox::RandomItemGenerate(EItemType DropType)
 }
 
 
-void ATHItemBox::DropItem(FString RandomItemID)
+void ATHItemBox::DropItem(FName RandomItemID)
 {	
-    if (RandomItemID == TEXT("Invalid"))
+    if (RandomItemID == FName("Invalid"))
     {
-        UE_LOG(LogTemp, Warning, TEXT("Failed to get a valid ItemID."));
         return;
     }
 
@@ -143,7 +114,6 @@ void ATHItemBox::DropItem(FString RandomItemID)
         UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 	if (!IsValid(DataManager))
 	{
-		UE_LOG(LogTemp, Error, TEXT("ItemDataManager subsystem is not valid."));
 		return;
 	}
 
@@ -162,55 +132,78 @@ void ATHItemBox::DropItem(FString RandomItemID)
 
     if (!ItemData || !IsValid(ItemData->BaseItemClass))
     {
-        UE_LOG(LogTemp, Warning, TEXT("Failed to find ItemData or BaseItemClass for ItemID: %s"), *RandomItemID);
         return;
     }
 
     FVector Location = GetActorLocation();
     FRotator Rotation = GetActorRotation();
 
-	Location.Z += DropHeight; // 드랍 높이 조정
+	Location.Z += DropHeight;
 
-    ATHBaseItem* DroppedItem = GetWorld()->SpawnActor<ATHBaseItem>(ItemData->BaseItemClass, Location, Rotation);
+    FActorSpawnParameters SpawnParams;
+    SpawnParams.Owner = this;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+    ATHBaseItem* DroppedItem = GetWorld()->SpawnActor<ATHBaseItem>(
+        ItemData->BaseItemClass, Location, Rotation, SpawnParams);
+
     if (DroppedItem)
     {
         DroppedItem->SetItemID(RandomItemID);
-        UE_LOG(LogTemp, Log, TEXT("Dropped Item ID: %s"), *RandomItemID);
     }
 }
 
-void ATHItemBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{   
-    APawn* PlayerPawn = Cast<APawn>(OtherActor);
-    InteractPromptWidget = CreateWidget<UTHInteractPromptWidget>(GetWorld(), InteractPromptClass);
-    if (InteractPromptWidget)
-    {
-        InteractPromptWidget->AddToViewport();
-    }
-
+void ATHItemBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
     ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
-    if (PlayerChar)
+    if (PlayerChar && PlayerChar->IsLocallyControlled())
     {
-        // 플레이어의 함수를 호출하여 이 상자를 상호작용 가능한 대상으로 설정합니다.
+        if (!InteractPromptWidget && InteractPromptClass)
+        {
+            InteractPromptWidget = CreateWidget<UTHInteractPromptWidget>(GetWorld(), InteractPromptClass);
+            if (InteractPromptWidget)
+            {
+                InteractPromptWidget->AddToViewport();
+            }
+        }
         PlayerChar->SetInteractableActor(this);
     }
 }
 
-void ATHItemBox::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+void ATHItemBox::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+    UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
-    APawn* PlayerPawn = Cast<APawn>(OtherActor);
-    if (PlayerPawn && InteractPromptWidget)
+    ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
+    if (PlayerChar && PlayerChar->IsLocallyControlled())
     {
-        // UI를 뷰포트에서 제거합니다.
-        InteractPromptWidget->RemoveFromParent();
-
-        ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
-        if (PlayerChar)
+        if (InteractPromptWidget)
         {
-            // 플레이어의 함수를 호출하여 이 상자를 상호작용 가능한 대상으로 설정합니다.
-            PlayerChar->SetInteractableActor(nullptr);
+            InteractPromptWidget->RemoveFromParent();
+            InteractPromptWidget = nullptr;
         }
+
+        PlayerChar->SetInteractableActor(nullptr);
     }
 }
 
+void ATHItemBox::OpenBox()
+{
+    if (!HasAuthority()) return;
 
+    if (!UseTimeCheck)
+    {
+        UseTimeCheck = true;
+        GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &ATHItemBox::ResetUseTime, 0.3f, false);
+
+        FName RandomItemID = RandomItemGenerate(EItemType::Equipment);
+        DropItem(RandomItemID);
+
+        Multicast_DestroyBox();
+    }
+}
+
+void ATHItemBox::Multicast_DestroyBox_Implementation()
+{
+    Destroy();
+}

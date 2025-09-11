@@ -23,27 +23,27 @@ struct FTHItemData : public FTableRowBase
 
 public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
-    FString ItemID;
+    FName ItemID =FName("");
  
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
-    FText ItemName;
+	FText ItemName = FText::FromString("");
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
-    TSoftObjectPtr<UTexture2D> ItemIcon;
+    TSoftObjectPtr<UTexture2D> ItemIcon = nullptr;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
-    EItemType ItemDropType;
+    EItemType ItemDropType = EItemType::Material;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
-    int32 DropWeight;
+    int32 DropWeight = 0;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Data")
-    TSubclassOf<class UGameplayAbility> GameplayAbilityClass;
+    TSubclassOf<class UGameplayAbility> GameplayAbilityClass = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Data")
-    TSubclassOf<class ATHBaseItem> BaseItemClass;
+    TSubclassOf<class ATHBaseItem> BaseItemClass = nullptr;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item Data")
-	int32 CoolTime;
+	int32 CoolTime=0;
 };
 

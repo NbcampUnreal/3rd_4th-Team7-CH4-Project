@@ -28,9 +28,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Data")
 	int32 DropHeight;
 
+	
+	UFUNCTION(BlueprintCallable, Category = "ItemBox")
 	void OpenBox();
-	FString RandomItemGenerate(EItemType DropType);
-	void DropItem(FString RandomItemID);
+
+	
+	FName RandomItemGenerate(EItemType DropType);
+	void DropItem(FName RandomItemID);
 
 public:
 
@@ -67,5 +71,7 @@ public:
 	FTimerHandle UseTimerHandle;
 	void ResetUseTime();
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_DestroyBox();
 	
 };

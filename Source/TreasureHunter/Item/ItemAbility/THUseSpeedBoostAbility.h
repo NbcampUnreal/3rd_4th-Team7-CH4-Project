@@ -10,6 +10,7 @@ class TREASUREHUNTER_API UTHUseSpeedBoostAbility : public UGameplayAbility
 	GENERATED_BODY()
 
 public:
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects")
 	TSubclassOf<class UGameplayEffect> SpeedBoostEffectClass;
 

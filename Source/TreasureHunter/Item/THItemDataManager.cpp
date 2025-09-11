@@ -1,15 +1,13 @@
 ﻿#include "Item/THItemDataManager.h"
 #include "THItemData.h"
 
-TSubclassOf<UGameplayAbility> ATHItemDataManager::GetItemAbilityClassByID(const FString& ItemID)
+TSubclassOf<UGameplayAbility> ATHItemDataManager::GetItemAbilityClassByID(const FName& ItemID)
 {
     if (!IsValid(ItemDataTable))
     {
-        UE_LOG(LogTemp, Error, TEXT("ItemDataTable is not valid in AItemDataManager."));
         return nullptr;
     }
 
-    // FindItemDataByItemID 함수를 사용해 FItemData를 가져옵니다.
     const FTHItemData& ItemData = FindItemDataByItemID(ItemID);
 
     if (IsValid(ItemData.GameplayAbilityClass))
@@ -17,15 +15,14 @@ TSubclassOf<UGameplayAbility> ATHItemDataManager::GetItemAbilityClassByID(const 
         return ItemData.GameplayAbilityClass;
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("Failed to find ItemData or AbilityClass for ItemID: %s"), *ItemID);
     return nullptr;
 }
 
 
 
-const FTHItemData& ATHItemDataManager::FindItemDataByItemID(const FString& ItemIDToFind)
+FTHItemData ATHItemDataManager::FindItemDataByItemID(const FName& ItemIDToFind)
 {
-    static FTHItemData EmptyData; // 기본값 객체
+    static FTHItemData EmptyData;
 
     if (!IsValid(ItemDataTable))
     {
@@ -37,7 +34,7 @@ const FTHItemData& ATHItemDataManager::FindItemDataByItemID(const FString& ItemI
 
     for (const FTHItemData* Row : AllRows)
     {
-        if (Row && Row->ItemID.Equals(ItemIDToFind, ESearchCase::IgnoreCase))
+        if (Row && Row->ItemID == ItemIDToFind)
         {
             return *Row;
         }

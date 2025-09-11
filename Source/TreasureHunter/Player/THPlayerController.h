@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
 
@@ -40,11 +40,11 @@ private:
 	void BindInventoryDelegates(APawn* Pawn);
 
 	UFUNCTION()
-	void HandleInventorySlotChanged(int32 SlotIndex, const FString& ItemID);
+	void HandleInventorySlotChanged(int32 SlotIndex, FName ItemID);
 	UFUNCTION()
 	void HandleItemCooldownClient(int32 SlotIndex, float Cooltime);
 
-	UTexture2D* ResolveItemIcon(const FString& ItemID) const;
+	UTexture2D* ResolveItemIcon(const FName& ItemID) const;
 
 #pragma endregion
 };

@@ -97,7 +97,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SlotUse2Action;
 
-	//임시추가 -> 통합하는 방향으로 수정
+	
 private:
 	UPROPERTY()
 	ATHItemBox* InteractableItemBox;
@@ -111,11 +111,21 @@ public:
 
 	UFUNCTION()
 	void OnInteract();
-	
+
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_HandleInteract(ATHItemBox* InteractableBox);
+	void HandleBoxInteract();
+	void HandleBaseItemInteract();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_HandleBaseItemInteract(ATHBaseItem* InteractableItem);
+
 	UFUNCTION()
 	void OnUseItemSlot1();
 	UFUNCTION()
 	void OnUseItemSlot2();
+
 
 	
 	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
