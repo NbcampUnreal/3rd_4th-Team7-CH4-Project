@@ -19,6 +19,8 @@ public:
 	virtual void OnPossess(APawn* aPawn) override;
 	virtual void OnRep_PlayerState() override;
 
+#pragma region HUD
+
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UTHPlayerHUDWidget> PlayerHUDWidgetClass;
@@ -31,4 +33,18 @@ private:
 	void CreatePlayerHUD();
 	void EnsureHUD();
 	void InitHUDBindingsFromPlayerState();
+#pragma endregion
+
+#pragma region Inventory
+private:
+	void BindInventoryDelegates(APawn* Pawn);
+
+	UFUNCTION()
+	void HandleInventorySlotChanged(int32 SlotIndex, const FString& ItemID);
+	UFUNCTION()
+	void HandleItemCooldownClient(int32 SlotIndex, float Cooltime);
+
+	UTexture2D* ResolveItemIcon(const FString& ItemID) const;
+
+#pragma endregion
 };
