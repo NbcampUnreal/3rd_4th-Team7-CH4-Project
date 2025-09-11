@@ -8,6 +8,7 @@
 #include "AbilitySystemComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
+#include "Game/GameFlowTags.h"
 #include "GameplayEffect.h"
 #include "Components/CapsuleComponent.h"
 #include "Item/THItemInventory.h"

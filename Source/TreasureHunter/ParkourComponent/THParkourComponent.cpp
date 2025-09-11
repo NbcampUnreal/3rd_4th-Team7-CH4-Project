@@ -26,6 +26,8 @@ bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
 	{
 		return false;
 	}
+
+	const bool bDrawDebug = true;
 	
 	const FVector StartLocation = OwnerCharacter->GetActorLocation();
 	const FVector ForwardVector = OwnerCharacter->GetActorForwardVector();
@@ -35,9 +37,10 @@ bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
 	FHitResult FrontHit;
 	const FVector FrontTraceStart = StartLocation + FVector(0, 0, CapsuleHalfHeight);
 	const ETraceTypeQuery TraceChannel = UEngineTypes::ConvertToTraceType(ECC_WorldStatic);
-	
-	if (!UKismetSystemLibrary::SphereTraceSingle(this, FrontTraceStart, FrontTraceStart + ForwardVector * MantleTraceDistance, CapsuleRadius * 0.7f,
-		TraceChannel, false, {OwnerCharacter}, EDrawDebugTrace::None, FrontHit, true))
+	const bool bFrontHit = UKismetSystemLibrary::SphereTraceSingle(this, FrontTraceStart, FrontTraceStart + ForwardVector * MantleTraceDistance, CapsuleRadius * 0.7f,
+		TraceChannel, false, {OwnerCharacter}, bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None, FrontHit, true);
+
+	if (!bFrontHit)
 	{
 		return false;
 	}
@@ -45,9 +48,10 @@ bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
 	FHitResult SurfaceHit;
 	const FVector SurfaceTraceStart = FrontHit.ImpactPoint + (ForwardVector * CapsuleRadius) + FVector(0, 0, MaxMantleHeight);
 	const FVector SurfaceTraceEnd = FVector(SurfaceTraceStart.X, SurfaceTraceStart.Y, StartLocation.Z);
+	const bool bSurfaceHit = UKismetSystemLibrary::LineTraceSingle(this, SurfaceTraceStart, SurfaceTraceEnd, TraceChannel,
+		false, {OwnerCharacter}, bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None, SurfaceHit, true);
 
-	if (!UKismetSystemLibrary::LineTraceSingle(this, SurfaceTraceStart, SurfaceTraceEnd, TraceChannel,
-		false, {OwnerCharacter}, EDrawDebugTrace::None, SurfaceHit, true))
+	if (!bSurfaceHit)
 	{
 		return false;
 	}
@@ -55,17 +59,33 @@ bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
 	const float MantleHeight = SurfaceHit.ImpactPoint.Z - StartLocation.Z;
 	if (MantleHeight < MinMantleHeight || MantleHeight > MaxMantleHeight)
 	{
+		if (bDrawDebug)
+		{
+			DrawDebugSphere(GetWorld(), SurfaceHit.ImpactPoint, 10, 16, FColor::Red, false, 5.f);
+		}
 		return false;
 	}
 
 	const FVector TargetLocation = SurfaceHit.ImpactPoint;
 	const FVector BoxTraceLocation = TargetLocation + FVector(0, 0, CapsuleHalfHeight);
-	
+	const FVector BoxHalfSize = FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
+
 	FHitResult BoxHit;
-	if (UKismetSystemLibrary::BoxTraceSingle(this, BoxTraceLocation, BoxTraceLocation, FVector(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight),
-		FRotator::ZeroRotator, TraceChannel, false, {OwnerCharacter}, EDrawDebugTrace::None, BoxHit, true))
+	const bool bBoxHit = UKismetSystemLibrary::BoxTraceSingle(this, BoxTraceLocation, BoxTraceLocation, BoxHalfSize,
+		FRotator::ZeroRotator, TraceChannel, false, {OwnerCharacter}, bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None, BoxHit, true);
+
+	if (bBoxHit)
 	{
+		if (bDrawDebug)
+		{
+			DrawDebugBox(GetWorld(), BoxTraceLocation, BoxHalfSize, FColor::Red, false, 5.f);
+		}
 		return false;
+	}
+
+	if (bDrawDebug)
+	{
+		DrawDebugSphere(GetWorld(), TargetLocation, 10, 16, FColor::Green, false, 5.f);
 	}
 	
 	OutMantleInfo.LedgeLocation = SurfaceHit.ImpactPoint;

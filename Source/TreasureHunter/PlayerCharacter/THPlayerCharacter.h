@@ -17,6 +17,7 @@ class UInputMappingContext;
 class UInputAction;
 class UTHAttributeSet;
 class UGameplayEffect;
+class UMotionWarpingComponent;
 struct UInputActionValue;
 
 UCLASS()
@@ -64,12 +65,6 @@ private:
 	void ToggleCrouch();
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TObjectPtr<USpringArmComponent> SpringArm;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TObjectPtr<UCameraComponent> Camera;
-	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> InputMappingContext;
 
@@ -143,4 +138,13 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> MantleAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<USpringArmComponent> SpringArm;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<UCameraComponent> Camera;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
 };
