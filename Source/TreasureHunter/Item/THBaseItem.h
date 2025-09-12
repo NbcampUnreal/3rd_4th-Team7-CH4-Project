@@ -36,9 +36,6 @@ public:
 
 	
 
-
-
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	USphereComponent* OverlapSphere;
 
@@ -64,6 +61,8 @@ public:
 
 
 
+	UPROPERTY()
+	TMap<APlayerController*, UTHInteractPromptWidget*> InteractPromptWidgets;
 
 
 };

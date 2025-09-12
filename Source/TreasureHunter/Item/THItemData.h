@@ -22,8 +22,8 @@ struct FTHItemData : public FTableRowBase
     GENERATED_BODY()
 
 public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
-    FName ItemID =FName("");
+    /*UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
+    FName ItemID =FName("");*/
  
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item Data")
 	FText ItemName = FText::FromString("");

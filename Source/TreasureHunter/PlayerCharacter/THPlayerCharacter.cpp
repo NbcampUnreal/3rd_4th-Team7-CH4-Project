@@ -243,13 +243,27 @@ void ATHPlayerCharacter::OnInteract()
 {
 	if (InteractableItemBox)
 	{
-		if (HasAuthority()) HandleBoxInteract();
-		else Server_HandleInteract(InteractableItemBox);
+		if (HasAuthority())
+		{
+			HandleBoxInteract();
+		}
+		else 
+		{
+			Server_HandleInteract(InteractableItemBox);
+		}
 	}
 	else if (InteractableBaseItem)
 	{
-		if (HasAuthority()) HandleBaseItemInteract();
-		else Server_HandleBaseItemInteract(InteractableBaseItem);
+		if (HasAuthority())
+		{
+			// 서버에서 직접 처리
+			HandleBaseItemInteract();
+		}
+		else
+		{
+			// 클라에서 서버에 요청
+			Server_HandleBaseItemInteract(InteractableBaseItem);
+		}
 	}
 }
 

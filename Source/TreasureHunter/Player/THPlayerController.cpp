@@ -152,18 +152,18 @@ void ATHPlayerController::HandleItemCooldownClient(int32 SlotIndex, float Coolti
 	}
 }
 
-UTexture2D* ATHPlayerController::ResolveItemIcon(const FName& ItemID) const
+UTexture2D* ATHPlayerController::ResolveItemIcon(const FName& ItemRowName) const
 {
-	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
+	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
 	{
-		FTHItemData ItemData = DM->FindItemDataByItemID(ItemID);
-
-		if (ItemData.ItemIcon.IsValid())
+		const FTHItemData* ItemData = DM->GetItemDataByRow(ItemRowName);
+		if (ItemData && ItemData->ItemIcon.IsValid())
 		{
-			return ItemData.ItemIcon.LoadSynchronous();
+			return ItemData->ItemIcon.LoadSynchronous();
 		}
-
 	}
+
 	return nullptr;
 }
 

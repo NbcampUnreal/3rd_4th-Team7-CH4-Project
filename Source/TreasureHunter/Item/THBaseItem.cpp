@@ -63,17 +63,23 @@ void ATHBaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActo
 	ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
 	if (!PlayerChar || !PlayerChar->IsLocallyControlled()) return;
 
-	if (!InteractPromptWidget && InteractPromptClass)
+	APlayerController* PC = Cast<APlayerController>(PlayerChar->GetController());
+	if (!PC) return;
+
+	// 이미 생성되어 있는지 확인
+	if (!InteractPromptWidgets.Contains(PC) && InteractPromptClass)
 	{
-		InteractPromptWidget = CreateWidget<UTHInteractPromptWidget>(GetWorld(), InteractPromptClass);
-		if (InteractPromptWidget)
+		UTHInteractPromptWidget* NewWidget = CreateWidget<UTHInteractPromptWidget>(PC, InteractPromptClass);
+		if (NewWidget)
 		{
-			InteractPromptWidget->AddToViewport();
+			NewWidget->AddToViewport();
+			InteractPromptWidgets.Add(PC, NewWidget);
 		}
 	}
-	
+
 	PlayerChar->SetInteractableBaseItem(this);
 }
+
 
 void ATHBaseItem::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
@@ -81,10 +87,15 @@ void ATHBaseItem::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor*
 	ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
 	if (!PlayerChar || !PlayerChar->IsLocallyControlled()) return;
 
-	if (InteractPromptWidget)
+	APlayerController* PC = Cast<APlayerController>(PlayerChar->GetController());
+	if (!PC) return;
+
+	UTHInteractPromptWidget** WidgetPtr = InteractPromptWidgets.Find(PC);
+	if (WidgetPtr && *WidgetPtr)
 	{
-		InteractPromptWidget->RemoveFromParent();
-		InteractPromptWidget = nullptr;
+		(*WidgetPtr)->RemoveFromParent();
+		*WidgetPtr = nullptr;
+		InteractPromptWidgets.Remove(PC);
 	}
 
 	PlayerChar->SetInteractableBaseItem(nullptr);
@@ -94,28 +105,22 @@ void ATHBaseItem::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor*
 
 bool ATHBaseItem::ItemPickup(ATHPlayerCharacter* PlayerCharacter)
 {
-    if (!bIsPickedUp || !PlayerCharacter) return false;
+	if (!bIsPickedUp || !PlayerCharacter) return false;
 
-    if (HasAuthority())
-    {
-        UTHItemInventory* Inventory = PlayerCharacter->FindComponentByClass<UTHItemInventory>();
-        if (!Inventory) return false;
+	if (HasAuthority())
+	{
+		UTHItemInventory* Inventory = PlayerCharacter->FindComponentByClass<UTHItemInventory>();
+		if (!Inventory) return false;
 
-        if (Inventory->AddItem(ItemID))
-        {
-            Destroy();
-            return true;
-        }
-        return false;
-    }
-    else
-    {
-        if (UTHItemInventory* Inventory = PlayerCharacter->FindComponentByClass<UTHItemInventory>())
-        {
-            Inventory->Server_AddItem(ItemID);
-        }
-        return false;
-    }
+		if (Inventory->AddItem(ItemID))
+		{
+			Destroy();
+			return true;
+		}
+		return false;
+	}
+
+	return false;
 }
 
 

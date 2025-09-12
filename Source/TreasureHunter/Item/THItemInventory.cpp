@@ -23,8 +23,8 @@ void UTHItemInventory::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(UTHItemInventory, ItemSlot1);
-	DOREPLIFETIME(UTHItemInventory, ItemSlot2);
+	DOREPLIFETIME_CONDITION(UTHItemInventory, ItemSlot1, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UTHItemInventory, ItemSlot2, COND_OwnerOnly);
 }
 
 
@@ -46,15 +46,15 @@ void UTHItemInventory::OnRep_ItemSlot2()
 
 
 
-bool UTHItemInventory::Server_AddItem_Validate(FName NewItemID)
-{
-	return true;
-}
-
-void UTHItemInventory::Server_AddItem_Implementation(FName NewItemID)
-{
-	AddItem(NewItemID);
-}
+//bool UTHItemInventory::Server_AddItem_Validate(FName NewItemID)
+//{
+//	return true;
+//}
+//
+//void UTHItemInventory::Server_AddItem_Implementation(FName NewItemID)
+//{
+//	AddItem(NewItemID);
+//}
 
 
 
@@ -62,7 +62,7 @@ bool UTHItemInventory::AddItem(FName NewItemID)
 {
 	if (!GetOwner()->HasAuthority())
 	{
-		Server_AddItem(NewItemID);
+		// 클라는 절대 AddItem 로직을 호출하지 않음
 		return false;
 	}
 
@@ -74,7 +74,7 @@ bool UTHItemInventory::AddItem(FName NewItemID)
 	}
 	else if (ItemSlot2.IsNone())
 	{
-		ItemSlot2 = NewItemID;		
+		ItemSlot2 = NewItemID;
 		return true;
 	}
 	return false;
@@ -127,7 +127,7 @@ void UTHItemInventory::UseItem(int32 SlotIndex)
 
 	if (IsValid(DataManager))
 	{
-		TSubclassOf<UGameplayAbility> AbilityToActivate = DataManager->GetItemAbilityClassByID(ItemID);
+		TSubclassOf<UGameplayAbility> AbilityToActivate = DataManager->GetItemAbilityClassByRow(ItemID);
 
 		if (AbilityToActivate)
 		{

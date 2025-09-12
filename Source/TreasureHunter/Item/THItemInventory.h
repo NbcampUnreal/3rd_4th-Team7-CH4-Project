@@ -28,8 +28,8 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_ItemSlot2)
 	FName ItemSlot2;
 
-	UFUNCTION(Server, Reliable, WithValidation)
-	void Server_AddItem(FName NewItemID);
+	/*UFUNCTION(Server, Reliable, WithValidation)
+	void Server_AddItem(FName NewItemID);*/
 
 	bool AddItem(FName NewItemID);
 

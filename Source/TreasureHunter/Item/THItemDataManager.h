@@ -20,9 +20,15 @@ public:
     UDataTable* ItemDataTable;
 
     
-    UFUNCTION(BlueprintCallable)
+    /*UFUNCTION(BlueprintCallable)
     TSubclassOf<UGameplayAbility> GetItemAbilityClassByID(const FName& ItemID);
 
     UFUNCTION(BlueprintCallable)
-    FTHItemData FindItemDataByItemID(const FName& ItemIDToFind);
+    FTHItemData FindItemDataByItemID(const FName& ItemIDToFind);*/
+
+    UFUNCTION(BlueprintCallable)
+    TSubclassOf<UGameplayAbility> GetItemAbilityClassByRow(const FName& RowName);
+
+    
+    const FTHItemData* GetItemDataByRow(const FName& RowName);
 };

@@ -53,83 +53,71 @@ FName ATHItemBox::RandomItemGenerate(EItemType DropType)
     ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(
         UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 
-    if (!IsValid(DataManager))
+    if (!IsValid(DataManager) || !IsValid(DataManager->ItemDataTable))
     {
         return FName("Invalid");
     }
 
-    TArray<const FTHItemData*> FilteredItems;
+    TArray<FName> FilteredRowNames;
     int32 TotalWeight = 0;
 
-    TArray<FTHItemData*> AllItemData;
+    TArray<FName> RowNames = DataManager->ItemDataTable->GetRowNames();
 
-    if (!IsValid(DataManager->ItemDataTable))
+    for (const FName& RowName : RowNames)
     {
-        return TEXT("Invalid");
-	}
+        const FTHItemData* ItemData = DataManager->GetItemDataByRow(RowName);
+        if (!ItemData) continue;
 
-    DataManager->ItemDataTable->GetAllRows(TEXT(""), AllItemData);
-
-    for (const FTHItemData* ItemData : AllItemData)
-    {
         if ((DropType == EItemType::Equipment && ItemData->ItemDropType == EItemType::Consumable) ||
             (DropType == EItemType::Consumable && ItemData->ItemDropType == EItemType::Equipment))
         {
             continue;
         }
 
-        FilteredItems.Add(ItemData);
+        FilteredRowNames.Add(RowName);
         TotalWeight += static_cast<int32>(ItemData->DropWeight);
     }
 
-    if (FilteredItems.Num() == 0 || TotalWeight <= 0)
+    if (FilteredRowNames.Num() == 0 || TotalWeight <= 0)
     {
-        return TEXT("Invalid");
+        return FName("Invalid");
     }
 
     int32 RandomValue = FMath::RandRange(1, TotalWeight);
     int32 CurrentWeight = 0;
 
-    for (const FTHItemData* SelectedItem : FilteredItems)
+    for (const FName& RowName : FilteredRowNames)
     {
-        CurrentWeight += static_cast<int32>(SelectedItem->DropWeight);
+        const FTHItemData* ItemData = DataManager->GetItemDataByRow(RowName);
+        if (!ItemData) continue;
+
+        CurrentWeight += static_cast<int32>(ItemData->DropWeight);
         if (RandomValue <= CurrentWeight)
         {
-            return SelectedItem->ItemID;
+            return RowName;
         }
     }
 
-    return TEXT("Invalid");
+    return FName("Invalid");
 }
 
 
-void ATHItemBox::DropItem(FName RandomItemID)
-{	
-    if (RandomItemID == FName("Invalid"))
+
+void ATHItemBox::DropItem(FName RandomItemRow)
+{
+    if (RandomItemRow == FName("Invalid"))
     {
         return;
     }
 
     ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(
         UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
-	if (!IsValid(DataManager))
-	{
-		return;
-	}
-
-    const FTHItemData* ItemData = nullptr;
-    TArray<FTHItemData*> AllRows;
-    DataManager->ItemDataTable->GetAllRows(TEXT(""), AllRows);
-
-    for (const FTHItemData* Row : AllRows)
+    if (!IsValid(DataManager))
     {
-        if (Row && Row->ItemID == RandomItemID)
-        {
-            ItemData = Row;
-            break;
-        }
+        return;
     }
 
+    const FTHItemData* ItemData = DataManager->GetItemDataByRow(RandomItemRow);
     if (!ItemData || !IsValid(ItemData->BaseItemClass))
     {
         return;
@@ -137,21 +125,22 @@ void ATHItemBox::DropItem(FName RandomItemID)
 
     FVector Location = GetActorLocation();
     FRotator Rotation = GetActorRotation();
-
-	Location.Z += DropHeight;
+    Location.Z += DropHeight;
 
     FActorSpawnParameters SpawnParams;
     SpawnParams.Owner = this;
-    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+    SpawnParams.SpawnCollisionHandlingOverride =
+        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
     ATHBaseItem* DroppedItem = GetWorld()->SpawnActor<ATHBaseItem>(
         ItemData->BaseItemClass, Location, Rotation, SpawnParams);
 
     if (DroppedItem)
     {
-        DroppedItem->SetItemID(RandomItemID);
+        DroppedItem->SetItemID(RandomItemRow);
     }
 }
+
 
 void ATHItemBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
