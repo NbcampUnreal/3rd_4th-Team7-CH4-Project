@@ -7,6 +7,7 @@
 ATHGameModeBase::ATHGameModeBase()
 {
 	MaxMatchPlayerNum = 2;
+	MatchWaitTime = 5.0f;
 	SetGameModeFlow(TAG_Game_Phase_Wait);
 }
 
@@ -46,7 +47,24 @@ void ATHGameModeBase::Logout(AController* Exiting)
 	if (IsValid(ExitingPC) && IsValid(ExitingPS))
 	{
 		--EnterPlayerNum;
-		//FString ExitingUniqueId = ExitingPS->GetUniqueID();
+
+		if (GameModeFlow == TAG_Game_Phase_Wait)
+		{
+			if (MatchWaitPlayerControllers.Find(ExitingPC))
+			{
+				MatchWaitPlayerControllers.Remove(ExitingPC);
+				//ExitingPC->ClientCancelMatch(false);
+			}
+		}
+		else if (GameModeFlow == TAG_Game_Phase_Match)
+		{
+			if (MatchPlayerControllers.Find(ExitingPC))
+			{
+				MatchPlayerControllers.Remove(ExitingPC);
+				StopMatch(true);
+				UE_LOG(LogTemp, Warning, TEXT("Logout Player"));
+			}
+		}
 	}
 }
 
@@ -55,7 +73,6 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 	if (HasAuthority())
 	{
 		GameModeFlow = NewPhase;
-		UE_LOG(LogTemp, Error, TEXT("Change GameFlow Phase"));
 		if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 		{
 			GS->SetPhase(GameModeFlow);
@@ -86,11 +103,9 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 
 void ATHGameModeBase::StartMatchGame(ATHTitlePlayerController* PC)
 {
-	UNetConnection* MatchConnection = nullptr;
-
 	if (IsValid(PC))
 	{
-		MatchConnection = Cast<UNetConnection>(PC->Player);
+		UNetConnection* MatchConnection = Cast<UNetConnection>(PC->Player);
 		if (IsValid(MatchConnection))
 		{
 			FString PCAddress = MatchConnection->GetRemoteAddr()->ToString(false);
@@ -113,6 +128,10 @@ void ATHGameModeBase::StartMatchGame(ATHTitlePlayerController* PC)
 					if (CheckEnoughPlayer())
 					{
 						MatchGame();
+					}
+					else
+					{
+						StartMatchTimer();
 					}
 				}
 				else
@@ -146,12 +165,21 @@ void ATHGameModeBase::WaitGame()
 
 void ATHGameModeBase::MatchGame()
 {
-	for (int i = 0; i < 2; ++i)
+	GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
+
+	for (int i = 0; i < MaxMatchPlayerNum; ++i)
 	{
-		ATHTitlePlayerController* MatchPlayer = MatchWaitPlayerControllers[i];
+		ATHTitlePlayerController* MatchPlayer = MatchWaitPlayerControllers[0];
 		MatchPlayerControllers.Add(MatchPlayer);
+		MatchWaitPlayerControllers.Remove(MatchPlayer);
 	}
 
+	for (ATHTitlePlayerController* CancelPlayer : MatchWaitPlayerControllers)
+	{
+		//CancelPlayer->ClientCancelMatch(false);
+	}
+
+	CurMatchWaitPlayerNum = 0;
 	SetGameModeFlow(TAG_Game_Phase_Match);
 }
 
@@ -204,4 +232,43 @@ bool ATHGameModeBase::CheckEnoughPlayer()
 	{
 		return false;
 	}
+}
+
+void ATHGameModeBase::StartMatchTimer()
+{
+	FTimerDelegate TimerDel;
+	TimerDel.BindUObject(this, &ATHGameModeBase::StopMatch, false);
+	GetWorldTimerManager().SetTimer(
+		MatchTimerHandle,
+		TimerDel,
+		MatchWaitTime,
+		false
+	);
+}
+
+void ATHGameModeBase::StopMatch(bool Rematch)
+{
+	//This "Wait" logic is written like this
+	//because we currently don't have the function to cancel matching on self
+	//later. if we make self cancel funcion, I change this logic.
+	if (GameModeFlow == TAG_Game_Phase_Wait)
+	{
+		for (ATHTitlePlayerController* CancelPlayer : MatchWaitPlayerControllers)
+		{
+			//CancelPlayer->ClientCancelMatch(Rematch);
+			--CurMatchWaitPlayerNum;
+		}
+
+		MatchWaitPlayerControllers.Empty();
+	}
+	else if (GameModeFlow == TAG_Game_Phase_Match)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Cancel Match!!"));
+		SetGameModeFlow(TAG_Game_Phase_Wait);
+		for (ATHTitlePlayerController* CancelPlayer : MatchPlayerControllers)
+		{
+			ATHPlayerState* CancelPS = Cast<ATHPlayerState>(CancelPlayer->PlayerState);
+			CancelPlayer->Server_RequestMatchAndSetNickname_Implementation(CancelPS->Nickname);;
+		}
+	}	
 }

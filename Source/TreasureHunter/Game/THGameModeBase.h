@@ -56,6 +56,10 @@ private:
 
 	bool CheckEnoughPlayer();
 
+	void StartMatchTimer();
+
+	void StopMatch(bool Rematch);
+
 private:
 	FGameplayTag GameModeFlow;
 
@@ -64,6 +68,10 @@ private:
 	int32 MaxMatchPlayerNum;
 
 	int32 CurMatchWaitPlayerNum;	
+
+	FTimerHandle MatchTimerHandle;
+
+	float MatchWaitTime;
 
 public:
 	TArray<FPlayerData> LoginPlayerData;
