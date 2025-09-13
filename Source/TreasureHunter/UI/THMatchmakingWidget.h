@@ -7,6 +7,8 @@
 
 class UButton;
 class UImage;
+class ATHGameStateBase;
+class ATHTitlePlayerController;
 
 UCLASS()
 class TREASUREHUNTER_API UTHMatchmakingWidget : public UUserWidget
@@ -14,6 +16,7 @@ class TREASUREHUNTER_API UTHMatchmakingWidget : public UUserWidget
 	GENERATED_BODY()
 protected:
 	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
 protected:
 	UPROPERTY(meta = (BindWidget))
@@ -27,4 +30,19 @@ protected:
 	UImage* UnlockImage;
 	UPROPERTY(meta = (BindWidget))
 	UImage* LockImage;
+
+private:
+	TWeakObjectPtr<ATHGameStateBase> CachedGS;
+	TWeakObjectPtr<ATHTitlePlayerController> CachedPC;
+
+private:
+	UFUNCTION()
+	void OnFirstClicked();
+	UFUNCTION()
+	void OnSecondClicked();
+	UFUNCTION()
+	void OnStartClicked();
+
+	UFUNCTION()
+	void RefreshUI();
 };
