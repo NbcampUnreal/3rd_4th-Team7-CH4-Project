@@ -8,12 +8,23 @@
 #include "Item/THItemData.h"
 #include "UI/THPlayerHUDWidget.h"
 #include "GameFramework/HUD.h"
+#include "Net/UnrealNetwork.h"
+
 
 
 
 UTHItemInventory::UTHItemInventory()
 {
 	PrimaryComponentTick.bCanEverTick = false;
+	SetIsReplicatedByDefault(true);
+}
+
+void UTHItemInventory::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(UTHItemInventory, ItemSlot1, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UTHItemInventory, ItemSlot2, COND_OwnerOnly);
 }
 
 
@@ -23,71 +34,80 @@ void UTHItemInventory::BeginPlay()
 }
 
 
-
-bool UTHItemInventory::AddItem(FString NewItemID)
+void UTHItemInventory::OnRep_ItemSlot1()
 {
-	if (ItemSlot1.IsEmpty())
+	OnInventorySlotChanged.Broadcast(1, ItemSlot1);
+}
+
+void UTHItemInventory::OnRep_ItemSlot2()
+{
+	OnInventorySlotChanged.Broadcast(2, ItemSlot2);
+}
+
+
+
+//bool UTHItemInventory::Server_AddItem_Validate(FName NewItemID)
+//{
+//	return true;
+//}
+//
+//void UTHItemInventory::Server_AddItem_Implementation(FName NewItemID)
+//{
+//	AddItem(NewItemID);
+//}
+
+
+
+bool UTHItemInventory::AddItem(FName NewItemID)
+{
+	if (!GetOwner()->HasAuthority())
+	{
+		// 클라는 절대 AddItem 로직을 호출하지 않음
+		return false;
+	}
+
+	// 서버 처리
+	if (ItemSlot1.IsNone())
 	{
 		ItemSlot1 = NewItemID;
-		UE_LOG(LogTemp, Log, TEXT("Item %s added to Slot 1"), *NewItemID);
-		UpdateItemImage(1, NewItemID);
 		return true;
 	}
-	else if (ItemSlot2.IsEmpty())
+	else if (ItemSlot2.IsNone())
 	{
 		ItemSlot2 = NewItemID;
-		UE_LOG(LogTemp, Log, TEXT("Item %s added to Slot 2"), *NewItemID);
-		UpdateItemImage(2, NewItemID);
 		return true;
 	}
-	else
+	return false;
+}
+
+
+
+void UTHItemInventory::Server_UseItem_Implementation(int32 SlotIndex)
+{
+	if (GetOwner()->HasAuthority())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Inventory full. Cannot add item %s"), *NewItemID);
-		return false; // 인벤토리가 가득 찼음을 알림
+		UseItem(SlotIndex);
 	}
 }
-
-void UTHItemInventory::UpdateItemImage(int32 SlotIndex, const FString& ItemID)
-{
-	////컨트롤러를 통해서 업데이트		
-	//if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetOwner()))
-	//{
-	//	if (APlayerController* PC = Cast<APlayerController>(PlayerCharacter->GetController()))
-	//	{
-	//		if (AHUD* HUD = PC->GetHUD())
-	//		{
-	//			SetInventoryIcon(SlotIndex);
-
-	//			if (UTHPlayerHUDWidget* HUDWidget = Cast<UTHPlayerHUDWidget>(HUD->GetUserWidgetObject()))
-	//			{
-	//				if (AItemDataManager* DataManager = Cast<AItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), AItemDataManager::StaticClass())))
-	//				{
-	//					if (UItemData* ItemData = DataManager->GetItemDataByID(ItemID))
-	//					{
-	//						HUDWidget->SetInventoryIcon(SlotIndex, ItemData->ItemIcon);
-	//					}
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-}
-
-
 
 
 void UTHItemInventory::UseItem(int32 SlotIndex)
 {
+	if (!GetOwner()->HasAuthority())
+	{
+		return;
+	}
+
 	if (UseTimeCheck)
 	{
 		return;
 	}
 	UseTimeCheck = true;
-	//타이머 설정
+	
 	GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &UTHItemInventory::ResetUseTime, 0.3f, false);
 
 
-	FString ItemID;
+	FName ItemID;
 	if (SlotIndex == 2)
 	{
 		ItemID = ItemSlot2;
@@ -96,19 +116,18 @@ void UTHItemInventory::UseItem(int32 SlotIndex)
 	{
 		ItemID = ItemSlot1;
 	}
-	UE_LOG(LogTemp, Log, TEXT("Attempting to use item in Slot %d: %s"), SlotIndex, *ItemID);
+	
 
 
-	if (ItemID == TEXT(""))
+	if (ItemID == FName(""))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No item in Slot %d to use."), SlotIndex);
 		return;
 	}
 	ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 
 	if (IsValid(DataManager))
 	{
-		TSubclassOf<UGameplayAbility> AbilityToActivate = DataManager->GetItemAbilityClassByID(ItemID);
+		TSubclassOf<UGameplayAbility> AbilityToActivate = DataManager->GetItemAbilityClassByRow(ItemID);
 
 		if (AbilityToActivate)
 		{
@@ -116,27 +135,19 @@ void UTHItemInventory::UseItem(int32 SlotIndex)
 			{
 				if (UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent())
 				{
-					FGameplayAbilitySpecHandle AbilityHandle = ASC->GiveAbility(FGameplayAbilitySpec(AbilityToActivate, 1, INDEX_NONE, PlayerCharacter));
+					FGameplayAbilitySpecHandle AbilityHandle = ASC->GiveAbility(FGameplayAbilitySpec(AbilityToActivate, 1, INDEX_NONE, PlayerCharacter));					
 					bool bSuccess = ASC->TryActivateAbility(AbilityHandle);
 
 					if (bSuccess)
 					{
-						UE_LOG(LogTemp, Log, TEXT("Item Ability Activated: %s"), *ItemID);
-						ASC->ClearAbility(AbilityHandle);
-
 						if (SlotIndex == 2)
 						{
-							ItemSlot2.Empty();
+							ItemSlot2 = FName("");
 						}
 						else
 						{
-							ItemSlot1.Empty();
+							ItemSlot1 = FName("");
 						}
-					}
-					else
-					{
-						UE_LOG(LogTemp, Warning, TEXT("Failed to activate Item Ability: %s"), *ItemID);					
-						ASC->ClearAbility(AbilityHandle);
 					}
 				}
 			}

@@ -128,21 +128,18 @@ void ATHPlayerController::BindInventoryDelegates(APawn* InPawn)
 	if (!InPawn) return;
 	if (UTHItemInventory* Inv = InPawn->FindComponentByClass<UTHItemInventory>())
 	{
-		// 여기서 delegate 참고 구현후에 주석 없애주세요  
-		//Inv->OnInventorySlotChanged.AddUObject(this, &ThisClass::HandleInventorySlotChanged);
+		Inv->OnInventorySlotChanged.AddDynamic(this, &ThisClass::HandleInventorySlotChanged);
 	}
 } 
 
-void ATHPlayerController::HandleInventorySlotChanged(int32 SlotIndex, const FString& ItemID)
+void ATHPlayerController::HandleInventorySlotChanged(int32 SlotIndex, FName ItemID)
 {
 	if (!PlayerHUD) return;
-	if (ItemID.IsEmpty())
-	{
-		return;
-	}
+	if (ItemID == FName("")) return;
 
 	if (UTexture2D* Icon = ResolveItemIcon(ItemID))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Icon Resolved for ItemID: %s"), *ItemID.ToString());
 		PlayerHUD->SetInventoryIcon(SlotIndex, Icon);
 	}
 }
@@ -151,23 +148,22 @@ void ATHPlayerController::HandleItemCooldownClient(int32 SlotIndex, float Coolti
 {
 	if (PlayerHUD)
 	{
-		// Client RPC 같은 거 하나 만드셔서 컨트롤러에서 HUD 업데이트 될 수 있게 함수 선언해주세요. 그래서 UseItem 성공하면 불려질 수 있도록 해주시면 끝.
 		PlayerHUD->ClearInventoryIcon(SlotIndex, Cooltime);
 	}
 }
 
-UTexture2D* ATHPlayerController::ResolveItemIcon(const FString& ItemID) const
+UTexture2D* ATHPlayerController::ResolveItemIcon(const FName& ItemRowName) const
 {
-	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
+	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
 	{
-		/* 아이템 유효성 검사 (IsValid()) 를 해야해서, 참조말고 포인터로 반환 타입 바꿔주세요!! FindItemDataByItemID 함수 
-		const FItemData* Data = DM->FindItemDataByItemID(ItemID);
-		if (Data && Data->ItemIcon.IsValid())
+		const FTHItemData* ItemData = DM->GetItemDataByRow(ItemRowName);
+		if (ItemData && ItemData->ItemIcon.IsValid())
 		{
-			return Data->ItemIcon.LoadSynchronous();
-		}*/
-
+			return ItemData->ItemIcon.LoadSynchronous();
+		}
 	}
+
 	return nullptr;
 }
 

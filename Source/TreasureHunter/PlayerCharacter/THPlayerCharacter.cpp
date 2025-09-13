@@ -243,19 +243,76 @@ void ATHPlayerCharacter::OnInteract()
 {
 	if (InteractableItemBox)
 	{
-		InteractableItemBox->OpenBox();
-		
-		InteractableItemBox = nullptr;
+		if (HasAuthority())
+		{
+			HandleBoxInteract();
+		}
+		else 
+		{
+			Server_HandleInteract(InteractableItemBox);
+		}
 	}
+	else if (InteractableBaseItem)
+	{
+		if (HasAuthority())
+		{
+			// 서버에서 직접 처리
+			HandleBaseItemInteract();
+		}
+		else
+		{
+			// 클라에서 서버에 요청
+			Server_HandleBaseItemInteract(InteractableBaseItem);
+		}
+	}
+}
 
+bool ATHPlayerCharacter::Server_HandleInteract_Validate(ATHItemBox* InteractableBox)
+{
+	return true;
+}
+
+void ATHPlayerCharacter::Server_HandleInteract_Implementation(ATHItemBox* InteractableBox)
+{
+	if (InteractableBox)
+	{
+		InteractableBox->OpenBox();
+	}
+}
+
+bool ATHPlayerCharacter::Server_HandleBaseItemInteract_Validate(ATHBaseItem* InteractableItem)
+{
+	return true;
+}
+
+void ATHPlayerCharacter::Server_HandleBaseItemInteract_Implementation(ATHBaseItem* InteractableItem)
+{
+	if (InteractableItem)
+	{
+		InteractableItem->ItemPickup(this);
+	}
+}
+
+
+void ATHPlayerCharacter::HandleBoxInteract()
+{
+    if (InteractableItemBox)
+    {
+        InteractableItemBox->OpenBox();
+        InteractableItemBox = nullptr;
+    }
+}
+
+void ATHPlayerCharacter::HandleBaseItemInteract()
+{
 	if (InteractableBaseItem)
 	{
-		if (InteractableBaseItem->bIsPickedUp)
+		bool bPickedUp = InteractableBaseItem->ItemPickup(this);
+		if (bPickedUp)
 		{
-			InteractableBaseItem->ItemPickup(this);
-
 			InteractableBaseItem = nullptr;
 		}
+		
 	}
 }
 
@@ -263,7 +320,7 @@ void ATHPlayerCharacter::OnUseItemSlot1()
 {
 	if (UTHItemInventory* Inventory = FindComponentByClass<UTHItemInventory>())
 	{
-		Inventory->UseItem(1);
+		Inventory->Server_UseItem(1);
 	}
 }
 
@@ -271,9 +328,10 @@ void ATHPlayerCharacter::OnUseItemSlot2()
 {
 	if (UTHItemInventory* Inventory = FindComponentByClass<UTHItemInventory>())
 	{
-		Inventory->UseItem(2);
+		Inventory->Server_UseItem(2);
 	}
 }
+
 
 void ATHPlayerCharacter::OnWalkSpeedChanged(const FOnAttributeChangeData& Data)
 {

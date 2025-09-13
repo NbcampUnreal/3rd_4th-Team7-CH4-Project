@@ -1,23 +1,26 @@
 ﻿#include "Item/THBaseItem.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
 #include "Item/THItemInventory.h"
+#include "Net/UnrealNetwork.h"
+
 
 ATHBaseItem::ATHBaseItem()
 {
 	PrimaryActorTick.bCanEverTick = true;
+    bReplicates = true;
+
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
 	RootComponent = ItemMesh;
 
 
 	OverlapSphere = CreateDefaultSubobject<USphereComponent>(TEXT("OverlapSphere"));
-	OverlapSphere->SetupAttachment(RootComponent); // ItemMesh에 붙이기
-
-	OverlapSphere->InitSphereRadius(100.f); // 원하는 반경
+	OverlapSphere->SetupAttachment(RootComponent);
+	OverlapSphere->InitSphereRadius(100.f);
 	OverlapSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	OverlapSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	OverlapSphere->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Overlap);
 
-    bIsPickedUp = false;    
+    bIsPickedUp = false;
 }
 
 void ATHBaseItem::BeginPlay()
@@ -27,10 +30,13 @@ void ATHBaseItem::BeginPlay()
 	OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &ATHBaseItem::OnOverlapBegin);
 	OverlapSphere->OnComponentEndOverlap.AddDynamic(this, &ATHBaseItem::OnOverlapEnd);
 
-    GetWorld()->GetTimerManager().SetTimer(PickedUpTimerHandle, this, &ATHBaseItem::PickedUpTime, 0.3f, false);
+	if (HasAuthority())
+	{
+		GetWorld()->GetTimerManager().SetTimer(PickedUpTimerHandle, this, &ATHBaseItem::EnablePickup, 0.3f, false);
+	}
 }
 
-void ATHBaseItem::SetItemID(FString NewItemID)
+void ATHBaseItem::SetItemID(FName NewItemID)
 {
 	ItemID = NewItemID;
 }
@@ -42,61 +48,87 @@ void ATHBaseItem::Tick(float DeltaTime)
 }
 
 
-void ATHBaseItem::PickedUpTime()
+void ATHBaseItem::EnablePickup()
 {
-    bIsPickedUp = true;
+	if (HasAuthority())
+	{
+		bIsPickedUp = true;
+	}
 }
 
 
-void ATHBaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void ATHBaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-    APawn* PlayerPawn = Cast<APawn>(OtherActor);
-    InteractPromptWidget = CreateWidget<UTHInteractPromptWidget>(GetWorld(), InteractPromptClass);
-    if (InteractPromptWidget)
-    {
-        InteractPromptWidget->AddToViewport();
-    }
+	ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
+	if (!PlayerChar || !PlayerChar->IsLocallyControlled()) return;
 
-    ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
-    if (PlayerChar)
-    {
-        // 플레이어의 함수를 호출하여 이 상자를 상호작용 가능한 대상으로 설정합니다.
-        PlayerChar->SetInteractableBaseItem(this);
-    }
+	APlayerController* PC = Cast<APlayerController>(PlayerChar->GetController());
+	if (!PC) return;
+
+	// 이미 생성되어 있는지 확인
+	if (!InteractPromptWidgets.Contains(PC) && InteractPromptClass)
+	{
+		UTHInteractPromptWidget* NewWidget = CreateWidget<UTHInteractPromptWidget>(PC, InteractPromptClass);
+		if (NewWidget)
+		{
+			NewWidget->AddToViewport();
+			InteractPromptWidgets.Add(PC, NewWidget);
+		}
+	}
+
+	PlayerChar->SetInteractableBaseItem(this);
 }
 
-void ATHBaseItem::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-    APawn* PlayerPawn = Cast<APawn>(OtherActor);
-    if (PlayerPawn && InteractPromptWidget)
-    {
-        // UI를 뷰포트에서 제거합니다.
-        InteractPromptWidget->RemoveFromParent();
 
-        ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
-        if (PlayerChar)
-        {
-            // 플레이어의 함수를 호출하여 이 상자를 상호작용 가능한 대상으로 설정합니다.
-            PlayerChar->SetInteractableBaseItem(nullptr);
-        }
-    }
+void ATHBaseItem::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
+	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
+	if (!PlayerChar || !PlayerChar->IsLocallyControlled()) return;
+
+	APlayerController* PC = Cast<APlayerController>(PlayerChar->GetController());
+	if (!PC) return;
+
+	UTHInteractPromptWidget** WidgetPtr = InteractPromptWidgets.Find(PC);
+	if (WidgetPtr && *WidgetPtr)
+	{
+		(*WidgetPtr)->RemoveFromParent();
+		*WidgetPtr = nullptr;
+		InteractPromptWidgets.Remove(PC);
+	}
+
+	PlayerChar->SetInteractableBaseItem(nullptr);
 }
 
-void ATHBaseItem::ItemPickup(ATHPlayerCharacter* PlayerCharacter)
+
+
+bool ATHBaseItem::ItemPickup(ATHPlayerCharacter* PlayerCharacter)
 {
-    UE_LOG(LogTemp, Warning, TEXT("Item Pickup"));
-    if (PlayerCharacter)
-    {
-		UE_LOG(LogTemp, Warning, TEXT("PlayerCharacter is valid"));
-        UTHItemInventory* Inventory = PlayerCharacter->FindComponentByClass<UTHItemInventory>();
-        if (Inventory)
-        {
-			UE_LOG(LogTemp, Warning, TEXT("Inventory is valid"));
-            if(Inventory->AddItem(ItemID))
-            {
-				UE_LOG(LogTemp, Warning, TEXT("Item %s picked up"), *ItemID);
-                Destroy();
-			}
-        }
-    }
+	if (!bIsPickedUp || !PlayerCharacter) return false;
+
+	if (HasAuthority())
+	{
+		UTHItemInventory* Inventory = PlayerCharacter->FindComponentByClass<UTHItemInventory>();
+		if (!Inventory) return false;
+
+		if (Inventory->AddItem(ItemID))
+		{
+			Destroy();
+			return true;
+		}
+		return false;
+	}
+
+	return false;
 }
+
+
+void ATHBaseItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+    DOREPLIFETIME(ATHBaseItem, bIsPickedUp);
+}
+
+
