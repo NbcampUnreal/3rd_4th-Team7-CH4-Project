@@ -111,6 +111,17 @@ void ATHTitlePlayerController::ShowMatchmakingMenu()
 #pragma endregion
 
 #pragma region Matchmaking
+void ATHTitlePlayerController::ClientCancelMatch_Implementation(bool Rematch)
+{
+	if (!MainMenuWidgetClass) return;
+
+	UTHMainMenuWidget* MainMenu = Cast<UTHMainMenuWidget>(ActiveWidget);
+	if (IsValid(MainMenu) && !Rematch)
+	{
+		MainMenu->StopLoading();
+	}
+}
+
 void ATHTitlePlayerController::Server_TrySelectSlot_Implementation(int32 SlotIndex)
 {
 	if (ATHGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)

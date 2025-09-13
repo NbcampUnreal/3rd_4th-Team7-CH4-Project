@@ -48,6 +48,9 @@ private:
 
 #pragma region Matchmaking
 public:
+	UFUNCTION(Client, Reliable)
+	void ClientCancelMatch(bool Rematch);
+
 	UFUNCTION(Server, Reliable)
 	void Server_TrySelectSlot(int32 SlotIndex);
 
