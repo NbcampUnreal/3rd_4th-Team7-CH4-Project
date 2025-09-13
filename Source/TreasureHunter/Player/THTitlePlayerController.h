@@ -23,6 +23,7 @@ public:
 	virtual void OnPossess(APawn* aPawn) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+#pragma region Phase
 	UFUNCTION(Server, Reliable)
 	void Server_RequestMatchAndSetNickname(const FString& InNickname);
 
@@ -43,6 +44,19 @@ private:
 	void ShowMatchmakingMenu();
 
 	FDelegateHandle PhaseChangedHandle;
+#pragma endregion
+
+#pragma region Matchmaking
+public:
+	UFUNCTION(Server, Reliable)
+	void Server_TrySelectSlot(int32 SlotIndex);
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetReady(bool bReady);
+
+	UFUNCTION(Server, Reliable)
+	void Server_StartMatchIfReady();
+#pragma endregion
 
 	////Join
 	//void JoinServer(const FString& InIPAddress);

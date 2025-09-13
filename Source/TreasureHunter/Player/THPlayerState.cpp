@@ -5,6 +5,7 @@
 #include "GameplayEffect.h"
 #include "Abilities/GameplayAbility.h"
 #include "Net/UnrealNetwork.h"
+#include "Game/GameFlowTags.h"
 
 ATHPlayerState::ATHPlayerState()
 	: bStartupAbilitiesGiven(false)
@@ -18,6 +19,24 @@ ATHPlayerState::ATHPlayerState()
 	
 	AttributeSet = CreateDefaultSubobject<UTHAttributeSet>(TEXT("AttributeSet"));
 }
+
+void ATHPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	DOREPLIFETIME(ATHPlayerState, Nickname);
+}
+
+void ATHPlayerState::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (HasAuthority())
+	{
+		GiveStartupAbilities();
+	}
+}
+
+#pragma region GAS
 
 UAbilitySystemComponent* ATHPlayerState::GetAbilitySystemComponent() const
 {
@@ -62,24 +81,55 @@ void ATHPlayerState::GiveStartupAbilities()
 
 	bStartupAbilitiesGiven = true;
 }
+#pragma endregion
+
+#pragma region Matchmaking
+
+void ATHPlayerState::Server_SetSlotTag(int32 SlotIdx)
+{
+	check(HasAuthority());
+	if (!AbilitySystemComponent) return;
+
+	AbilitySystemComponent->RemoveLooseGameplayTag(TAG_Player_Character_First);
+	AbilitySystemComponent->RemoveLooseGameplayTag(TAG_Player_Character_Second);
+
+	if (SlotIdx == 0)
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(TAG_Player_Character_First);
+	}
+	else if (SlotIdx == 1)
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(TAG_Player_Character_Second);
+	}
+}
+
+void ATHPlayerState::Server_SetReady(bool bReady)
+{
+	check(HasAuthority());
+	if (!AbilitySystemComponent) return;
+
+	if (bReady)
+	{
+		AbilitySystemComponent->AddLooseGameplayTag(TAG_Player_Ready);
+	}
+	else
+	{
+		AbilitySystemComponent->RemoveLooseGameplayTag(TAG_Player_Ready);
+	}
+}
+
+bool ATHPlayerState::HasReadyTag() const
+{
+	if (const UAbilitySystemComponent* ASC = AbilitySystemComponent)
+	{
+		return ASC->HasMatchingGameplayTag(TAG_Player_Ready);
+	}
+	return false;
+}
+
+#pragma endregion
 
 void ATHPlayerState::OnRep_Nickname()
 {
 	// Change UI When Nickname Changed
-}
-
-void ATHPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ATHPlayerState, Nickname);
-}
-
-void ATHPlayerState::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	if (HasAuthority())
-	{
-		GiveStartupAbilities();
-	}
 }

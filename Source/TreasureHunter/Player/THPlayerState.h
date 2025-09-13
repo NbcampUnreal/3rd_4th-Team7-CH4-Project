@@ -20,6 +20,13 @@ class TREASUREHUNTER_API ATHPlayerState : public APlayerState, public IAbilitySy
 public:
 	ATHPlayerState();
 
+protected:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void BeginPlay() override;
+
+#pragma region GAS
+public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	UFUNCTION(BlueprintCallable, Category = "GAS")
@@ -29,29 +36,37 @@ public:
 
 	void GiveStartupAbilities();
 
-	UPROPERTY(ReplicatedUsing = OnRep_Nickname, BlueprintReadOnly)
-	FString Nickname;
-
-	UFUNCTION() void OnRep_Nickname();
-
-protected:
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	virtual void BeginPlay() override;
-
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UAbilitySystemComponent> AbilitySystemComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "GAS")
 	TObjectPtr<UTHAttributeSet> AttributeSet;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TArray<TSubclassOf<UGameplayAbility>> StartupAbilities;
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "GAS")
 	TSubclassOf<UGameplayEffect> StaminaRegenEffect;
-	
+
 private:
 	bool bStartupAbilitiesGiven;
+#pragma endregion
+
+#pragma region Matchmaking
+public:
+	void Server_SetSlotTag(int32 SlotIdx); // 0=First(Bunny), 1=Second(Mouse)
+
+	void Server_SetReady(bool bReady);
+
+	bool HasReadyTag() const;
+#pragma endregion
+
+public:
+	UFUNCTION() 
+	void OnRep_Nickname();
+
+public:
+	UPROPERTY(ReplicatedUsing = OnRep_Nickname, BlueprintReadOnly)
+	FString Nickname;
 };
