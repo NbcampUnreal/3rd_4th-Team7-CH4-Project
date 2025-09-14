@@ -36,6 +36,7 @@ void UTHItemInventory::BeginPlay()
 
 void UTHItemInventory::OnRep_ItemSlot1()
 {
+	UE_LOG(LogTemp, Warning, TEXT("ItemSlot1 Replicated: %s"), *ItemSlot1.ToString());
 	OnInventorySlotChanged.Broadcast(1, ItemSlot1);
 }
 
@@ -70,11 +71,13 @@ bool UTHItemInventory::AddItem(FName NewItemID)
 	if (ItemSlot1.IsNone())
 	{
 		ItemSlot1 = NewItemID;
+		OnInventorySlotChanged.Broadcast(1, ItemSlot1);
 		return true;
 	}
 	else if (ItemSlot2.IsNone())
 	{
 		ItemSlot2 = NewItemID;
+		OnInventorySlotChanged.Broadcast(2, ItemSlot2);
 		return true;
 	}
 	return false;
