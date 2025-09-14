@@ -11,7 +11,7 @@ ATHPlayerState::ATHPlayerState()
 	: bStartupAbilitiesGiven(false)
 {
 	bReplicates = true;
-	NetUpdateFrequency = 60.f;
+	SetNetUpdateFrequency(60.f);
 
 	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	AbilitySystemComponent->SetIsReplicated(true);
@@ -126,10 +126,11 @@ bool ATHPlayerState::HasReadyTag() const
 	}
 	return false;
 }
-
 #pragma endregion
 
+#pragma region Nickname
 void ATHPlayerState::OnRep_Nickname()
 {
-	// Change UI When Nickname Changed
+	OnNicknameUpdated.Broadcast(Nickname);
 }
+#pragma endregion
