@@ -47,6 +47,7 @@ void ATHTitlePlayerController::Server_RequestMatchAndSetNickname_Implementation(
 	if (auto* PS = GetPlayerState<ATHPlayerState>())
 	{
 		PS->Nickname = InNickname;
+		PS->ForceNetUpdate();
 	}
 
 	if (auto* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
@@ -82,8 +83,8 @@ void ATHTitlePlayerController::ShowMainMenu()
 	if (ActiveWidget)
 	{
 		ActiveWidget->AddToViewport();
-		FInputModeUIOnly InputMode;
-		//InputMode.SetWidgetToFocus(ActiveWidget->TakeWidget());
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 	}
@@ -102,8 +103,8 @@ void ATHTitlePlayerController::ShowMatchmakingMenu()
 	if (ActiveWidget)
 	{
 		ActiveWidget->AddToViewport();
-		FInputModeUIOnly InputMode;
-		//InputMode.SetWidgetToFocus(ActiveWidget->TakeWidget());
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
 	}
@@ -136,13 +137,11 @@ void ATHTitlePlayerController::Server_SetReady_Implementation(bool bReady)
 	ATHPlayerState* PS = GetPlayerState<ATHPlayerState>();
 	if (!GS || !PS) return;
 
-	// 내가 슬롯을 점유 중일 때만 Ready 허용 & 잠금 후엔 불가
 	const bool bOwned = (GS->GetSlotOwner(0) == PS) || (GS->GetSlotOwner(1) == PS);
 	if (!bOwned || GS->AreSlotsLockedIn()) return;
 
 	PS->Server_SetReady(bReady);
 
-	// Ready 충족 시 잠금
 	if (GS->AreSlotsFilled() && GS->AreBothReady())
 	{
 		GS->bSlotsLockedIn = true;
@@ -161,24 +160,3 @@ void ATHTitlePlayerController::Server_StartMatchIfReady_Implementation()
 	}
 }
 #pragma endregion
-
-//void ATHTitlePlayerController::AssignPlayerUniqueId(FString InStr)
-//{
-//	
-//}
-//
-//void ATHTitlePlayerController::JoinServer(const FString& InIPAddress)
-//{
-//	//IP
-//	FName NextLevelName = FName(*InIPAddress);
-//	UGameplayStatics::OpenLevel(GetWorld(), NextLevelName, true);
-//}
-//
-//void ATHTitlePlayerController::SetCustomId(const FString& CustomId)
-//{
-//}
-//
-//FString ATHTitlePlayerController::GetCustomId() const
-//{
-//	return FString();
-//}

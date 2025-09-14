@@ -4,8 +4,10 @@
 #include "UI/THMatchmakingWidget.h"
 #include "Components/Button.h"
 #include "Components/Image.h"
+#include "Components/TextBlock.h"
 #include "Game/THGameStateBase.h"
 #include "Player/THTitlePlayerController.h"
+#include "Player/THPlayerState.h"
 
 void UTHMatchmakingWidget::NativeConstruct()
 {
@@ -76,18 +78,39 @@ void UTHMatchmakingWidget::RefreshUI()
 	ATHGameStateBase* GS = CachedGS.Get();
 	if (!GS) return;
 
-	const bool bLocked = GS->AreSlotsLockedIn();
-	//const bool bFilled = GS->AreSlotsFilled();
-	const bool bBothReady = GS->AreBothReady();
-
 	APlayerState* Owner0 = GS->GetSlotOwner(0);
 	APlayerState* Owner1 = GS->GetSlotOwner(1);
+
+	APlayerState* MyPS = CachedPC.IsValid() ? CachedPC->GetPlayerState<APlayerState>() : nullptr;
+
+	UpdateNicknameText(FirstPNickname, Owner0, MyPS);
+	UpdateNicknameText(SecondPNickname, Owner1, MyPS);
+
+	const bool bLocked = GS->AreSlotsLockedIn();
 
 	if (FirstPButton) FirstPButton->SetIsEnabled(!bLocked && (Owner0 == nullptr));
 	if (SecondPButton) SecondPButton->SetIsEnabled(!bLocked && (Owner1 == nullptr));
 
-
 	if (UnlockImage) UnlockImage->SetVisibility(bLocked ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
 	if (LockImage)   LockImage->SetVisibility(bLocked ? ESlateVisibility::Hidden : ESlateVisibility::Visible);
-	if (MatchStartButton && bBothReady) MatchStartButton->SetIsEnabled(bLocked);
+	if (MatchStartButton) MatchStartButton->SetIsEnabled(bLocked);
+}
+
+void UTHMatchmakingWidget::UpdateNicknameText(UTextBlock* TextWidget, APlayerState* SlotOwner, APlayerState* MyPS)
+{
+	if (!TextWidget) return;
+
+	if (ATHPlayerState* THPS = Cast<ATHPlayerState>(SlotOwner))
+	{
+		FString Nick = THPS->Nickname;
+		if (THPS == MyPS)
+		{
+			Nick.Append(TEXT(" (YOU)"));
+		}
+		TextWidget->SetText(FText::FromString(Nick));
+	}
+	else
+	{
+		TextWidget->SetText(FText::GetEmpty());
+	}
 }

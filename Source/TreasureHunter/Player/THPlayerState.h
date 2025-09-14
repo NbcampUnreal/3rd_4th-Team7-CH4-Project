@@ -12,6 +12,8 @@ class UTHAttributeSet;
 class UAbilitySystemComponent;
 class UGameplayAbility;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnNicknameUpdated, const FString&, NewNickname);
+
 UCLASS()
 class TREASUREHUNTER_API ATHPlayerState : public APlayerState, public IAbilitySystemInterface
 {
@@ -62,11 +64,16 @@ public:
 	bool HasReadyTag() const;
 #pragma endregion
 
+#pragma region Nickname
 public:
-	UFUNCTION() 
+	UFUNCTION()
 	void OnRep_Nickname();
 
+	UPROPERTY(BlueprintAssignable)
+	FOnNicknameUpdated OnNicknameUpdated;
+
 public:
-	UPROPERTY(ReplicatedUsing = OnRep_Nickname, BlueprintReadOnly)
+	UPROPERTY(ReplicatedUsing=OnRep_Nickname, BlueprintReadOnly)
 	FString Nickname;
+#pragma endregion
 };

@@ -3,7 +3,10 @@
 
 #include "THPlayerController.h"
 #include "UI/THPlayerHUDWidget.h"
+#include "UI/THGameOverWidget.h"
 #include "THPlayerState.h"
+#include "Game/THGameStateBase.h"
+#include "Game/GameFlowTags.h"
 #include "Item/THItemInventory.h"
 #include "Item/THItemDataManager.h"
 #include "Item/THItemData.h"
@@ -30,6 +33,20 @@ void ATHPlayerController::BeginPlay()
 	{
 		PS->InitializeAbilityActorInfo(GetPawn());
 	}
+
+	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
+	{
+		GS->OnPhaseChanged.AddDynamic(this, &ATHPlayerController::HandlePhaseChange);
+	}
+}
+
+void ATHPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
+	{
+		GS->OnPhaseChanged.RemoveDynamic(this, &ATHPlayerController::HandlePhaseChange);
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 void ATHPlayerController::OnPossess(APawn* aPawn)
@@ -73,6 +90,44 @@ void ATHPlayerController::OnRep_PlayerState()
 	}
 
 	BindInventoryDelegates(GetPawn());
+}
+#pragma endregion
+
+#pragma region Phase
+void ATHPlayerController::HandlePhaseChange(FGameplayTag NewPhase)
+{
+	if (!IsLocalController()) return;
+
+	if (NewPhase.MatchesTagExact(TAG_Game_Phase_Finish))
+	{
+		if (PlayerHUD && PlayerHUD->IsInViewport())
+		{
+			PlayerHUD->RemoveFromParent();
+		}
+		EnsureGameOver();
+	}
+}
+
+void ATHPlayerController::CreateGameOverWidget()
+{
+	if (GameOverWidget || !GameOverWidgetClass)
+	{
+		return;
+	}
+	
+	GameOverWidget = CreateWidget<UTHGameOverWidget>(this, GameOverWidgetClass);
+	if (GameOverWidget)
+	{
+		GameOverWidget->AddToViewport();
+	}
+}
+
+void ATHPlayerController::EnsureGameOver()
+{
+	if (!GameOverWidget)
+	{
+		CreateGameOverWidget();
+	}
 }
 #pragma endregion
 

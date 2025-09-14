@@ -7,6 +7,7 @@
 
 class UButton;
 class UImage;
+class UTextBlock;
 class ATHGameStateBase;
 class ATHTitlePlayerController;
 
@@ -31,6 +32,12 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UImage* LockImage;
 
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* FirstPNickname;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* SecondPNickname;
+
 private:
 	TWeakObjectPtr<ATHGameStateBase> CachedGS;
 	TWeakObjectPtr<ATHTitlePlayerController> CachedPC;
@@ -45,4 +52,6 @@ private:
 
 	UFUNCTION()
 	void RefreshUI();
+
+	void UpdateNicknameText(UTextBlock* TextWidget, APlayerState* SlotOwner, APlayerState* MyPS);
 };
