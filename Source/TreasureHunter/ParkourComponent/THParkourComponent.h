@@ -43,13 +43,13 @@ protected:
 	TObjectPtr<UAnimMontage> MantlingMontage;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
-	float MantleTraceDistance = 150.f;
+	float MantleTraceDistance = 60.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
 	float MinMantleHeight = 25.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
-	float MaxMantleHeight = 500.f;
+	float MaxMantleHeight = 250.f;
 
 private:
 	UPROPERTY(Transient)

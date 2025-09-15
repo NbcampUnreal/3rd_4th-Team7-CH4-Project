@@ -91,6 +91,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SlotUse1Action;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SlotUse2Action;
 
@@ -101,11 +102,14 @@ private:
 	UPROPERTY()
 	ATHBaseItem* InteractableBaseItem;
 
-
 public:	
 	void SetInteractableActor(ATHItemBox* NewItemBox);
 	void SetInteractableBaseItem(ATHBaseItem* NewBaseItem);
+	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
 
+	bool bIsSprinting = false;
+	
 	UFUNCTION()
 	void OnInteract();
 
@@ -132,10 +136,7 @@ public:
 
 	UFUNCTION()
 	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
-
-	bool bIsSprinting = false;
-
-
+	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> MantleAction;
 

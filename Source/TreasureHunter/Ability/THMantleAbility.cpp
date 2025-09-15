@@ -6,6 +6,8 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Game/GameFlowTags.h"
+#include "MotionWarpingComponent.h"
+#include "PlayerCharacter/THPlayerCharacter.h"
 
 UTHMantleAbility::UTHMantleAbility()
 {
@@ -54,14 +56,19 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		return;
 	}
 
-	if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get()))
+	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
+	
+	if (!PlayerCharacter)
 	{
-		if (USpringArmComponent* SpringArm = PlayerCharacter->GetSpringArm())
-		{
-			SpringArm->bDoCollisionTest = false;
-		}
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
 	}
 
+	if (USpringArmComponent* SpringArm = PlayerCharacter->GetSpringArm())
+	{
+		SpringArm->bDoCollisionTest = false;
+	}
+	
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
 	if (StaminaCostEffect)
 	{
@@ -74,21 +81,28 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		}
 	}
 
-	ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
-
-	UTHParkourComponent* ParkourComponent = Character ? Character->FindComponentByClass<UTHParkourComponent>() : nullptr;
-
+	UTHParkourComponent* ParkourComponent = PlayerCharacter->FindComponentByClass<UTHParkourComponent>();
 	FMantleInfo MantleInfo;
-	
+    
 	if (!ParkourComponent || !ParkourComponent->CheckMantle(MantleInfo))
 	{
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
 
-	UCharacterMovementComponent* CMC = Character->GetCharacterMovement();
+	if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->MotionWarpingComponent)
+	{
+		const FName WarpTargetName = FName("MantleTarget"); 
+       
+		MotionWarpingComp->AddOrUpdateWarpTargetFromLocationAndRotation(
+		   WarpTargetName,
+		   MantleInfo.TargetLocation,
+		   MantleInfo.TargetRotation 
+		);
+	}
+	
+	UCharacterMovementComponent* CMC = PlayerCharacter->GetCharacterMovement();
 	CMC->SetMovementMode(MOVE_Flying);
-	Character->SetActorRotation(MantleInfo.TargetRotation);
 
 	UAnimMontage* MantleMontage = ParkourComponent->GetMantlingMontage();
 	if (UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, MantleMontage))
@@ -117,16 +131,6 @@ void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 		}
 	}
 	
-	if (ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get()))
-	{
-		if (UCharacterMovementComponent* CMC = Character->GetCharacterMovement())
-		{
-			if (CMC->MovementMode == MOVE_Flying)
-			{
-				CMC->SetMovementMode(MOVE_Walking);
-			}
-		}
-	}
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 

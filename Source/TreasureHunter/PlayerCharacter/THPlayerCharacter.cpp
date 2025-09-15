@@ -6,12 +6,13 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "Ability/THSprintAbility.h"
 #include "AbilitySystemComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Item/THItemInventory.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "Game/GameFlowTags.h"
+#include "MotionWarpingComponent.h"
 #include "GameplayEffect.h"
-#include "Components/CapsuleComponent.h"
-#include "Item/THItemInventory.h"
 
 ATHPlayerCharacter::ATHPlayerCharacter()
 {
@@ -40,6 +41,7 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
 
+	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
 }
 
 void ATHPlayerCharacter::BeginPlay()
