@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+﻿// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "THPlayerHUDWidget.h"
@@ -346,6 +346,23 @@ void UTHPlayerHUDWidget::SetInventoryIcon(int32 SlotIndex, UTexture2D* Icon)
 	Brush.SetResourceObject(Icon);
 	Brush.ImageSize = FVector2D(80.f, 80.f);
 	(SlotIndex == 1) ? Inventory001Icon->SetBrush(Brush) : Inventory002Icon->SetBrush(Brush);
+
+	//음
+
+	if (SlotIndex == 1)
+	{
+		if (Inventory001Icon)
+		{
+			Inventory001Icon->SetBrush(Brush);
+		}
+	}
+	else if (SlotIndex == 2)
+	{
+		if (Inventory002Icon)
+		{
+			Inventory002Icon->SetBrush(Brush);
+		}
+	}
 }
 
 void UTHPlayerHUDWidget::ClearInventoryIcon(int32 SlotIndex, float CoolTime)

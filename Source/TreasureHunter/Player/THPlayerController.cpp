@@ -190,11 +190,14 @@ void ATHPlayerController::BindInventoryDelegates(APawn* InPawn)
 void ATHPlayerController::HandleInventorySlotChanged(int32 SlotIndex, FName ItemID)
 {
 	if (!PlayerHUD) return;
-	if (ItemID == FName("")) return;
+	if (ItemID == FName(""))
+	{
+		//블랭크 이미지로 교체
+		return;
+	}
 
 	if (UTexture2D* Icon = ResolveItemIcon(ItemID))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Icon Resolved for ItemID: %s"), *ItemID.ToString());
 		PlayerHUD->SetInventoryIcon(SlotIndex, Icon);
 	}
 }
@@ -213,9 +216,15 @@ UTexture2D* ATHPlayerController::ResolveItemIcon(const FName& ItemRowName) const
 		UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
 	{
 		const FTHItemData* ItemData = DM->GetItemDataByRow(ItemRowName);
-		if (ItemData && ItemData->ItemIcon.IsValid())
+		if (!ItemData)
 		{
-			return ItemData->ItemIcon.LoadSynchronous();
+			return nullptr;
+		}
+
+		UTexture2D* LoadedIcon = ItemData->ItemIcon.LoadSynchronous();
+		if (LoadedIcon)
+		{
+			return LoadedIcon;
 		}
 	}
 
