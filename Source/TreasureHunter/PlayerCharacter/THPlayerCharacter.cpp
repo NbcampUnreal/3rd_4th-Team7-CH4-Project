@@ -100,7 +100,6 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
 	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
 	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
-
 }
 
 void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
@@ -195,7 +194,6 @@ void ATHPlayerCharacter::RequestPush(const FInputActionValue& InValue)
 		
 		ASC->TryActivateAbilitiesByTag(PushTagContainer);
 	}
-
 }
 
 void ATHPlayerCharacter::RequestMantle(const FInputActionValue& InValue)
@@ -235,8 +233,6 @@ UAbilitySystemComponent* ATHPlayerCharacter::GetAbilitySystemComponent() const
 	}
 	return nullptr;
 }
-
-
 
 //임시추가	
 
@@ -303,7 +299,6 @@ void ATHPlayerCharacter::Server_HandleBaseItemInteract_Implementation(ATHBaseIte
 	}
 }
 
-
 void ATHPlayerCharacter::HandleBoxInteract()
 {
     if (InteractableItemBox)
@@ -322,7 +317,6 @@ void ATHPlayerCharacter::HandleBaseItemInteract()
 		{
 			InteractableBaseItem = nullptr;
 		}
-		
 	}
 }
 

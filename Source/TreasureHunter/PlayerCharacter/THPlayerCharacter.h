@@ -95,7 +95,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SlotUse2Action;
 
-	
 private:
 	UPROPERTY()
 	ATHItemBox* InteractableItemBox;
@@ -112,8 +111,7 @@ public:
 	
 	UFUNCTION()
 	void OnInteract();
-
-
+	
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_HandleInteract(ATHItemBox* InteractableBox);
 	void HandleBoxInteract();
@@ -126,13 +124,6 @@ public:
 	void OnUseItemSlot1();
 	UFUNCTION()
 	void OnUseItemSlot2();
-
-
-	
-	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
-
-	
-	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
 
 	UFUNCTION()
 	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
