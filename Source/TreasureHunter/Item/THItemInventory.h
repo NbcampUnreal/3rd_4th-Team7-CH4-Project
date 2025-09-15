@@ -52,12 +52,14 @@ public:
 	FOnInventorySlotChanged OnInventorySlotChanged;
 
 	UFUNCTION()
-	void OnRep_ItemSlot1();
+	void OnRep_ItemSlot1(FName OldValue);
 
 	UFUNCTION()
-	void OnRep_ItemSlot2();
+	void OnRep_ItemSlot2(FName OldValue);
 
+	UFUNCTION(BlueprintPure)
+	FName GetItemInSlot(int32 SlotIndex) const;
 
-
-
+private:
+	static void HandleSlotRep(UTHItemInventory* Self, int32 SlotIdx, FName OldVal, FName NewVal);
 };

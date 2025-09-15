@@ -23,8 +23,8 @@ void UTHItemInventory::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(UTHItemInventory, ItemSlot1, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UTHItemInventory, ItemSlot2, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION_NOTIFY(UTHItemInventory, ItemSlot1, COND_OwnerOnly, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UTHItemInventory, ItemSlot2, COND_OwnerOnly, REPNOTIFY_Always);
 }
 
 
@@ -34,18 +34,20 @@ void UTHItemInventory::BeginPlay()
 }
 
 
-void UTHItemInventory::OnRep_ItemSlot1()
+void UTHItemInventory::OnRep_ItemSlot1(FName OldValue)
 {
-	UE_LOG(LogTemp, Warning, TEXT("ItemSlot1 Replicated: %s"), *ItemSlot1.ToString());
-	OnInventorySlotChanged.Broadcast(1, ItemSlot1);
+	HandleSlotRep(this, 1, OldValue, ItemSlot1);
 }
 
-void UTHItemInventory::OnRep_ItemSlot2()
+void UTHItemInventory::OnRep_ItemSlot2(FName OldValue)
 {
-	OnInventorySlotChanged.Broadcast(2, ItemSlot2);
+	HandleSlotRep(this, 2, OldValue, ItemSlot2);
 }
 
-
+FName UTHItemInventory::GetItemInSlot(int32 SlotIndex) const
+{
+	return (SlotIndex == 2) ? ItemSlot2 : ItemSlot1;
+}
 
 //bool UTHItemInventory::Server_AddItem_Validate(FName NewItemID)
 //{
@@ -61,28 +63,20 @@ void UTHItemInventory::OnRep_ItemSlot2()
 
 bool UTHItemInventory::AddItem(FName NewItemID)
 {
-	if (!GetOwner()->HasAuthority())
-	{
-		// 클라는 절대 AddItem 로직을 호출하지 않음
-		return false;
-	}
+	if (!GetOwner()->HasAuthority()) return false;
 
-	// 서버 처리
 	if (ItemSlot1.IsNone())
 	{
 		ItemSlot1 = NewItemID;
-		OnInventorySlotChanged.Broadcast(1, ItemSlot1);
 		return true;
 	}
 	else if (ItemSlot2.IsNone())
 	{
 		ItemSlot2 = NewItemID;
-		OnInventorySlotChanged.Broadcast(2, ItemSlot2);
 		return true;
 	}
 	return false;
 }
-
 
 
 void UTHItemInventory::Server_UseItem_Implementation(int32 SlotIndex)
@@ -119,50 +113,56 @@ void UTHItemInventory::UseItem(int32 SlotIndex)
 	{
 		ItemID = ItemSlot1;
 	}
-	
 
-
-	if (ItemID == FName(""))
+	if (ItemID.IsNone())
 	{
 		return;
 	}
-	ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 
+	ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
 	if (IsValid(DataManager))
 	{
 		TSubclassOf<UGameplayAbility> AbilityToActivate = DataManager->GetItemAbilityClassByRow(ItemID);
-
 		if (AbilityToActivate)
 		{
 			if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetOwner()))
 			{
 				if (UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent())
 				{
-					FGameplayAbilitySpecHandle AbilityHandle = ASC->GiveAbility(FGameplayAbilitySpec(AbilityToActivate, 1, INDEX_NONE, PlayerCharacter));					
+					FGameplayAbilitySpecHandle AbilityHandle = ASC->GiveAbility(FGameplayAbilitySpec(AbilityToActivate, 1, INDEX_NONE, PlayerCharacter));	
 					bool bSuccess = ASC->TryActivateAbility(AbilityHandle);
-
 					if (bSuccess)
 					{
 						if (SlotIndex == 2)
 						{
-							ItemSlot2 = FName("");
+							ItemSlot2 = NAME_None;
 						}
 						else
 						{
-							ItemSlot1 = FName("");
+							ItemSlot1 = NAME_None;
 						}
 					}
 				}
 			}
 		}
 	}
-
-
 }
-
-
 
 void UTHItemInventory::ResetUseTime()
 {
 	UseTimeCheck = false;
+}
+
+void UTHItemInventory::HandleSlotRep(UTHItemInventory* Self, int32 SlotIdx, FName OldVal, FName NewVal)
+{
+	if (!OldVal.IsNone() && NewVal.IsNone())
+	{
+		Self->OnInventorySlotChanged.Broadcast(SlotIdx, OldVal);
+		return;
+	}
+
+	if (!NewVal.IsNone() && OldVal != NewVal)
+	{
+		Self->OnInventorySlotChanged.Broadcast(SlotIdx, NewVal);
+	}
 }

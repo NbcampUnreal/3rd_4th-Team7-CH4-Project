@@ -185,20 +185,31 @@ void ATHPlayerController::BindInventoryDelegates(APawn* InPawn)
 	{
 		Inv->OnInventorySlotChanged.AddDynamic(this, &ThisClass::HandleInventorySlotChanged);
 	}
-} 
+}
 
 void ATHPlayerController::HandleInventorySlotChanged(int32 SlotIndex, FName ItemID)
 {
 	if (!PlayerHUD) return;
-	if (ItemID == FName(""))
-	{
-		//블랭크 이미지로 교체
-		return;
-	}
 
-	if (UTexture2D* Icon = ResolveItemIcon(ItemID))
+	if (APawn* P = GetPawn())
 	{
-		PlayerHUD->SetInventoryIcon(SlotIndex, Icon);
+		if (UTHItemInventory* Inv = P->FindComponentByClass<UTHItemInventory>())
+		{
+			const bool bNowEmpty = Inv->GetItemInSlot(SlotIndex).IsNone();
+
+			if (bNowEmpty)
+			{	
+				const float Cool = ResolveItemCoolTime(ItemID);
+				HandleItemCooldownClient(SlotIndex, Cool);
+			}
+			else
+			{
+				if (UTexture2D* Icon = ResolveItemIcon(ItemID))
+				{
+					PlayerHUD->SetInventoryIcon(SlotIndex, Icon);
+				}
+			}
+		}
 	}
 }
 
@@ -210,12 +221,12 @@ void ATHPlayerController::HandleItemCooldownClient(int32 SlotIndex, float Coolti
 	}
 }
 
-UTexture2D* ATHPlayerController::ResolveItemIcon(const FName& ItemRowName) const
+UTexture2D* ATHPlayerController::ResolveItemIcon(const FName& ItemID) const
 {
 	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(
 		UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
 	{
-		const FTHItemData* ItemData = DM->GetItemDataByRow(ItemRowName);
+		const FTHItemData* ItemData = DM->GetItemDataByRow(ItemID);
 		if (!ItemData)
 		{
 			return nullptr;
@@ -229,6 +240,23 @@ UTexture2D* ATHPlayerController::ResolveItemIcon(const FName& ItemRowName) const
 	}
 
 	return nullptr;
+}
+
+float ATHPlayerController::ResolveItemCoolTime(const FName& ItemID) const
+{
+
+	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(
+		UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
+	{
+		const FTHItemData* ItemData = DM->GetItemDataByRow(ItemID);
+		if (!ItemData)
+		{
+			return 0;
+		}
+		
+		return ItemData->CoolTime;
+	}
+	return 0;
 }
 
 #pragma endregion
