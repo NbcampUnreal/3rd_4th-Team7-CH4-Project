@@ -68,5 +68,7 @@ private:
 
 	UTexture2D* ResolveItemIcon(const FName& ItemID) const;
 
+	float ResolveItemCoolTime(const FName& ItemID) const;
+
 #pragma endregion
 };

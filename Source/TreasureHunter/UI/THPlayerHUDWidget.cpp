@@ -345,14 +345,12 @@ void UTHPlayerHUDWidget::SetInventoryIcon(int32 SlotIndex, UTexture2D* Icon)
 	FSlateBrush Brush;
 	Brush.SetResourceObject(Icon);
 	Brush.ImageSize = FVector2D(80.f, 80.f);
-	(SlotIndex == 1) ? Inventory001Icon->SetBrush(Brush) : Inventory002Icon->SetBrush(Brush);
-
-	//음
 
 	if (SlotIndex == 1)
 	{
 		if (Inventory001Icon)
 		{
+			Inventory001Icon->SetVisibility(ESlateVisibility::Visible);
 			Inventory001Icon->SetBrush(Brush);
 		}
 	}
@@ -360,6 +358,7 @@ void UTHPlayerHUDWidget::SetInventoryIcon(int32 SlotIndex, UTexture2D* Icon)
 	{
 		if (Inventory002Icon)
 		{
+			Inventory002Icon->SetVisibility(ESlateVisibility::Visible);
 			Inventory002Icon->SetBrush(Brush);
 		}
 	}
@@ -374,8 +373,10 @@ void UTHPlayerHUDWidget::ClearInventoryIcon(int32 SlotIndex, float CoolTime)
 	{
 		if (InventoryCoolTimeIcon)
 		{
+			InventoryCoolTimeIcon->SetVisibility(ESlateVisibility::Visible);
 			InventoryCoolTimeIcon->SetBrush(TargetIcon->Brush);
 			TargetIcon->SetBrush(FSlateBrush());
+			TargetIcon->SetVisibility(ESlateVisibility::Hidden);
 		}
 		StartCoolTimeTimer(CoolTime);
 	}
@@ -409,7 +410,7 @@ void UTHPlayerHUDWidget::UpdateCoolTime()
 		GetWorld()->GetTimerManager().ClearTimer(CoolTimeTimer);
 		if (InventoryCoolTimeIcon)
 		{
-			InventoryCoolTimeIcon->SetBrush(FSlateBrush());
+			InventoryCoolTimeIcon->SetVisibility(ESlateVisibility::Hidden);
 		}
 
 		CoolTimeProgressBar->SetRenderOpacity(0.f);
