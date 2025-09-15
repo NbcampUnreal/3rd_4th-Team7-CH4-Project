@@ -17,6 +17,7 @@ class UInputMappingContext;
 class UInputAction;
 class UTHAttributeSet;
 class UGameplayEffect;
+class UMotionWarpingComponent;
 struct UInputActionValue;
 
 UCLASS()
@@ -55,6 +56,8 @@ private:
 
 	void RequestSprint(const FInputActionValue& InValue);
 
+	void RequestMantle(const FInputActionValue& InValue);
+
 	void RequestPush(const FInputActionValue& InValue);
 
 	void BindToAttributeChanges();
@@ -62,12 +65,6 @@ private:
 	void ToggleCrouch();
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TObjectPtr<USpringArmComponent> SpringArm;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TObjectPtr<UCameraComponent> Camera;
-	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> InputMappingContext;
 
@@ -94,25 +91,27 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SlotUse1Action;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SlotUse2Action;
 
-	
 private:
 	UPROPERTY()
 	ATHItemBox* InteractableItemBox;
 	UPROPERTY()
 	ATHBaseItem* InteractableBaseItem;
 
-
 public:	
 	void SetInteractableActor(ATHItemBox* NewItemBox);
 	void SetInteractableBaseItem(ATHBaseItem* NewBaseItem);
+	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
 
+	bool bIsSprinting = false;
+	
 	UFUNCTION()
 	void OnInteract();
-
-
+	
 	UFUNCTION(Server, Reliable, WithValidation)
 	void Server_HandleInteract(ATHItemBox* InteractableBox);
 	void HandleBoxInteract();
@@ -126,16 +125,18 @@ public:
 	UFUNCTION()
 	void OnUseItemSlot2();
 
-
-	
-	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
-
-	
-	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
-
 	UFUNCTION()
 	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> MantleAction;
 
-	bool bIsSprinting = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<USpringArmComponent> SpringArm;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<UCameraComponent> Camera;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
 };

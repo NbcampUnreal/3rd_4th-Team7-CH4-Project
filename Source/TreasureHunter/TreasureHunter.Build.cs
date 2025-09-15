@@ -20,7 +20,9 @@ public class TreasureHunter : ModuleRules
 			"GameplayTasks",
 			"UMG",
 			"Slate",
-			"SlateCore"});
+			"SlateCore",
+			"MotionWarping"
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 		
