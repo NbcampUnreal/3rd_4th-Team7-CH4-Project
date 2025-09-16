@@ -93,7 +93,7 @@ void ATHPlayerController::OnRep_PlayerState()
 }
 #pragma endregion
 
-#pragma region Phase
+#pragma region Phase-Change
 void ATHPlayerController::HandlePhaseChange(FGameplayTag NewPhase)
 {
 	if (!IsLocalController()) return;
@@ -131,7 +131,7 @@ void ATHPlayerController::EnsureGameOver()
 }
 #pragma endregion
 
-#pragma region HUD
+#pragma region HUD-Open
 
 void ATHPlayerController::CreatePlayerHUD()
 {
@@ -177,13 +177,13 @@ void ATHPlayerController::InitHUDBindingsFromPlayerState()
 #pragma endregion
 
 #pragma region Inventory
-
 void ATHPlayerController::BindInventoryDelegates(APawn* InPawn)
 {
 	if (!InPawn) return;
 	if (UTHItemInventory* Inv = InPawn->FindComponentByClass<UTHItemInventory>())
 	{
 		Inv->OnInventorySlotChanged.AddDynamic(this, &ThisClass::HandleInventorySlotChanged);
+		Inv->OnItemActivated.AddDynamic(this, &ThisClass::HandleItemActivated);
 	}
 }
 
@@ -191,72 +191,99 @@ void ATHPlayerController::HandleInventorySlotChanged(int32 SlotIndex, FName Item
 {
 	if (!PlayerHUD) return;
 
-	if (APawn* P = GetPawn())
+	if (ItemID.IsNone())
 	{
-		if (UTHItemInventory* Inv = P->FindComponentByClass<UTHItemInventory>())
-		{
-			const bool bNowEmpty = Inv->GetItemInSlot(SlotIndex).IsNone();
+		PlayerHUD->SetInventoryIcon(SlotIndex, nullptr);
+		return;
+	}
 
-			if (bNowEmpty)
-			{	
-				const float Cool = ResolveItemCoolTime(ItemID);
-				HandleItemCooldownClient(SlotIndex, Cool);
-			}
-			else
+	if (ATHItemDataManager* DM = ATHItemDataManager::Get(GetWorld()))
+	{
+		if (UTexture2D* Icon = DM->GetItemIconByRow(ItemID))
+		{
+			PlayerHUD->SetInventoryIcon(SlotIndex, Icon);
+		}
+	}
+}
+
+void ATHPlayerController::HandleItemActivated(int32 SlotIndex, FName ItemID)
+{
+	if (!PlayerHUD) return;
+
+	if (ATHItemDataManager* DM = ATHItemDataManager::Get(GetWorld()))
+	{
+		const FTHItemData* Row = DM->GetItemDataByRow(ItemID);
+		if (!Row) return;
+
+		switch (Row->UiIndicator)
+		{
+		case EItemUIIndicator::InventoryProgressBarBuff:
+		{
+			static const FName NAME_Speed01(TEXT("Speed01"));
+			static const FName NAME_Jump01(TEXT("Jump01"));
+
+			if (ItemID == NAME_Speed01)
 			{
-				if (UTexture2D* Icon = ResolveItemIcon(ItemID))
-				{
-					PlayerHUD->SetInventoryIcon(SlotIndex, Icon);
-				}
+				PlayerHUD->StartSpeedDurationBuff(Row->DurationSec);
+			}
+			else if (ItemID == NAME_Jump01)
+			{
+				PlayerHUD->StartJumpDurationBuff(Row->DurationSec);
+			}
+		}
+		break;
+
+		case EItemUIIndicator::TopRightInventoryBuffIcon:
+		{
+			if (UTexture2D* Icon = DM->GetItemIconByRow(ItemID))
+			{
+				PlayerHUD->ShowTopRightBuffIcon(Icon, Row->DurationSec);
+			}
+		}
+		break;
+
+		case EItemUIIndicator::FullScreenOverlay:
+		{
+			if (Row->UseKind == EItemUseKind::TargetDebuff && Row->VictimOverlayWidgetClass.IsValid())
+			{
+				Server_ApplyTargetOverlayToOpponent(ItemID);
+			}
+		}
+		break;
+
+		default:
+			UE_LOG(LogTemp, Log, TEXT("[PC] Case: None/Default"));
+			break;
+		}
+	}
+}
+
+void ATHPlayerController::Server_ApplyTargetOverlayToOpponent_Implementation(FName ItemRow)
+{
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		ATHPlayerController* OtherPC = Cast<ATHPlayerController>(*It);
+		if (OtherPC && OtherPC != this)
+		{
+			OtherPC->Client_ShowTargetOverlay(ItemRow);
+			break;
+		}
+	}
+}
+
+void ATHPlayerController::Client_ShowTargetOverlay_Implementation(FName ItemRow)
+{
+	if (!PlayerHUD) return;
+
+	if (ATHItemDataManager* DM = ATHItemDataManager::Get(GetWorld()))
+	{
+		if (const FTHItemData* Row = DM->GetItemDataByRow(ItemRow))
+		{
+			if (Row->VictimOverlayWidgetClass.IsValid())
+			{
+				PlayerHUD->ShowFullScreenOverlay(Row->VictimOverlayWidgetClass.LoadSynchronous(), Row->DurationSec);
 			}
 		}
 	}
 }
-
-void ATHPlayerController::HandleItemCooldownClient(int32 SlotIndex, float Cooltime)
-{
-	if (PlayerHUD)
-	{
-		PlayerHUD->ClearInventoryIcon(SlotIndex, Cooltime);
-	}
-}
-
-UTexture2D* ATHPlayerController::ResolveItemIcon(const FName& ItemID) const
-{
-	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(
-		UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
-	{
-		const FTHItemData* ItemData = DM->GetItemDataByRow(ItemID);
-		if (!ItemData)
-		{
-			return nullptr;
-		}
-
-		UTexture2D* LoadedIcon = ItemData->ItemIcon.LoadSynchronous();
-		if (LoadedIcon)
-		{
-			return LoadedIcon;
-		}
-	}
-
-	return nullptr;
-}
-
-float ATHPlayerController::ResolveItemCoolTime(const FName& ItemID) const
-{
-
-	if (ATHItemDataManager* DM = Cast<ATHItemDataManager>(
-		UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass())))
-	{
-		const FTHItemData* ItemData = DM->GetItemDataByRow(ItemID);
-		if (!ItemData)
-		{
-			return 0;
-		}
-		
-		return ItemData->CoolTime;
-	}
-	return 0;
-}
-
 #pragma endregion

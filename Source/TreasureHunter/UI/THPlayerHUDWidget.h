@@ -12,7 +12,33 @@ class UHorizontalBox;
 class USizeBox;
 class UAbilitySystemComponent;
 class UTHAttributeSet;
+class UUserWidget;
 struct FOnAttributeChangeData;
+
+UENUM()
+enum class EBuffKind : uint8
+{
+	Speed = 0,
+	Jump = 1
+};
+
+USTRUCT()
+struct FBuffBar
+{
+	GENERATED_BODY()
+
+	UPROPERTY() TArray<TObjectPtr<UImage>> Segs;
+	int32  BaseLevel = 1;
+	int32  AddLevel = 0;
+	int32  FinalLevel = 0;
+
+	float  BaseValue = 0.f; // Speed: SpeedBaseValue, Jump: JumpBaseValue
+	float  Step = 0.f; // Speed: SpeedStep, Jump: JumpStep
+
+	FTimerHandle BlinkTimer;
+	FTimerHandle EndHandle;
+	bool bBlinkOn = false;
+};
 
 UCLASS()
 class TREASUREHUNTER_API UTHPlayerHUDWidget : public UUserWidget
@@ -25,6 +51,7 @@ public:
 	void BindToAbilitySystem(UAbilitySystemComponent* AbilitySystem, const UTHAttributeSet* InAttr);
 
 protected:
+	virtual void NativeConstruct() override;
 	virtual void NativeDestruct() override;
 
 private:
@@ -76,67 +103,92 @@ private:
 
 #pragma endregion
 
-#pragma region Speed
-
+#pragma region Status Bars (Speed / Jump)
 public:
-	UFUNCTION(BlueprintCallable, Category = "HUD")
-	void SetSpeedLevel(int32 InLevel);
+	UFUNCTION(BlueprintCallable, Category = "HUD|Stat")
+	void StartSpeedDurationBuff(float DurationSec);
+	UFUNCTION(BlueprintCallable, Category = "HUD|Stat")
+	void StartJumpDurationBuff(float DurationSec);
 
 private:
-	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
-	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
-
-	void RefreshSpeedLevel();
-	void RebuildSpeedSegmentsCache();
-	void ApplySpeedLevelVisuals();
+	void StartDurationBuff(EBuffKind Kind, float DurationSec);
 
 protected:
-	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
-	UHorizontalBox* SpeedBar;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional))
+	UHorizontalBox* StatusBar;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional)) UImage* SpeedBar01;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional)) UImage* SpeedBar02;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional)) UImage* JumpBar01;
+	UPROPERTY(BlueprintReadOnly, meta = (BindWidgetOptional)) UImage* JumpBar02;
 
 private:
-	int32  SpeedLevel;
-	UPROPERTY(EditAnywhere, Category = "HUD|Speed")
-	int32  SpeedMaxLevel;
+	FBuffBar Bars[2];
+
+	UPROPERTY(EditAnywhere, Category = "HUD|Stat|Speed")
+	float SpeedBaseValue;
+	UPROPERTY(EditAnywhere, Category = "HUD|Stat|Speed")
 	float SpeedStep;
+	UPROPERTY(EditAnywhere, Category = "HUD|Stat|Jump")
+	float JumpBaseValue;
+	UPROPERTY(EditAnywhere, Category = "HUD|Stat|Jump")
+	float JumpStep;
 
-	UPROPERTY()
-	TArray<UImage*> SpeedSegments;
-	UPROPERTY(EditDefaultsOnly, Category = "HUD|Speed")
-	UTexture2D* SpeedActiveImage;
-	UPROPERTY(EditDefaultsOnly, Category = "HUD|Speed")
-	UTexture2D* SpeedInactiveImage;
+	UPROPERTY(EditAnywhere, Category = "HUD|Stat|Buff")
+	float BlinkThresholdSec = 3.f;
+	UPROPERTY(EditAnywhere, Category = "HUD|Stat|Buff")
+	float BlinkIntervalSec = 0.2f;
 
+	void CacheStatusBars();
+
+	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnJumpAttrChanged(float NewJumpValue);
+
+	int32 ComputeLevel(float Current, float Base, float Step) const; // 0~2
+	void Recompute(EBuffKind Kind);
+	void ApplyVisuals(EBuffKind Kind);
+	void SetSegmentOn(UImage* Img, bool bOn);
+
+	int32 GetTopBuffedSegIdx(const FBuffBar& B, int32 BaseLevel) const;
+	void BeginBlink(EBuffKind Kind, float DelaySec);
+	void ToggleBlink(EBuffKind Kind);
+	void EndBlink(EBuffKind Kind);
 #pragma endregion
 
 #pragma region Inventory
 public:
 	UFUNCTION(BlueprintCallable, Category = "HUD|Item")
 	void SetInventoryIcon(int32 SlotIndex, UTexture2D* Icon);
+
 	UFUNCTION(BlueprintCallable, Category = "HUD|Item")
-	void ClearInventoryIcon(int32 SlotIndex, float CoolTime);
+	void ShowTopRightBuffIcon(UTexture2D* Icon, float DurationSec);
 
-private:
-	UFUNCTION(Category = "HUD|Item")
-	void StartCoolTimeTimer(float Duration);
-
-	void UpdateCoolTime();
+	UFUNCTION(BlueprintCallable, Category = "HUD|Item")
+	void ShowFullScreenOverlay(TSubclassOf<UUserWidget> OverlayClass, float DurationSec);
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
-	UImage* CoolTimeProgressBar;
+	UImage* DurationProgressBar;
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
+	UImage* TopRightBuffIcon;
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
+	UImage* TopRightBuffIconBG;
+
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
 	UImage* Inventory001Icon;
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
 	UImage* Inventory002Icon;
-	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
-	UImage* InventoryCoolTimeIcon;
 
 private:
-	FTimerHandle CoolTimeTimer;
-	float CoolTimeDuration;
-	float CoolTimeElapsed;
+	FTimerHandle DurationTimerHandle;
+	float DurationTotalSec;
+	float DurationElapsedSec;
 
+	UPROPERTY() 
+	UUserWidget* ActiveDebuffOverlay = nullptr;
+
+	void TickDurationTimer();
+	void StopDurationTimer();
 #pragma endregion
 
 

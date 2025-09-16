@@ -6,6 +6,7 @@
 #include "AbilitySystemComponent.h"
 #include "AttributeSet/THAttributeSet.h"
 #include "GameplayEffectTypes.h"
+#include "Blueprint/WidgetTree.h"
 #include "Components/HorizontalBox.h"
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
@@ -13,10 +14,15 @@
 #include "TimerManager.h"
 #include "Game/GameFlowTags.h"
 
+DEFINE_LOG_CATEGORY_STATIC(LogTHHUD, Log, All);
+
+#pragma region General
 UTHPlayerHUDWidget::UTHPlayerHUDWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
+	// --- ASC / Attr ---
 	, Attr(nullptr)
 	, AbilitySystem(nullptr)
+	// --- Stamina ---
 	, StaminaBaseWidth(500.f)
 	, StaminaInitialMax(100.f)
 	, StaminaDisplayedPercent(1.f)
@@ -26,14 +32,71 @@ UTHPlayerHUDWidget::UTHPlayerHUDWidget(const FObjectInitializer& ObjectInitializ
 	, bIsAnimatingStamina(false)
 	, AnimToPercent(1.f)
 	, AnimSpeedCurrent(1.f)
-	, SpeedLevel(1)
-	, SpeedMaxLevel(5)
-	, SpeedStep(50.f)
-	, SpeedActiveImage(nullptr)
-	, SpeedInactiveImage(nullptr)
 	, bIsSprinting(false)
+	// --- Status Bars (Speed/Jump) ---
+	, SpeedBaseValue(200.f)
+	, SpeedStep(200.f)
+	, JumpBaseValue(420.f)
+	, JumpStep(100.f)
+	// --- Blink ---
+	, BlinkThresholdSec(3.f)
+	, BlinkIntervalSec(0.5f)
+	// --- Inventory ---
+	, DurationTotalSec(0.f)
+	, DurationElapsedSec(0.f)
+	, ActiveDebuffOverlay(nullptr)
 {
 }
+
+void UTHPlayerHUDWidget::NativeConstruct()
+{
+	Super::NativeConstruct();
+	CacheStatusBars();
+
+	if (TopRightBuffIcon)
+	{
+		TopRightBuffIcon->SetVisibility(ESlateVisibility::Hidden);
+	}
+	if (TopRightBuffIconBG)
+	{
+		TopRightBuffIconBG->SetVisibility(ESlateVisibility::Hidden);
+	}
+
+	if (DurationProgressBar)
+	{
+		if (UMaterialInstanceDynamic* MID = DurationProgressBar->GetDynamicMaterial())
+		{
+			MID->SetScalarParameterValue(TEXT("Percentage"), 0.f);
+		}
+		DurationProgressBar->SetRenderOpacity(0.f);
+	}
+
+	if (Inventory001Icon) { Inventory001Icon->SetVisibility(ESlateVisibility::Hidden); }
+	if (Inventory002Icon) { Inventory002Icon->SetVisibility(ESlateVisibility::Hidden); }
+
+	Recompute(EBuffKind::Speed);
+	Recompute(EBuffKind::Jump);
+}
+
+void UTHPlayerHUDWidget::NativeDestruct()
+{
+	StopStaAnimTimer();
+	GetWorld()->GetTimerManager().ClearTimer(Bars[(int)EBuffKind::Speed].BlinkTimer);
+	GetWorld()->GetTimerManager().ClearTimer(Bars[(int)EBuffKind::Speed].EndHandle);
+	GetWorld()->GetTimerManager().ClearTimer(Bars[(int)EBuffKind::Jump].BlinkTimer);
+	GetWorld()->GetTimerManager().ClearTimer(Bars[(int)EBuffKind::Jump].EndHandle);
+	GetWorld()->GetTimerManager().ClearTimer(DurationTimerHandle);
+
+	if (ActiveDebuffOverlay && ActiveDebuffOverlay->IsInViewport())
+	{
+		ActiveDebuffOverlay->RemoveFromParent();
+		ActiveDebuffOverlay = nullptr;
+	}
+
+	UnbindAttributeDelegates();
+	Super::NativeDestruct();
+}
+
 
 void UTHPlayerHUDWidget::BindToAbilitySystem(UAbilitySystemComponent* InASC, const UTHAttributeSet* InAttr)
 {
@@ -48,9 +111,8 @@ void UTHPlayerHUDWidget::BindToAbilitySystem(UAbilitySystemComponent* InASC, con
 	if (StaminaBar) StaminaBar->SetPercent(StaminaDisplayedPercent);
 
 	RefreshStaminaGeometry();
-	RebuildSpeedSegmentsCache();
-	RefreshSpeedLevel();
-	ApplySpeedLevelVisuals();
+	Recompute(EBuffKind::Speed);
+	Recompute(EBuffKind::Jump);
 
 	BindAttributeDelegates();
 
@@ -111,13 +173,7 @@ void UTHPlayerHUDWidget::UnbindAttributeDelegates()
 	AbilitySystem = nullptr;
 	Attr = nullptr;
 }
-
-void UTHPlayerHUDWidget::NativeDestruct()
-{
-	StopStaAnimTimer();
-	UnbindAttributeDelegates();
-	Super::NativeDestruct();
-}
+#pragma endregion
 
 #pragma region Stamina
 // ----------------------------------- Stamina -----------------------------------------------
@@ -249,7 +305,7 @@ void UTHPlayerHUDWidget::RefreshStaminaGeometry()
 	}
 	else
 	{
-		FWidgetTransform T = StaminaBar->RenderTransform;
+		FWidgetTransform T = StaminaBar->GetRenderTransform();
 		T.Scale = FVector2D(Scale, 1.f);
 		StaminaBar->SetRenderTransform(T);
 	}
@@ -261,160 +317,281 @@ void UTHPlayerHUDWidget::OnSprintingTagChanged(FGameplayTag Tag, int32 NewCount)
 }
 #pragma endregion
 
-#pragma region Speed
-// ----------------------------------- Speed -----------------------------------------------
+#pragma region Status Bars (Speed / Jump)
+// ----------------------------------- General -----------------------------------------------
+void UTHPlayerHUDWidget::CacheStatusBars()
+{
+	Bars[(int)EBuffKind::Speed].Segs.Empty();
+	Bars[(int)EBuffKind::Speed].Segs.Add(SpeedBar01);
+	Bars[(int)EBuffKind::Speed].Segs.Add(SpeedBar02);
+	Bars[(int)EBuffKind::Speed].BaseValue = SpeedBaseValue;
+	Bars[(int)EBuffKind::Speed].Step = SpeedStep;
+
+	Bars[(int)EBuffKind::Jump].Segs.Empty();
+	Bars[(int)EBuffKind::Jump].Segs.Add(JumpBar01);
+	Bars[(int)EBuffKind::Jump].Segs.Add(JumpBar02);
+	Bars[(int)EBuffKind::Jump].BaseValue = JumpBaseValue;
+	Bars[(int)EBuffKind::Jump].Step = JumpStep;
+
+	for (UImage* Img : Bars[(int)EBuffKind::Speed].Segs) SetSegmentOn(Img, false);
+	for (UImage* Img : Bars[(int)EBuffKind::Jump].Segs) SetSegmentOn(Img, false);
+}
+
+int32 UTHPlayerHUDWidget::ComputeLevel(float Current, float Base, float Step) const
+{
+	if (Step <= 0.f) return 0;
+	if (Current < Base)
+	{
+		return 0;
+	}
+
+	const float Delta = FMath::Max(0.f, Current - Base);
+	const int32 Lvl = 1 + int32(Delta / Step);
+	return FMath::Clamp(Lvl, 0, 2);
+}
+
+// ----------------------------------- OnChanged -----------------------------------------------
 void UTHPlayerHUDWidget::OnWalkSpeedChanged(const FOnAttributeChangeData& Data)
 {
-	RefreshSpeedLevel();
-	ApplySpeedLevelVisuals();
+	Recompute(EBuffKind::Speed);
 }
 
 void UTHPlayerHUDWidget::OnSprintSpeedChanged(const FOnAttributeChangeData& Data)
 {
-	RefreshSpeedLevel();
-	ApplySpeedLevelVisuals();
+	Recompute(EBuffKind::Speed);
 }
 
-void UTHPlayerHUDWidget::RefreshSpeedLevel()
+void UTHPlayerHUDWidget::OnJumpAttrChanged(float NewJumpValue)
 {
-	if (!Attr) return;
-	const float Walk = Attr->GetWalkSpeed();
-	const int32 Delta = FMath::Max(0, Walk - 300);
-	SpeedLevel = FMath::Clamp(1 + (Delta / SpeedStep), 1, SpeedMaxLevel);
+	auto& B = Bars[(int)EBuffKind::Jump];
+	B.BaseLevel = ComputeLevel(NewJumpValue, B.BaseValue, B.Step);
+	Recompute(EBuffKind::Jump);
 }
 
-void UTHPlayerHUDWidget::SetSpeedLevel(int32 InLevel)
+// ----------------------------------- Visuals -----------------------------------------------
+void UTHPlayerHUDWidget::Recompute(EBuffKind Kind)
 {
-	SpeedLevel = FMath::Clamp(InLevel, 1, SpeedMaxLevel);
-	ApplySpeedLevelVisuals();
-}
+	auto& B = Bars[(int)Kind];
 
-void UTHPlayerHUDWidget::RebuildSpeedSegmentsCache()
-{
-	SpeedSegments.Reset();
-
-	if (!SpeedBar) return;
-
-	const int32 N = SpeedBar->GetChildrenCount();
-	for (int32 i = 0; i < N; ++i)
+	if (Attr && Kind == EBuffKind::Speed)
 	{
-		if (UWidget* Child = SpeedBar->GetChildAt(i))
-		{
-			if (UImage* Img = Cast<UImage>(Child))
-			{
-				SpeedSegments.Add(Img);
-			}
-		}
+		const float Walk = Attr->GetWalkSpeed();
+		B.BaseLevel = ComputeLevel(Walk, B.BaseValue, B.Step);
 	}
+
+	/*if (Attr && Kind == EBuffKind::Jump) {} */
+
+	B.FinalLevel = FMath::Clamp(B.BaseLevel + B.AddLevel, 0, 2);
+	ApplyVisuals(Kind);
 }
 
-void UTHPlayerHUDWidget::ApplySpeedLevelVisuals()
+void UTHPlayerHUDWidget::ApplyVisuals(EBuffKind Kind)
 {
-	const int32 NumSeg = SpeedSegments.Num();
-	if (NumSeg == 0) return;
+	auto& B = Bars[(int)Kind];
 
-	const int32 VisibleActive = FMath::Clamp(SpeedLevel, 0, NumSeg);
+	const bool L0 = (B.FinalLevel >= 1);
+	const bool L1 = (B.FinalLevel >= 2);
 
-	for (int32 i = 0; i < NumSeg; ++i)
+	const bool bBlinking = (GetWorld() && GetWorld()->GetTimerManager().IsTimerActive(B.BlinkTimer));
+	const int32 BlinkIdx = bBlinking ? GetTopBuffedSegIdx(B, B.BaseLevel) : INDEX_NONE;
+
+	if (B.Segs.IsValidIndex(0) && BlinkIdx != 0) SetSegmentOn(B.Segs[0], L0);
+	if (B.Segs.IsValidIndex(1) && BlinkIdx != 1) SetSegmentOn(B.Segs[1], L1);
+}
+
+void UTHPlayerHUDWidget::SetSegmentOn(UImage* Img, bool bOn)
+{
+	if (!Img) return;
+	Img->SetRenderOpacity(bOn ? 1.f : 0.f);
+	Img->SetVisibility(ESlateVisibility::Visible);
+}
+
+// ----------------------------------- Blink -----------------------------------------------
+int32 UTHPlayerHUDWidget::GetTopBuffedSegIdx(const FBuffBar& B, int32 BaseLevel) const
+{
+	if (B.AddLevel <= 0) return INDEX_NONE;
+	const int32 FirstBuffIdx = FMath::Clamp(BaseLevel, 0, 2);
+	const int32 LastBuffIdx = FMath::Clamp(FirstBuffIdx + B.AddLevel - 1, 0, 1);
+	return LastBuffIdx;
+}
+
+void UTHPlayerHUDWidget::BeginBlink(EBuffKind Kind, float DelaySec)
+{
+	if (!GetWorld()) return;
+	auto& TM = GetWorld()->GetTimerManager();
+	auto& B = Bars[(int)Kind];
+
+	if (DelaySec <= 0.f)
 	{
-		UImage* Img = SpeedSegments[i];
-		if (!Img) continue;
-
-		const bool bActive = (i < VisibleActive);
-		UTexture2D* Tex = bActive ? SpeedActiveImage : SpeedInactiveImage;
-
-		if (Tex)
+		if (!TM.IsTimerActive(B.BlinkTimer))
 		{
-			Img->SetBrushFromTexture(Tex, true);
-		}
+			B.bBlinkOn = false;
 
-		FSlateBrush Brush = Img->Brush;
-		Brush.DrawAs = ESlateBrushDrawType::Image;
-		Brush.ImageSize = FVector2D(70.f, 40.f);
-		Img->SetBrush(Brush);
+			FTimerDelegate D;
+			D.BindLambda([this, Kind]()
+				{
+					ToggleBlink(Kind);
+				});
+			TM.SetTimer(B.BlinkTimer, D, BlinkIntervalSec, true);
+		}
+		return;
 	}
+
+	FTimerHandle Tmp;
+	TM.SetTimer(Tmp, [this, Kind]() { BeginBlink(Kind, 0.f); }, DelaySec, false);
+}
+
+void UTHPlayerHUDWidget::ToggleBlink(EBuffKind Kind)
+{
+	auto& B = Bars[(int)Kind];
+	const int32 SegIdx = GetTopBuffedSegIdx(B, B.BaseLevel);
+	if (!B.Segs.IsValidIndex(SegIdx)) { EndBlink(Kind); return; }
+
+	B.bBlinkOn = !B.bBlinkOn;
+	SetSegmentOn(B.Segs[SegIdx], B.bBlinkOn);
+}
+
+void UTHPlayerHUDWidget::EndBlink(EBuffKind Kind)
+{
+	if (!GetWorld()) return;
+	auto& B = Bars[(int)Kind];
+	GetWorld()->GetTimerManager().ClearTimer(B.BlinkTimer);
+	B.bBlinkOn = false;
+	ApplyVisuals(Kind);
 }
 #pragma endregion
 
 #pragma region Inveontory
-
+// ----------------------------------- Inventory Icon -----------------------------------------------
 void UTHPlayerHUDWidget::SetInventoryIcon(int32 SlotIndex, UTexture2D* Icon)
 {
-	if (!Icon) return;
+	UImage* Target = (SlotIndex == 2) ? Inventory002Icon : Inventory001Icon;
+	if (!Target) return;
+
+	if (!Icon)
+	{
+		Target->SetVisibility(ESlateVisibility::Hidden);
+		Target->SetBrush(FSlateBrush());
+		return;
+	}
 
 	FSlateBrush Brush;
 	Brush.SetResourceObject(Icon);
 	Brush.ImageSize = FVector2D(80.f, 80.f);
-
-	if (SlotIndex == 1)
-	{
-		if (Inventory001Icon)
-		{
-			Inventory001Icon->SetVisibility(ESlateVisibility::Visible);
-			Inventory001Icon->SetBrush(Brush);
-		}
-	}
-	else if (SlotIndex == 2)
-	{
-		if (Inventory002Icon)
-		{
-			Inventory002Icon->SetVisibility(ESlateVisibility::Visible);
-			Inventory002Icon->SetBrush(Brush);
-		}
-	}
+	Target->SetBrush(Brush);
+	Target->SetVisibility(ESlateVisibility::Visible);
 }
 
-void UTHPlayerHUDWidget::ClearInventoryIcon(int32 SlotIndex, float CoolTime)
+// ----------------------------------- Start Duration Buff -----------------------------------------------
+void UTHPlayerHUDWidget::StartSpeedDurationBuff(float DurationSec)
 {
-	UImage* TargetIcon = nullptr;
-	(SlotIndex == 1) ? TargetIcon = Inventory001Icon : TargetIcon = Inventory002Icon;
-
-	if (TargetIcon)
-	{
-		if (InventoryCoolTimeIcon)
-		{
-			InventoryCoolTimeIcon->SetVisibility(ESlateVisibility::Visible);
-			InventoryCoolTimeIcon->SetBrush(TargetIcon->Brush);
-			TargetIcon->SetBrush(FSlateBrush());
-			TargetIcon->SetVisibility(ESlateVisibility::Hidden);
-		}
-		StartCoolTimeTimer(CoolTime);
-	}
+	StartDurationBuff(EBuffKind::Speed, DurationSec);
 }
 
-void UTHPlayerHUDWidget::StartCoolTimeTimer(float Duration)
+void UTHPlayerHUDWidget::StartJumpDurationBuff(float DurationSec)
 {
-	if (!CoolTimeProgressBar) return;
-	
-	(Duration <= 0.5f) ? CoolTimeDuration = 0.5f : CoolTimeDuration = Duration;
-	CoolTimeElapsed = 0.f;
-
-	CoolTimeProgressBar->SetRenderOpacity(1.f);
-	GetWorld()->GetTimerManager().SetTimer(
-		CoolTimeTimer, this, &UTHPlayerHUDWidget::UpdateCoolTime, 0.02f, true
-	);
+	StartDurationBuff(EBuffKind::Jump, DurationSec);
 }
 
-void UTHPlayerHUDWidget::UpdateCoolTime()
+void UTHPlayerHUDWidget::StartDurationBuff(EBuffKind Kind, float DurationSec)
 {
-	CoolTimeElapsed += 0.02f;
-	float Percent = FMath::Clamp(CoolTimeElapsed / CoolTimeDuration, 0.f, 1.f);
+	if (!GetWorld()) return;
+	auto& TM = GetWorld()->GetTimerManager();
+	auto& B = Bars[(int)Kind];
 
-	if (CoolTimeProgressBar)
-	{
-		CoolTimeProgressBar->GetDynamicMaterial()->SetScalarParameterValue(TEXT("Percentage"), Percent);
-	}
+	TM.ClearTimer(B.EndHandle);
+	EndBlink(Kind);
 
-	if (Percent >= 1.f)
-	{
-		GetWorld()->GetTimerManager().ClearTimer(CoolTimeTimer);
-		if (InventoryCoolTimeIcon)
+	B.AddLevel = FMath::Clamp(B.AddLevel + 1, 0, 2);
+	Recompute(Kind);
+	BeginBlink(Kind, FMath::Max(0.f, DurationSec - BlinkThresholdSec));
+
+	TM.SetTimer(B.EndHandle, [this, Kind]()
 		{
-			InventoryCoolTimeIcon->SetVisibility(ESlateVisibility::Hidden);
-		}
+			auto& B2 = Bars[(int)Kind];
+			B2.AddLevel = FMath::Max(0, B2.AddLevel - 1);
+			Recompute(Kind);
+			EndBlink(Kind);
+		}, FMath::Max(0.05f, DurationSec), false);
+}
 
-		CoolTimeProgressBar->SetRenderOpacity(0.f);
+// ----------------------------------- TopRightBuffIcon -----------------------------------------------
+void UTHPlayerHUDWidget::ShowTopRightBuffIcon(UTexture2D* Icon, float DurationSec)
+{
+	if (!TopRightBuffIcon || !DurationProgressBar || !GetWorld() || !Icon) return;
+
+	FSlateBrush B;
+	B.SetResourceObject(Icon);
+	B.ImageSize = FVector2D(64.f, 64.f);
+	TopRightBuffIcon->SetBrush(B);
+	TopRightBuffIcon->SetVisibility(ESlateVisibility::Visible);
+	TopRightBuffIconBG->SetVisibility(ESlateVisibility::Visible);
+
+	DurationTotalSec = FMath::Max(0.05f, DurationSec);
+	DurationElapsedSec = 0.f;
+
+	if (auto* MID = DurationProgressBar->GetDynamicMaterial())
+		MID->SetScalarParameterValue(TEXT("Percentage"), 0.f);
+	DurationProgressBar->SetRenderOpacity(1.f);
+
+	auto& TM = GetWorld()->GetTimerManager();
+	TM.ClearTimer(DurationTimerHandle);
+	TM.SetTimer(DurationTimerHandle, this, &ThisClass::TickDurationTimer, 0.02f, true);
+}
+
+void UTHPlayerHUDWidget::TickDurationTimer()
+{
+	DurationElapsedSec += 0.02f;
+	const float P = FMath::Clamp(DurationElapsedSec / FMath::Max(0.01f, DurationTotalSec), 0.f, 1.f);
+
+	if (DurationProgressBar)
+		if (auto* MID = DurationProgressBar->GetDynamicMaterial())
+			MID->SetScalarParameterValue(TEXT("Percentage"), P);
+
+	if (P >= 1.f)
+	{
+		if (GetWorld())
+		{
+			GetWorld()->GetTimerManager().ClearTimer(DurationTimerHandle);
+		}
+		if (TopRightBuffIcon)     TopRightBuffIcon->SetVisibility(ESlateVisibility::Hidden);
+		if (TopRightBuffIconBG)	  TopRightBuffIconBG->SetVisibility(ESlateVisibility::Hidden);
+		if (DurationProgressBar)  DurationProgressBar->SetRenderOpacity(0.f);
 	}
 }
 
+void UTHPlayerHUDWidget::StopDurationTimer()
+{
+	if (!GetWorld()) return;
+	GetWorld()->GetTimerManager().ClearTimer(DurationTimerHandle);
+	if (DurationProgressBar)
+		DurationProgressBar->SetRenderOpacity(0.f);
+}
+
+// ----------------------------------- Full Screen Overlay -----------------------------------------------
+void UTHPlayerHUDWidget::ShowFullScreenOverlay(TSubclassOf<UUserWidget> OverlayClass, float DurationSec)
+{
+	if (!OverlayClass || !GetWorld()) return;
+
+	if (ActiveDebuffOverlay && ActiveDebuffOverlay->IsInViewport())
+	{
+		ActiveDebuffOverlay->RemoveFromParent();
+		ActiveDebuffOverlay = nullptr;
+	}
+
+	ActiveDebuffOverlay = CreateWidget<UUserWidget>(GetWorld(), OverlayClass);
+	if (ActiveDebuffOverlay)
+	{
+		ActiveDebuffOverlay->AddToViewport(INT_MAX);
+		FTimerHandle Tmp;
+		GetWorld()->GetTimerManager().SetTimer(Tmp, [this]()
+			{
+				if (ActiveDebuffOverlay)
+				{
+					ActiveDebuffOverlay->RemoveFromParent();
+					ActiveDebuffOverlay = nullptr;
+				}
+			}, FMath::Max(0.05f, DurationSec), false);
+	}
+}
 #pragma endregion
