@@ -14,6 +14,7 @@ UTHSprintAbility::UTHSprintAbility()
 
 	AbilityTags.AddTag(TAG_Ability_Sprint);
 	ActivationOwnedTags.AddTag(TAG_State_Movement_Sprinting);
+	ActivationBlockedTags.AddTag(TAG_Status_State_Mantling);
 	ActivationBlockedTags.AddTag(TAG_Status_Stamina_Empty);
 }
 
@@ -57,7 +58,7 @@ void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 	
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
 
-	PlayerCharacter->bIsSprinting = true;	//추가
+	PlayerCharacter->bIsSprinting = true;
 	
 	PlayerCharacter->GetCharacterMovement()->MaxWalkSpeed = PlayerCharacter->GetSprintSpeed();
 	
@@ -102,7 +103,7 @@ void UTHSprintAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 		
 		if (PlayerCharacter && ASC)
 		{
-			PlayerCharacter->bIsSprinting = false; //추가
+			PlayerCharacter->bIsSprinting = false;
 
 			PlayerCharacter->GetCharacterMovement()->MaxWalkSpeed = PlayerCharacter->GetWalkSpeed();
 			

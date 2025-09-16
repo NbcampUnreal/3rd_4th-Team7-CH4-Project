@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "GameFlowTags.h"
 
 // ----- Ability -----
@@ -13,10 +12,10 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Cooldown_Ability_Push, "Cooldown.Ability.Push
 
 // ----- Effect -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Effect_Stamina_Regen, "Effect.Stamina.Regen", "Stamina Regen");
-UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Effect_Stamina_Drain, "Effect.Stamina.Drain", "Stamina drain while sprint");
 
 // ----- Movement State -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_State_Movement_Sprinting, "State.Movement.Sprinting", "Sprinting state");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Status_State_Mantling, "Status.State.Mantling", "Mantling state");
 
 // ----- Status -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Status_Stamina_Empty, "Status.Stamina.Empty", "No stamina");

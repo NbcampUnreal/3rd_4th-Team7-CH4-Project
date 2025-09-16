@@ -358,5 +358,3 @@ void ATHPlayerCharacter::OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* Othe
 {
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("CapsuleHit")));
 }
-
-
