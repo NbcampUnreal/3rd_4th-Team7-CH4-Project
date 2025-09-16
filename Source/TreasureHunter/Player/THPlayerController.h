@@ -63,12 +63,14 @@ private:
 
 	UFUNCTION()
 	void HandleInventorySlotChanged(int32 SlotIndex, FName ItemID);
+
 	UFUNCTION()
-	void HandleItemCooldownClient(int32 SlotIndex, float Cooltime);
+	void HandleItemActivated(int32 SlotIndex, FName ItemID);
 
-	UTexture2D* ResolveItemIcon(const FName& ItemID) const;
+	UFUNCTION(Server, Reliable)
+	void Server_ApplyTargetOverlayToOpponent(FName ItemRow);
 
-	float ResolveItemCoolTime(const FName& ItemID) const;
-
+	UFUNCTION(Client, Reliable)
+	void Client_ShowTargetOverlay(FName ItemRow);
 #pragma endregion
 };
