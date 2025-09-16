@@ -17,10 +17,10 @@ struct FMantleInfo
 	FVector LedgeLocation;
 	
 	UPROPERTY(BlueprintReadOnly)
-	FVector TargetLocation;
-	
+	FTransform UpWarpTarget;
+
 	UPROPERTY(BlueprintReadOnly)
-	FRotator TargetRotation;
+	FTransform ForwardWarpTarget;
 	
 	UPROPERTY(BlueprintReadOnly)
 	TWeakObjectPtr<UPrimitiveComponent> TargetComponent;
@@ -39,17 +39,28 @@ public:
 	UAnimMontage* GetMantlingMontage() const { return MantlingMontage; }
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
+	virtual void BeginPlay() override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle")
 	TObjectPtr<UAnimMontage> MantlingMontage;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
-	float MantleTraceDistance = 60.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle Settings")
+	float MantleReachDistance = 70.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
-	float MinMantleHeight = 25.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle Settings")
+	float MinMantleHeight = 50.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Mantle")
-	float MaxMantleHeight = 250.f;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle Settings")
+	float MaxMantleHeight = 200.f;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle Settings")
+	float MantleForwardOffset = 50.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle Settings")
+	float UpWarpTargetInwardOffset = 5.f;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle Settings")
+	float FinalLandingHeightOffset = 88.f;
 
 private:
 	UPROPERTY(Transient)
@@ -57,6 +68,4 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UCharacterMovementComponent> OwnerMovementComponent;
-
-	virtual void BeginPlay() override;
 };

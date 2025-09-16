@@ -5,9 +5,9 @@
 #include "ParkourComponent/THParkourComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Game/GameFlowTags.h"
 #include "MotionWarpingComponent.h"
-#include "PlayerCharacter/THPlayerCharacter.h"
 
 UTHMantleAbility::UTHMantleAbility()
 {
@@ -15,7 +15,7 @@ UTHMantleAbility::UTHMantleAbility()
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 	
 	AbilityTags.AddTag(TAG_Ability_Mantle);
-	ActivationOwnedTags.AddTag(TAG_Ability_Mantle);
+	ActivationOwnedTags.AddTag(TAG_Status_State_Mantling);
 	ActivationBlockedTags.AddTag(TAG_Status_Stamina_Empty);
 }
 
@@ -55,7 +55,7 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
+	
 	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
 	
 	if (!PlayerCharacter)
@@ -64,6 +64,11 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		return;
 	}
 
+	if (UCapsuleComponent* Capsule = PlayerCharacter->GetCapsuleComponent())
+	{
+		Capsule->SetCollisionProfileName(FName("Mantling"));
+	}
+	
 	if (USpringArmComponent* SpringArm = PlayerCharacter->GetSpringArm())
 	{
 		SpringArm->bDoCollisionTest = false;
@@ -89,20 +94,28 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 		return;
 	}
-
+	
 	if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->MotionWarpingComponent)
 	{
-		const FName WarpTargetName = FName("MantleTarget"); 
-       
-		MotionWarpingComp->AddOrUpdateWarpTargetFromLocationAndRotation(
-		   WarpTargetName,
-		   MantleInfo.TargetLocation,
-		   MantleInfo.TargetRotation 
-		);
+		FMotionWarpingTarget UpWarpTargetParams;
+		UpWarpTargetParams.Name = FName("MantleUp");
+		UpWarpTargetParams.Location = MantleInfo.UpWarpTarget.GetLocation();
+		UpWarpTargetParams.Rotation = MantleInfo.UpWarpTarget.GetRotation().Rotator();
+		
+		MotionWarpingComp->AddOrUpdateWarpTarget(UpWarpTargetParams);
+		
+		FMotionWarpingTarget ForwardWarpTargetParams;
+		ForwardWarpTargetParams.Name = FName("MantleForward");
+		ForwardWarpTargetParams.Location = MantleInfo.ForwardWarpTarget.GetLocation();
+		ForwardWarpTargetParams.Rotation = MantleInfo.ForwardWarpTarget.GetRotation().Rotator();
+
+		MotionWarpingComp->AddOrUpdateWarpTarget(ForwardWarpTargetParams);
 	}
 	
-	UCharacterMovementComponent* CMC = PlayerCharacter->GetCharacterMovement();
-	CMC->SetMovementMode(MOVE_Flying);
+	if (UCharacterMovementComponent* CMC = PlayerCharacter->GetCharacterMovement())
+    {
+        CMC->SetMovementMode(MOVE_Flying);
+    }
 
 	UAnimMontage* MantleMontage = ParkourComponent->GetMantlingMontage();
 	if (UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, MantleMontage))
@@ -120,17 +133,21 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 
 void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	if (const FGameplayAbilityActorInfo* ActorInfo = GetCurrentActorInfo())
+	if (const FGameplayAbilityActorInfo* LocalActorInfo = GetCurrentActorInfo())
 	{
-		if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get()))
+		if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(LocalActorInfo->AvatarActor.Get()))
 		{
 			if (USpringArmComponent* SpringArm = PlayerCharacter->GetSpringArm())
 			{
 				SpringArm->bDoCollisionTest = true;
 			}
+
+			if (UCapsuleComponent* Capsule = PlayerCharacter->GetCapsuleComponent())
+			{
+				Capsule->SetCollisionProfileName(FName("Pawn"));
+			}
 		}
 	}
-	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 
