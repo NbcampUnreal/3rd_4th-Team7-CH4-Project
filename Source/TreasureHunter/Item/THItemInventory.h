@@ -10,6 +10,7 @@ class ATHItemDataManager;
 class UTexture2D;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventorySlotChanged, int32, SlotIndex, FName, ItemID);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventoryItemActivated, int32, SlotIndex, FName, ItemID);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class TREASUREHUNTER_API UTHItemInventory : public UActorComponent
@@ -19,47 +20,48 @@ class TREASUREHUNTER_API UTHItemInventory : public UActorComponent
 public:
 	UTHItemInventory();
 
-protected:
-	virtual void BeginPlay() override;
-
-public:	
-	UPROPERTY(ReplicatedUsing = OnRep_ItemSlot1)
-	FName ItemSlot1;
-	UPROPERTY(ReplicatedUsing = OnRep_ItemSlot2)
-	FName ItemSlot2;
-
-	/*UFUNCTION(Server, Reliable, WithValidation)
-	void Server_AddItem(FName NewItemID);*/
-
-	bool AddItem(FName NewItemID);
+	bool AddItem(FName NewItemRow);
 
 	UFUNCTION(Server, Reliable)
 	void Server_UseItem(int32 SlotIndex);
+	/*UFUNCTION(Server, Reliable, WithValidation)
+	void Server_AddItem(FName NewItemID);*/
 
-	void UseItem(int32 SlotIndex);
-
-	bool UseTimeCheck = false;
-
-	FTimerHandle UseTimerHandle;
-	void ResetUseTime();
-
-	
-	UPROPERTY()
-	TObjectPtr<ATHItemDataManager> ItemDataManager;
-
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	FName GetItemInSlot(int32 SlotIndex) const;
 
 	UPROPERTY(BlueprintAssignable, Category = "Inventory")
 	FOnInventorySlotChanged OnInventorySlotChanged;
 
-	UFUNCTION()
-	void OnRep_ItemSlot1(FName OldValue);
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	FOnInventoryItemActivated OnItemActivated;
+
+protected:
+	virtual void BeginPlay() override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UPROPERTY(ReplicatedUsing = OnRep_ItemSlot1)
+	FName ItemSlot1 = NAME_None;
+	UPROPERTY(ReplicatedUsing = OnRep_ItemSlot2)
+	FName ItemSlot2 = NAME_None;
 
 	UFUNCTION()
-	void OnRep_ItemSlot2(FName OldValue);
+	void OnRep_ItemSlot1();
 
-	UFUNCTION(BlueprintPure)
-	FName GetItemInSlot(int32 SlotIndex) const;
+	UFUNCTION()
+	void OnRep_ItemSlot2();
 
+	void UseItem(int32 SlotIndex);
+
+	UFUNCTION(Client, Reliable)
+	void Client_NotifyItemActivated(FName ItemRow, int32 SlotIndex);
+	
 private:
-	static void HandleSlotRep(UTHItemInventory* Self, int32 SlotIdx, FName OldVal, FName NewVal);
+	UPROPERTY()
+	TObjectPtr<ATHItemDataManager> ItemDataManager;
+
+	bool bUseTimeCheck = false;
+
+	FTimerHandle UseTimerHandle;
+	void ResetUseTime();
 };

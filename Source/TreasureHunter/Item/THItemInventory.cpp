@@ -1,83 +1,19 @@
 ﻿#include "Item/THItemInventory.h"
 #include "Item/THItemDataManager.h"
+#include "Item/THItemData.h"
+#include "PlayerCharacter/THPlayerCharacter.h"
+
 #include "Kismet/GameplayStatics.h"
 #include "AbilitySystemComponent.h"
-#include "GameFramework/Character.h"	
-#include "PlayerCharacter/THPlayerCharacter.h"
-#include "Abilities/GameplayAbility.h"
-#include "Item/THItemData.h"
-#include "UI/THPlayerHUDWidget.h"
-#include "GameFramework/HUD.h"
 #include "Net/UnrealNetwork.h"
-
-
-
+#include "TimerManager.h"
+#include "GameFramework/Actor.h"
 
 UTHItemInventory::UTHItemInventory()
 {
 	PrimaryComponentTick.bCanEverTick = false;
 	SetIsReplicatedByDefault(true);
 }
-
-void UTHItemInventory::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-
-	DOREPLIFETIME_CONDITION_NOTIFY(UTHItemInventory, ItemSlot1, COND_OwnerOnly, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UTHItemInventory, ItemSlot2, COND_OwnerOnly, REPNOTIFY_Always);
-}
-
-
-void UTHItemInventory::BeginPlay()
-{
-	Super::BeginPlay();
-}
-
-
-void UTHItemInventory::OnRep_ItemSlot1(FName OldValue)
-{
-	HandleSlotRep(this, 1, OldValue, ItemSlot1);
-}
-
-void UTHItemInventory::OnRep_ItemSlot2(FName OldValue)
-{
-	HandleSlotRep(this, 2, OldValue, ItemSlot2);
-}
-
-FName UTHItemInventory::GetItemInSlot(int32 SlotIndex) const
-{
-	return (SlotIndex == 2) ? ItemSlot2 : ItemSlot1;
-}
-
-//bool UTHItemInventory::Server_AddItem_Validate(FName NewItemID)
-//{
-//	return true;
-//}
-//
-//void UTHItemInventory::Server_AddItem_Implementation(FName NewItemID)
-//{
-//	AddItem(NewItemID);
-//}
-
-
-
-bool UTHItemInventory::AddItem(FName NewItemID)
-{
-	if (!GetOwner()->HasAuthority()) return false;
-
-	if (ItemSlot1.IsNone())
-	{
-		ItemSlot1 = NewItemID;
-		return true;
-	}
-	else if (ItemSlot2.IsNone())
-	{
-		ItemSlot2 = NewItemID;
-		return true;
-	}
-	return false;
-}
-
 
 void UTHItemInventory::Server_UseItem_Implementation(int32 SlotIndex)
 {
@@ -87,20 +23,69 @@ void UTHItemInventory::Server_UseItem_Implementation(int32 SlotIndex)
 	}
 }
 
+void UTHItemInventory::BeginPlay()
+{
+	Super::BeginPlay();
+
+	ItemDataManager = ATHItemDataManager::Get(GetWorld());
+}
+
+void UTHItemInventory::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(UTHItemInventory, ItemSlot1, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(UTHItemInventory, ItemSlot2, COND_OwnerOnly);
+}
+
+void UTHItemInventory::OnRep_ItemSlot1()
+{
+	OnInventorySlotChanged.Broadcast(1, ItemSlot1);
+}
+
+void UTHItemInventory::OnRep_ItemSlot2()
+{
+	OnInventorySlotChanged.Broadcast(2, ItemSlot2);
+}
+
+FName UTHItemInventory::GetItemInSlot(int32 SlotIndex) const
+{
+	return (SlotIndex == 2) ? ItemSlot2 : ItemSlot1;
+}
+
+bool UTHItemInventory::AddItem(FName NewItemID)
+{
+	if (!GetOwner()->HasAuthority()) return false;
+
+	if (ItemSlot1.IsNone())
+	{
+		ItemSlot1 = NewItemID;
+		OnInventorySlotChanged.Broadcast(1, ItemSlot1);
+		GetOwner()->ForceNetUpdate();
+		return true;
+	}
+	else if (ItemSlot2.IsNone())
+	{
+		ItemSlot2 = NewItemID;
+		OnInventorySlotChanged.Broadcast(2, ItemSlot2);
+		GetOwner()->ForceNetUpdate();
+		return true;
+	}
+	return false;
+}
 
 void UTHItemInventory::UseItem(int32 SlotIndex)
 {
-	if (!GetOwner()->HasAuthority())
+	if (!GetOwner() || !GetOwner()->HasAuthority())
 	{
 		return;
 	}
 
-	if (UseTimeCheck)
+	if (bUseTimeCheck)
 	{
 		return;
 	}
-	UseTimeCheck = true;
-	
+	bUseTimeCheck = true;
 	GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &UTHItemInventory::ResetUseTime, 0.3f, false);
 
 
@@ -119,50 +104,52 @@ void UTHItemInventory::UseItem(int32 SlotIndex)
 		return;
 	}
 
-	ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
-	if (IsValid(DataManager))
+	if (!ItemDataManager)
 	{
-		TSubclassOf<UGameplayAbility> AbilityToActivate = DataManager->GetItemAbilityClassByRow(ItemID);
-		if (AbilityToActivate)
+		ItemDataManager = ATHItemDataManager::Get(GetWorld());
+	}
+
+	const FTHItemData* ItemData = ItemDataManager ? ItemDataManager->GetItemDataByRow(ItemID) : nullptr;
+	if (!ItemData) return;
+
+	bool bActivated = false;
+	if (ItemData->GameplayAbilityClass)
+	{
+		if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetOwner()))
 		{
-			if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetOwner()))
+			if (UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent())
 			{
-				if (UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent())
-				{
-					FGameplayAbilitySpecHandle AbilityHandle = ASC->GiveAbility(FGameplayAbilitySpec(AbilityToActivate, 1, INDEX_NONE, PlayerCharacter));	
-					bool bSuccess = ASC->TryActivateAbility(AbilityHandle);
-					if (bSuccess)
-					{
-						if (SlotIndex == 2)
-						{
-							ItemSlot2 = NAME_None;
-						}
-						else
-						{
-							ItemSlot1 = NAME_None;
-						}
-					}
-				}
+				const FGameplayAbilitySpec Spec(ItemData->GameplayAbilityClass, 1, INDEX_NONE, PlayerCharacter);
+				const FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
+				bActivated = ASC->TryActivateAbility(Handle);
 			}
 		}
 	}
+	if (!bActivated) return;
+
+	Client_NotifyItemActivated(ItemID, SlotIndex);
+	if (SlotIndex == 2)
+	{
+		ItemSlot2 = NAME_None;
+		OnInventorySlotChanged.Broadcast(2, ItemSlot2);
+	}
+	else
+	{
+		ItemSlot1 = NAME_None;
+		OnInventorySlotChanged.Broadcast(1, ItemSlot1);
+	}
+
+	GetOwner()->ForceNetUpdate();
 }
+
+
+void UTHItemInventory::Client_NotifyItemActivated_Implementation(FName ItemRow, int32 SlotIndex)
+{
+	OnItemActivated.Broadcast(SlotIndex, ItemRow); // For UI 
+}
+
 
 void UTHItemInventory::ResetUseTime()
 {
-	UseTimeCheck = false;
-}
-
-void UTHItemInventory::HandleSlotRep(UTHItemInventory* Self, int32 SlotIdx, FName OldVal, FName NewVal)
-{
-	if (!OldVal.IsNone() && NewVal.IsNone())
-	{
-		Self->OnInventorySlotChanged.Broadcast(SlotIdx, OldVal);
-		return;
-	}
-
-	if (!NewVal.IsNone() && OldVal != NewVal)
-	{
-		Self->OnInventorySlotChanged.Broadcast(SlotIdx, NewVal);
-	}
+	bUseTimeCheck = false;
 }
