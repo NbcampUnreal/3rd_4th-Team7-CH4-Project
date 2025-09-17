@@ -10,6 +10,7 @@ class UImage;
 class UProgressBar;
 class UHorizontalBox;
 class USizeBox;
+class UWidgetAnimation;
 class UAbilitySystemComponent;
 class UTHAttributeSet;
 class UUserWidget;
@@ -191,16 +192,36 @@ private:
 	void StopDurationTimer();
 #pragma endregion
 
-
-
+#pragma region Climbing&Rank
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
 	UProgressBar* ClimbingBar;
+	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
+	UImage* OppositeClimbPoint;
+	UPROPERTY(Transient, BlueprintReadWrite, meta = (BindWidgetAnimOptional))
+	UWidgetAnimation* RabbitUpAnim;
 
-	UPROPERTY(meta = (BindWidget))
-	UImage* SecondPlayerIMG;
-	UPROPERTY(meta = (BindWidget))
-	UImage* FirstPlayerIMG;
+private:
+	bool bHasBunnyBeenWinning;
+	bool  bOppoBaseYInit = false;
+	float OppoBaseY;
+	float OppoTravelDeltaY;
+
+	FTimerHandle ClimbSmoothTimer;
+	float TargetSelfP;
+	float TargetOppoP;
+	float DisplayedSelfP, DisplayedOppoP;
+
+public:
+	void SetRankUIUpdate(bool bBunnyWinning);
+	void SetClimbUIUpdate(float SlefP, float OppoP);
+
+private:
+	void SetClimbSelfUpdate(float SelfP);
+	void SetClimbOppoUpdate(float OppoP);
+
+	void ClimbSmoothing();
+#pragma endregion
 
 private:
 	UPROPERTY()
@@ -214,5 +235,4 @@ private:
 	FDelegateHandle WalkSpeedChangedHandle;
 	FDelegateHandle SprintSpeedChangedHandle;
 	FDelegateHandle SprintingTagHandle;
-
 };

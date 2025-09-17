@@ -287,3 +287,25 @@ void ATHPlayerController::Client_ShowTargetOverlay_Implementation(FName ItemRow)
 	}
 }
 #pragma endregion
+
+#pragma region Climb&Rank
+
+void ATHPlayerController::Client_UpdateClimb_Implementation(uint8 QSelf, uint8 QOppo)
+{
+	const float SelfP = static_cast<float>(QSelf) / 255.f;
+	const float OppoP = static_cast<float>(QOppo) / 255.f;
+
+	if (PlayerHUD)
+	{
+		PlayerHUD->SetClimbUIUpdate(SelfP, OppoP);
+	}
+}
+
+void ATHPlayerController::Client_UpdateWinner_Implementation(bool bBunnyWinning)
+{
+	if (PlayerHUD)
+	{
+		PlayerHUD->SetRankUIUpdate(bBunnyWinning);
+	}
+}
+#pragma endregion

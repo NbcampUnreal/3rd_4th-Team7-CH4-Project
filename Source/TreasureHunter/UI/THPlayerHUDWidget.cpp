@@ -19,9 +19,6 @@ DEFINE_LOG_CATEGORY_STATIC(LogTHHUD, Log, All);
 #pragma region General
 UTHPlayerHUDWidget::UTHPlayerHUDWidget(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
-	// --- ASC / Attr ---
-	, Attr(nullptr)
-	, AbilitySystem(nullptr)
 	// --- Stamina ---
 	, StaminaBaseWidth(500.f)
 	, StaminaInitialMax(100.f)
@@ -45,6 +42,17 @@ UTHPlayerHUDWidget::UTHPlayerHUDWidget(const FObjectInitializer& ObjectInitializ
 	, DurationTotalSec(0.f)
 	, DurationElapsedSec(0.f)
 	, ActiveDebuffOverlay(nullptr)
+	// --- Climb ---
+	, bHasBunnyBeenWinning(false)
+	, OppoBaseY(0.f)
+	, OppoTravelDeltaY(-445.f)
+	, TargetSelfP(0.f)
+	, TargetOppoP(0.f)
+	, DisplayedSelfP(0.f)
+	, DisplayedOppoP(0.f)
+	// --- ASC / Attr ---
+	, Attr(nullptr)
+	, AbilitySystem(nullptr)
 {
 }
 
@@ -76,6 +84,8 @@ void UTHPlayerHUDWidget::NativeConstruct()
 
 	Recompute(EBuffKind::Speed);
 	Recompute(EBuffKind::Jump);
+
+	SetClimbUIUpdate(0.f, 0.f);
 }
 
 void UTHPlayerHUDWidget::NativeDestruct()
@@ -457,6 +467,7 @@ void UTHPlayerHUDWidget::EndBlink(EBuffKind Kind)
 	auto& B = Bars[(int)Kind];
 	GetWorld()->GetTimerManager().ClearTimer(B.BlinkTimer);
 	B.bBlinkOn = false;
+	B.AddLevel = 0;
 	ApplyVisuals(Kind);
 }
 #pragma endregion
@@ -592,6 +603,76 @@ void UTHPlayerHUDWidget::ShowFullScreenOverlay(TSubclassOf<UUserWidget> OverlayC
 					ActiveDebuffOverlay = nullptr;
 				}
 			}, FMath::Max(0.05f, DurationSec), false);
+	}
+}
+#pragma endregion
+
+#pragma region Climbing&Rank
+void UTHPlayerHUDWidget::SetRankUIUpdate(bool bBunnyWinning)
+{
+	if (bBunnyWinning && !bHasBunnyBeenWinning)
+	{
+		PlayAnimation(RabbitUpAnim);
+		bHasBunnyBeenWinning = true;
+	}
+	else if (!bBunnyWinning && bHasBunnyBeenWinning)
+	{
+		PlayAnimation(RabbitUpAnim, 0.f, 1, EUMGSequencePlayMode::Reverse);
+		bHasBunnyBeenWinning = false;
+	}
+}
+
+void UTHPlayerHUDWidget::SetClimbUIUpdate(float SelfP, float OppoP)
+{
+	TargetSelfP = FMath::Clamp(SelfP, 0.f, 1.f);
+	TargetOppoP = FMath::Clamp(OppoP, 0.f, 1.f);
+
+	if (ClimbingBar) SetClimbSelfUpdate(SelfP);
+	if (OppositeClimbPoint) SetClimbOppoUpdate(OppoP);
+
+	auto& TM = GetWorld()->GetTimerManager();
+	if (!TM.IsTimerActive(ClimbSmoothTimer))
+	{
+		TM.SetTimer(ClimbSmoothTimer, this, &ThisClass::ClimbSmoothing, 0.02f, true);
+	}
+}
+
+void UTHPlayerHUDWidget::SetClimbSelfUpdate(float SelfP)
+{
+	SelfP = FMath::Clamp(SelfP, 0.f, 1.f);
+	ClimbingBar->SetPercent(SelfP);
+}
+
+void UTHPlayerHUDWidget::SetClimbOppoUpdate(float OppoP)
+{
+	OppoP = FMath::Clamp(OppoP, 0.f, 1.f);
+	if (!bOppoBaseYInit)
+	{
+		OppoBaseY = OppositeClimbPoint->GetRenderTransform().Translation.Y;
+		bOppoBaseYInit = true;
+	}
+
+	const float NewY = OppoBaseY + (OppoTravelDeltaY * OppoP);
+
+	FWidgetTransform T = OppositeClimbPoint->GetRenderTransform();
+	T.Translation.Y = NewY;
+	OppositeClimbPoint->SetRenderTransform(T);
+}
+
+void UTHPlayerHUDWidget::ClimbSmoothing()
+{
+	const float dt = GetWorld() ? GetWorld()->GetDeltaSeconds() : 0.02f;
+
+	DisplayedSelfP = FMath::FInterpTo(DisplayedSelfP, TargetSelfP, dt, 3.f);
+	DisplayedOppoP = FMath::FInterpTo(DisplayedOppoP, TargetOppoP, dt, 3.f);
+
+	if (ClimbingBar) SetClimbSelfUpdate(DisplayedSelfP);
+	if (OppositeClimbPoint) SetClimbOppoUpdate(DisplayedOppoP);
+
+	if (FMath::IsNearlyEqual(DisplayedSelfP, TargetSelfP, 0.001f) &&
+		FMath::IsNearlyEqual(DisplayedOppoP, TargetOppoP, 0.001f))
+	{
+		GetWorld()->GetTimerManager().ClearTimer(ClimbSmoothTimer);
 	}
 }
 #pragma endregion
