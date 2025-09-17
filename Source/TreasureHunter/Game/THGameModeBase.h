@@ -14,6 +14,7 @@ struct FPlayerData
 
 class UUserWidget;
 class ATHTitlePlayerController;
+class ATHPlayerController;
 
 UCLASS()
 class TREASUREHUNTER_API ATHGameModeBase : public AGameModeBase
@@ -49,6 +50,8 @@ public:
 
 	void ManipluateController(bool Manipulate);
 
+	void OpenChangeLevel(FGameplayTag NextFlow);
+
 private:
 	FGameplayTag GetGameModeFlow() const;
 
@@ -60,25 +63,58 @@ private:
 
 	void StopMatch(bool Rematch);
 
+	void EnterTitlePlayerControllers(ATHTitlePlayerController* NewPlayer);
+
+	void GameStartPlayerControllers(ATHPlayerController* NewPlayer);
+
+	void StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad);
+
+	void OnLevelLoadedReady();
+
+	void CheckPlayReady();
+
 private:
 	FGameplayTag GameModeFlow;
 
-	int32 EnterPlayerNum;
+	int32 ServerEnterPlayerNum;
+
+	int32 CurMatchWaitPlayerNum;	
 
 	int32 MaxMatchPlayerNum;
 
-	int32 CurMatchWaitPlayerNum;	
+	int32 ReadyPlayerNum;
+
+	int32 StartPlayerNum;
 
 	FTimerHandle MatchTimerHandle;
 
 	float MatchWaitTime;
 
+	TSoftObjectPtr<UWorld> OpenLevelPath;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "LevelPath", Meta = (AllowPrivateAccess))
+	TSoftObjectPtr<UWorld> MainLevelPath;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "LevelPath", Meta = (AllowPrivateAccess))
+	TSoftObjectPtr<UWorld> PlayLevelPath;
+
+	UPROPERTY()
+	uint8 bIsLevelLoading : 1;
+	UPROPERTY()
+	uint8 bIsPlayer1Ready : 1;
+	UPROPERTY()
+	uint8 bIsPlayer2Ready : 1;
+
 public:
 	TArray<FPlayerData> LoginPlayerData;
+
+	TArray<FPlayerData> StartPlayerData;
 
 	TArray<APlayerController*> LoginPlayerControllers;
 
 	TArray<ATHTitlePlayerController*> MatchWaitPlayerControllers;
 
 	TArray<ATHTitlePlayerController*> MatchPlayerControllers;
+
+	TArray<ATHPlayerController*> StartPlayerControllers;
 };

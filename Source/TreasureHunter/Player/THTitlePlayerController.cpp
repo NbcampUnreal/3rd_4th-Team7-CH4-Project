@@ -3,6 +3,7 @@
 
 #include "UI/THMainMenuWidget.h"
 #include "UI/THMatchmakingWidget.h"
+#include "UI/THLoadingWidget.h"
 #include "Game/THGameStateBase.h"
 #include "THPlayerState.h"
 #include "Game/THGameModeBase.h"
@@ -11,11 +12,6 @@
 void ATHTitlePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (IsLocalController())
-	{
-		ShowMainMenu();
-	}
 
 	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 	{
@@ -68,6 +64,11 @@ void ATHTitlePlayerController::HandlePhaseChange(FGameplayTag NewPhase)
 	{
 		ShowMainMenu();
 	}
+	else if (NewPhase.MatchesTagExact(TAG_Game_Phase_Loading))
+	{
+		ShowLoadingWidget();
+		OpenPlayLevel();
+	}
 }
 
 void ATHTitlePlayerController::ShowMainMenu()
@@ -107,6 +108,44 @@ void ATHTitlePlayerController::ShowMatchmakingMenu()
 		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
 		SetInputMode(InputMode);
 		bShowMouseCursor = true;
+	}
+}
+
+void ATHTitlePlayerController::ShowLoadingWidget()
+{
+	if (!LoadingWidgetClass) return;
+	if (ActiveWidget)
+	{
+		ActiveWidget->RemoveFromParent();
+		ActiveWidget = nullptr;
+	}
+
+	ActiveWidget = CreateWidget<UUserWidget>(this, LoadingWidgetClass);
+	if (ActiveWidget)
+	{
+		ActiveWidget->AddToViewport();
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+		SetInputMode(InputMode);
+		bShowMouseCursor = false;
+	}
+}
+
+void ATHTitlePlayerController::OpenPlayLevel()
+{
+	UTHLoadingWidget* LoadingWidget = Cast<UTHLoadingWidget>(ActiveWidget);
+	if (IsValid(LoadingWidget))
+	{
+		LoadingWidget->SetOwningPlayer(nullptr);
+		Server_RequestLoadData(TAG_Game_Phase_Play);
+	}
+}
+void ATHTitlePlayerController::Server_RequestLoadData_Implementation(const FGameplayTag& NewPhase)
+{
+	LevelFlow = NewPhase;
+	if (auto* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
+	{
+		GM->OpenChangeLevel(LevelFlow);
 	}
 }
 #pragma endregion
@@ -156,7 +195,7 @@ void ATHTitlePlayerController::Server_StartMatchIfReady_Implementation()
 	ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr;
 	if (GS && GM && GS->AreSlotsLockedIn())
 	{
-		GS->SetPhase(TAG_Game_Phase_Loading);
+		GM->LoadGame();
 	}
 }
 #pragma endregion
