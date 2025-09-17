@@ -10,12 +10,17 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Ability_Push, "Ability.Push", "Push");
 // ----- CoolDown -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Cooldown_Ability_Push, "Cooldown.Ability.Push", "Push Cooldown");
 
+// ----- Event -----
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Event_Hit_Falling, "Event.Hit.Falling", "Character Hit when Falling ");
+
 // ----- Effect -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Effect_Stamina_Regen, "Effect.Stamina.Regen", "Stamina Regen");
 
 // ----- Movement State -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_State_Movement_Sprinting, "State.Movement.Sprinting", "Sprinting state");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Status_State_Mantling, "Status.State.Mantling", "Mantling state");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_State_Debuff_Stun, "State.Debuff.Stun", "Stun Debuff state");
+
 
 // ----- Status -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Status_Stamina_Empty, "Status.Stamina.Empty", "No stamina");

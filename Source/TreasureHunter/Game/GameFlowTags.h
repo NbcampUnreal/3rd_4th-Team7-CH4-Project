@@ -11,12 +11,16 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Push);
 // ----- CoolDown -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Cooldown_Ability_Push);
 
+// ----- Event -----
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Hit_Falling);
+
 // ----- Effect -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effect_Stamina_Regen);
 
 // ----- Movement State -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Sprinting);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Status_State_Mantling);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Debuff_Stun);
 
 // ----- Status -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Status_Stamina_Empty);
