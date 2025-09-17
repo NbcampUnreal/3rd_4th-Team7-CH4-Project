@@ -26,6 +26,8 @@ public:
 	UFUNCTION()
 	void HandlePhaseChange(FGameplayTag NewPhase);
 
+	void OpenPlayLevel();
+
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UUserWidget> MainMenuWidgetClass;
@@ -41,7 +43,6 @@ private:
 	void ShowMainMenu();
 	void ShowMatchmakingMenu();
 	void ShowLoadingWidget();
-	void OpenPlayLevel();
 	
 	FGameplayTag LevelFlow;
 

@@ -129,16 +129,17 @@ void ATHTitlePlayerController::ShowLoadingWidget()
 		SetInputMode(InputMode);
 		bShowMouseCursor = false;
 	}
+
+	UTHLoadingWidget* LoadingWidget = Cast<UTHLoadingWidget>(ActiveWidget);
+	if (LoadingWidget)
+	{
+		LoadingWidget->LoadProgressState();
+	}
 }
 
 void ATHTitlePlayerController::OpenPlayLevel()
 {
-	UTHLoadingWidget* LoadingWidget = Cast<UTHLoadingWidget>(ActiveWidget);
-	if (IsValid(LoadingWidget))
-	{
-		LoadingWidget->SetOwningPlayer(nullptr);
-		Server_RequestLoadData(TAG_Game_Phase_Play);
-	}
+	Server_RequestLoadData(TAG_Game_Phase_Play);
 }
 void ATHTitlePlayerController::Server_RequestLoadData_Implementation(const FGameplayTag& NewPhase)
 {
