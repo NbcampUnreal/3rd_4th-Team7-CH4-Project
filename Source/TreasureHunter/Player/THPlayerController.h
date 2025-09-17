@@ -73,4 +73,12 @@ private:
 	UFUNCTION(Client, Reliable)
 	void Client_ShowTargetOverlay(FName ItemRow);
 #pragma endregion
+
+#pragma region Climb&Rank
+public:
+	UFUNCTION(Client, Unreliable) // Activate when players start climbing
+	void Client_UpdateClimb(uint8 QSelf, uint8 QOppo);
+	UFUNCTION(Client, Reliable) // Always Active
+	void Client_UpdateWinner(bool bBunnyWinning);
+#pragma endregion
 };
