@@ -69,6 +69,12 @@ void ATHPlayerCharacter::PossessedBy(AController* NewController)
 	{
 		PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
 		BindToAttributeChanges();
+
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+		{
+			ASC->RegisterGameplayTagEvent(TAG_State_Debuff_Stun, EGameplayTagEventType::NewOrRemoved)
+			.AddUObject(this, &ATHPlayerCharacter::OnStunTagChanged);
+		}
 	}
 }
 
@@ -80,6 +86,12 @@ void ATHPlayerCharacter::OnRep_PlayerState()
 	{
 		PS->GetAbilitySystemComponent()->InitAbilityActorInfo(PS, this);
 		BindToAttributeChanges();
+
+		if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+		{
+			ASC->RegisterGameplayTagEvent(TAG_State_Debuff_Stun, EGameplayTagEventType::NewOrRemoved)
+			.AddUObject(this, &ATHPlayerCharacter::OnStunTagChanged);
+		}
 	}
 }
 
@@ -356,5 +368,34 @@ void ATHPlayerCharacter::OnSprintSpeedChanged(const FOnAttributeChangeData& Data
 void ATHPlayerCharacter::OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	FVector NormalImpulse, const FHitResult& Hit)
 {
-	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("CapsuleHit")));
+	if (ACharacter* OtherCharacter = Cast<ACharacter>(OtherActor))
+	{
+		if (GetCharacterMovement()->IsFalling())
+		{
+			if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+			{
+				FGameplayEventData EventData;
+				EventData.Instigator = this;
+				EventData.EventTag = TAG_Event_Hit_Falling;
+				EventData.TargetData.Add(new FGameplayAbilityTargetData_SingleTargetHit(Hit));
+				
+				ASC->HandleGameplayEvent(EventData.EventTag, &EventData);
+			}
+		}
+		
+	}
 }
+
+void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount)
+{
+	if (NewCount > 0)
+	{
+		DisableInput(GetController<APlayerController>());
+	}
+	else
+	{
+		EnableInput(GetController<APlayerController>());
+	}
+}
+
+
