@@ -390,12 +390,10 @@ void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount
 {
 	if (NewCount > 0)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, TEXT("Stun START!"));
 		DisableInput(GetController<APlayerController>());
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Green, TEXT("Stun END!"));
 		EnableInput(GetController<APlayerController>());
 	}
 }

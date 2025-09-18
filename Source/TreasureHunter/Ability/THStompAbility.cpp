@@ -57,7 +57,7 @@ void UTHStompAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 				- Headoffset;
 
 			FVector ImpactPoint = HitResult->ImpactPoint;
-			DrawDebugSphere(
+			/*DrawDebugSphere(
 				GetWorld(),
 				ImpactPoint,           // 위치
 				20.0f,                 // 반지름
@@ -76,12 +76,11 @@ void UTHStompAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 				2.0f,
 				0,
 				2.0f
-			);
+			);*/
 			
 			if (ImpactZ > CharacterZ)
 			{
 				PlayerCharacter->LaunchCharacter(StompJumpForce,false, true);
-				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("ImpactZ : %f , CharacterZ : %f"), ImpactZ, CharacterZ));
 
 				if (UAbilitySystemComponent* TargetASC = Cast<ATHPlayerCharacter>(OtherCharacter)->GetAbilitySystemComponent())
 				{
@@ -97,11 +96,6 @@ void UTHStompAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 						}
 					}
 				}
-			}
-			else
-			{
-				GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("ImpactZ : %f , CharacterZ : %f"), ImpactZ, CharacterZ));
-
 			}
 		}
 		
