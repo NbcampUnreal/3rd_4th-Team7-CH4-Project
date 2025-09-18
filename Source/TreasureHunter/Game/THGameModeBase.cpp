@@ -2,6 +2,8 @@
 #include "Game/THGameStateBase.h"
 #include "Player/THPlayerState.h"
 #include "Player/THTitlePlayerController.h"
+#include "Player/THPlayerController.h"
+#include "UI/THLoadingWidget.h"
 #include "Game/GameFlowTags.h"
 
 ATHGameModeBase::ATHGameModeBase()
@@ -15,26 +17,15 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	ATHTitlePlayerController* NewPlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
-	if (IsValid(NewPlayerController) && IsValid(NewPlayer->Player))
+	ATHTitlePlayerController* TitlePlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
+	ATHPlayerController* MatchPlayerController = Cast<ATHPlayerController>(NewPlayer);
+	if (IsValid(TitlePlayerController) && IsValid(NewPlayer->Player))
 	{
-		++EnterPlayerNum;
-		LoginPlayerControllers.Add(NewPlayerController);
-
-		UNetConnection* NewConnection = Cast<UNetConnection>(NewPlayer->Player);
-		FString Address;
-		if (IsValid(NewConnection))
-		{
-			Address = NewConnection->GetRemoteAddr()->ToString(false);
-		}
-		else
-		{
-			Logout(NewPlayer);
-			return;
-		}
-
-		FString GuidStr = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);;
-		SetPlayerData(Address, GuidStr);
+		EnterTitlePlayerControllers(TitlePlayerController);
+	}
+	else if (IsValid(MatchPlayerController) && IsValid(NewPlayer->Player))
+	{
+		GameStartPlayerControllers(MatchPlayerController);
 	}
 }
 
@@ -46,14 +37,14 @@ void ATHGameModeBase::Logout(AController* Exiting)
 	ATHPlayerState* ExitingPS = Cast<ATHPlayerState>(Exiting->PlayerState);
 	if (IsValid(ExitingPC) && IsValid(ExitingPS))
 	{
-		--EnterPlayerNum;
+		--ServerEnterPlayerNum;
 
 		if (GameModeFlow == TAG_Game_Phase_Wait)
 		{
 			if (MatchWaitPlayerControllers.Find(ExitingPC))
 			{
 				MatchWaitPlayerControllers.Remove(ExitingPC);
-				//ExitingPC->ClientCancelMatch(false);
+				ExitingPC->ClientCancelMatch(false);
 			}
 		}
 		else if (GameModeFlow == TAG_Game_Phase_Match)
@@ -85,10 +76,6 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 		else if (GameModeFlow == TAG_Game_Phase_Match)
 		{
 			
-		}
-		else if (GameModeFlow == TAG_Game_Phase_Loading)
-		{
-			LoadGame();
 		}
 		else if (GameModeFlow == TAG_Game_Phase_Play)
 		{
@@ -176,7 +163,7 @@ void ATHGameModeBase::MatchGame()
 
 	for (ATHTitlePlayerController* CancelPlayer : MatchWaitPlayerControllers)
 	{
-		//CancelPlayer->ClientCancelMatch(false);
+		CancelPlayer->ClientCancelMatch(false);
 	}
 
 	CurMatchWaitPlayerNum = 0;
@@ -185,11 +172,16 @@ void ATHGameModeBase::MatchGame()
 
 void ATHGameModeBase::LoadGame()
 {
-	
+	SetGameModeFlow(TAG_Game_Phase_Loading);
 }
 
 void ATHGameModeBase::GameStart()
 {
+	for (ATHPlayerController* Player : StartPlayerControllers)
+	{
+		Player->SetIgnoreMoveInput(false);
+		Player->SetIgnoreLookInput(false);
+	}
 }
 
 void ATHGameModeBase::FinishGame()
@@ -206,6 +198,20 @@ void ATHGameModeBase::InitialzationGameData()
 
 void ATHGameModeBase::ManipluateController(bool Manipulate)
 {
+}
+
+void ATHGameModeBase::OpenChangeLevel(FGameplayTag NextFlow)
+{
+	++ReadyPlayerNum;
+	TSoftObjectPtr<UWorld> LaodPath;
+	if (ReadyPlayerNum == MaxMatchPlayerNum)
+	{
+		if (NextFlow == TAG_Game_Phase_Wait) LaodPath = MainLevelPath;
+		if (NextFlow == TAG_Game_Phase_Play) LaodPath = PlayLevelPath;
+	}
+	else return;
+
+	StartLevelLoad(LaodPath);
 }
 
 FGameplayTag ATHGameModeBase::GetGameModeFlow() const
@@ -250,12 +256,12 @@ void ATHGameModeBase::StopMatch(bool Rematch)
 {
 	//This "Wait" logic is written like this
 	//because we currently don't have the function to cancel matching on self
-	//later. if we make self cancel funcion, I change this logic.
+	//later. if we make self cancel function, I change this logic.
 	if (GameModeFlow == TAG_Game_Phase_Wait)
 	{
 		for (ATHTitlePlayerController* CancelPlayer : MatchWaitPlayerControllers)
 		{
-			//CancelPlayer->ClientCancelMatch(Rematch);
+			CancelPlayer->ClientCancelMatch(Rematch);
 			--CurMatchWaitPlayerNum;
 		}
 
@@ -263,7 +269,6 @@ void ATHGameModeBase::StopMatch(bool Rematch)
 	}
 	else if (GameModeFlow == TAG_Game_Phase_Match)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Cancel Match!!"));
 		SetGameModeFlow(TAG_Game_Phase_Wait);
 		for (ATHTitlePlayerController* CancelPlayer : MatchPlayerControllers)
 		{
@@ -271,4 +276,78 @@ void ATHGameModeBase::StopMatch(bool Rematch)
 			CancelPlayer->Server_RequestMatchAndSetNickname_Implementation(CancelPS->Nickname);;
 		}
 	}	
+}
+
+void ATHGameModeBase::EnterTitlePlayerControllers(ATHTitlePlayerController* NewPlayer)
+{
+	++ServerEnterPlayerNum;
+	LoginPlayerControllers.Add(NewPlayer);
+
+	UNetConnection* NewConnection = Cast<UNetConnection>(NewPlayer->Player);
+	FString Address;
+	if (IsValid(NewConnection))
+	{
+		Address = NewConnection->GetRemoteAddr()->ToString(false);
+	}
+	else
+	{
+		Logout(NewPlayer);
+		return;
+	}
+
+	FString GuidStr = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);;
+	SetPlayerData(Address, GuidStr);
+}
+
+void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
+{
+	++StartPlayerNum;
+	StartPlayerControllers.Add(Player);
+
+	Player->DisableInput(Player);
+}
+
+void ATHGameModeBase::StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad)
+{
+	OpenLevelPath = LevelToLoad;
+
+	if (OpenLevelPath.IsNull()) // 경로 자체가 비어있는 경우만 체크
+	{
+		return;
+	}
+
+	if (!OpenLevelPath.IsValid())
+	{
+		FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
+
+		Streamable.RequestAsyncLoad(OpenLevelPath.ToSoftObjectPath(),
+			FStreamableDelegate::CreateUObject(this, &ATHGameModeBase::OnLevelLoadedReady));
+	}
+	else
+	{
+		OnLevelLoadedReady();
+	}
+}
+
+void ATHGameModeBase::OnLevelLoadedReady()
+{
+	UWorld* LoadedWorld = OpenLevelPath.Get();
+	if (LoadedWorld)
+	{
+		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true);
+		bIsLevelLoading = true;
+	}
+}
+
+void ATHGameModeBase::CheckPlayReady()
+{
+	if (bIsLevelLoading && bIsPlayer1Ready && bIsPlayer2Ready)
+	{
+		SetGameModeFlow(TAG_Game_Phase_Play);
+		ReadyPlayerNum = 0;
+	}
+	else
+	{
+		return;
+	}
 }

@@ -3,39 +3,38 @@
 
 #include "UI/THLoadingWidget.h"
 #include "Components/ProgressBar.h"
+#include "Player/THTitlePlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
-void UTHLoadingWidget::StartLoadLevel(TSoftObjectPtr<UWorld> LevelToLoad)
+void UTHLoadingWidget::LoadProgressState()
 {
-	TargetLevel = LevelToLoad;
-	if (!TargetLevel.IsValid() || !TargetLevel.ToSoftObjectPath().IsValid()) return;
-	if (LoadingProgressBar)
-	{
-		LoadingProgressBar->SetPercent(0.f);
-	}
+	if (!LoadingProgressBar) return;
 
-	FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
-	StreamHandle = Streamable.RequestAsyncLoad(
-		TargetLevel.ToSoftObjectPath(),
-		FStreamableDelegate::CreateUObject(this, &UTHLoadingWidget::OnStreamableCompleted),
-		FStreamableManager::DefaultAsyncLoadPriority,
-		false
-	);
+	LoadingProgressBar->SetPercent(0.f);
+	Accumulate = 0.f;
 	
-	if (StreamHandle.IsValid())
-	{
-		StreamHandle->BindUpdateDelegate(
-			FStreamableUpdateDelegate::CreateUObject(this, &UTHLoadingWidget::OnStreamableUpdate)
-		);
-	}
+	FTimerDelegate TimerDelegate;
+	TimerDelegate.BindUFunction(this, FName("OnStreamableCompleted"));
+	GetWorld()->GetTimerManager().SetTimer(
+		LoadingTimerHandle,
+		this,
+		&UTHLoadingWidget::UpdateProgress,
+		LoadTime,
+		true);
 }
 
-void UTHLoadingWidget::OnStreamableUpdate(TSharedRef<FStreamableHandle> InHandle)
+void UTHLoadingWidget::UpdateProgress()
 {
-	if (!StreamHandle.IsValid() || !LoadingProgressBar) return;
+	Accumulate += LoadTime;
 
-	const float Percent = FMath::Clamp(StreamHandle->GetProgress(), 0.f, 1.f);
+	float Percent = FMath::Clamp(Accumulate / TotalLoadTime, 0.f, 1.f);
 	LoadingProgressBar->SetPercent(Percent);
+
+	if (Percent >= 1.0f)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(LoadingTimerHandle);
+		OnStreamableCompleted();
+	}
 }
 
 void UTHLoadingWidget::OnStreamableCompleted()
@@ -45,12 +44,9 @@ void UTHLoadingWidget::OnStreamableCompleted()
 		LoadingProgressBar->SetPercent(1.f);
 	}
 
-	if (TargetLevel.IsValid())
+	ATHTitlePlayerController* PC = GetOwningPlayer<ATHTitlePlayerController>();
+	if (PC)
 	{
-		// if Singleplayer game,
-		UGameplayStatics::OpenLevelBySoftObjectPtr(this, TargetLevel, true);
-		// if Multiplayer game,
-		// GetOwningPlayer()->ClientTravel(TargetLevel.ToSoftObjectPath().ToString(), TRAVEL_Absolute);
+		PC->OpenPlayLevel();
 	}
-	StreamHandle.Reset();
 }

@@ -17,17 +17,22 @@ class TREASUREHUNTER_API UTHLoadingWidget : public UUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Loading")
-	void StartLoadLevel(TSoftObjectPtr<UWorld> LevelToLoad);
+	void LoadProgressState();
 	
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UProgressBar* LoadingProgressBar;
 
 private:
-	TSharedPtr<FStreamableHandle> StreamHandle;
-	TSoftObjectPtr<UWorld> TargetLevel;
+	FTimerHandle LoadingTimerHandle;
+
+	float Accumulate;
+	float LoadTime = 0.01f;
+	float TotalLoadTime = 2.0f;
 	
 private:
-	void OnStreamableUpdate(TSharedRef<FStreamableHandle> InHandle);
+	void UpdateProgress();
+
+	UFUNCTION()
 	void OnStreamableCompleted();
 };

@@ -20,14 +20,21 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestMatchAndSetNickname(const FString& InNickname);
 
+	UFUNCTION(Server, Reliable)
+	void Server_RequestLoadData(const FGameplayTag& NewPhase);
+
 	UFUNCTION()
 	void HandlePhaseChange(FGameplayTag NewPhase);
+
+	void OpenPlayLevel();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UUserWidget> MainMenuWidgetClass;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UUserWidget> MatchmakingWidgetClass;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UUserWidget> LoadingWidgetClass;
 
 private:
 	UPROPERTY()
@@ -35,6 +42,9 @@ private:
 
 	void ShowMainMenu();
 	void ShowMatchmakingMenu();
+	void ShowLoadingWidget();
+	
+	FGameplayTag LevelFlow;
 
 	FDelegateHandle PhaseChangedHandle;
 #pragma endregion
