@@ -244,9 +244,9 @@ void ATHPlayerController::HandleItemActivated(int32 SlotIndex, FName ItemID)
 
 		case EItemUIIndicator::FullScreenOverlay:
 		{
-			if (Row->UseKind == EItemUseKind::TargetDebuff && Row->VictimOverlayWidgetClass.IsValid())
+			if (Row->UseKind == EItemUseKind::TargetDebuff && Row->VictimOverlayWidgetClass/*.IsValid()*/)
 			{
-				Server_ApplyTargetOverlayToOpponent(ItemID);
+				//Server_ApplyTargetOverlayToOpponent(ItemID);
 			}
 		}
 		break;
@@ -279,9 +279,9 @@ void ATHPlayerController::Client_ShowTargetOverlay_Implementation(FName ItemRow)
 	{
 		if (const FTHItemData* Row = DM->GetItemDataByRow(ItemRow))
 		{
-			if (Row->VictimOverlayWidgetClass.IsValid())
+			if (Row->VictimOverlayWidgetClass/*.IsValid()*/)
 			{
-				PlayerHUD->ShowFullScreenOverlay(Row->VictimOverlayWidgetClass.LoadSynchronous(), Row->DurationSec);
+				PlayerHUD->ShowFullScreenOverlay(Row->VictimOverlayWidgetClass/*.LoadSynchronous()*/, Row->DurationSec);
 			}
 		}
 	}

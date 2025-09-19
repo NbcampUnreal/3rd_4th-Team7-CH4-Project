@@ -144,6 +144,9 @@ private:
 	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
 	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
 	void OnJumpAttrChanged(float NewJumpValue);
+	void OnOverlayWidgetAttrChanged(const FOnAttributeChangeData& Data);
+
+	FTimerHandle DebuffOverlayTimerHandle;
 
 	int32 ComputeLevel(float Current, float Base, float Step) const; // 0~2
 	void Recompute(EBuffKind Kind);
@@ -166,6 +169,8 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "HUD|Item")
 	void ShowFullScreenOverlay(TSubclassOf<UUserWidget> OverlayClass, float DurationSec);
+
+	void RemoveDebuffOverlay();
 
 protected:
 	UPROPERTY(BlueprintReadOnly, Category = "HUD", meta = (BindWidget))
@@ -235,4 +240,5 @@ private:
 	FDelegateHandle WalkSpeedChangedHandle;
 	FDelegateHandle SprintSpeedChangedHandle;
 	FDelegateHandle SprintingTagHandle;
+	FDelegateHandle OverlayAttrChangedHandle;
 };

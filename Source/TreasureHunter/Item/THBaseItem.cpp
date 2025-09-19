@@ -6,7 +6,6 @@
 
 ATHBaseItem::ATHBaseItem()
 {
-	PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
 
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
@@ -39,12 +38,6 @@ void ATHBaseItem::BeginPlay()
 void ATHBaseItem::SetItemID(FName NewItemID)
 {
 	ItemID = NewItemID;
-}
-
-void ATHBaseItem::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
 }
 
 

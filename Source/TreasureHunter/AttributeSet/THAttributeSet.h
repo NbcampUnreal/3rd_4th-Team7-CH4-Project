@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "AttributeSet.h"
@@ -40,6 +40,15 @@ public:
 	FGameplayAttributeData SprintSpeed;
 	ATTRIBUTE_ACCESSORS(UTHAttributeSet, SprintSpeed)
 
+	UPROPERTY(BlueprintReadOnly, Category = "Movement", ReplicatedUsing = OnRep_JumpPower)
+	FGameplayAttributeData JumpPower;
+	ATTRIBUTE_ACCESSORS(UTHAttributeSet, JumpPower)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Widget", ReplicatedUsing = OnRep_OverlayWidget)
+	FGameplayAttributeData OverlayWidget;
+	ATTRIBUTE_ACCESSORS(UTHAttributeSet, OverlayWidget)
+
+
 protected:
 	UFUNCTION()
 	virtual void OnRep_Stamina(const FGameplayAttributeData& OldStamina);
@@ -52,4 +61,10 @@ protected:
 
 	UFUNCTION()
 	virtual void OnRep_SprintSpeed(const FGameplayAttributeData& OldSprintSpeed);
+
+	UFUNCTION()
+	virtual void OnRep_JumpPower(const FGameplayAttributeData& OldJumpPower);
+
+	UFUNCTION()
+	virtual void OnRep_OverlayWidget(const FGameplayAttributeData& OldOverlayWidget);
 };
