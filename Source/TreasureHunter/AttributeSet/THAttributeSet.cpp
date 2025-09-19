@@ -1,4 +1,4 @@
-#include "AttributeSet/THAttributeSet.h"
+﻿#include "AttributeSet/THAttributeSet.h"
 #include "GameplayEffectExtension.h"
 #include "Net/UnrealNetwork.h"
 #include "Game/GameFlowTags.h"
@@ -9,6 +9,8 @@ UTHAttributeSet::UTHAttributeSet()
 	InitMaxStamina(100.f);
 	InitWalkSpeed(200.f);
 	InitSprintSpeed(600.f);
+	InitJumpPower(420.f);
+	InitOverlayWidget(0.f);
 }
 
 void UTHAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -20,6 +22,7 @@ void UTHAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	
 	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, WalkSpeed, COND_None, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, SprintSpeed, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, JumpPower, COND_None, REPNOTIFY_Always);
 }
 
 void UTHAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data)
@@ -61,6 +64,16 @@ void UTHAttributeSet::OnRep_WalkSpeed(const FGameplayAttributeData& OldWalkSpeed
 void UTHAttributeSet::OnRep_SprintSpeed(const FGameplayAttributeData& OldSprintSpeed)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, SprintSpeed, OldSprintSpeed);
+}
+
+void UTHAttributeSet::OnRep_JumpPower(const FGameplayAttributeData& OldJumpPower)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, JumpPower, OldJumpPower);
+}
+
+void UTHAttributeSet::OnRep_OverlayWidget(const FGameplayAttributeData& OldOverlayWidget)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, OverlayWidget, OldOverlayWidget);
 }
 
 
