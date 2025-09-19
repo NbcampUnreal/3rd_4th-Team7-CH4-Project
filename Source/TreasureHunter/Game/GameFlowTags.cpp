@@ -36,3 +36,6 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Phase_Finish, "Game.Phase.Finish", "Game
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Player_Ready, "Player.Ready", "PlayerReady");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Player_Character_First, "Player.Character.First", "BunnySelected");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Player_Character_Second, "Player.Character.Second", "MouseSelected");
+
+// ----- Event -----
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Event_Movement_Stopped, "Event.Movement.Stopped", "Character Stops");

@@ -14,16 +14,16 @@ struct FMantleInfo
 	GENERATED_BODY()
 	
 	UPROPERTY(BlueprintReadOnly)
-	FVector LedgeLocation;
+	FVector LedgeLocation = FVector::ZeroVector;
 	
 	UPROPERTY(BlueprintReadOnly)
-	FTransform UpWarpTarget;
+	FTransform UpWarpTarget = FTransform::Identity;
 
 	UPROPERTY(BlueprintReadOnly)
-	FTransform ForwardWarpTarget;
+	FTransform ForwardWarpTarget = FTransform::Identity;
 	
 	UPROPERTY(BlueprintReadOnly)
-	TWeakObjectPtr<UPrimitiveComponent> TargetComponent;
+	TWeakObjectPtr<UPrimitiveComponent> TargetComponent = nullptr;
 };
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))

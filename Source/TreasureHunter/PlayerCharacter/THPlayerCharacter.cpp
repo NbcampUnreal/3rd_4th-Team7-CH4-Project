@@ -6,6 +6,7 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "Ability/THSprintAbility.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Components/CapsuleComponent.h"
 #include "Item/THItemInventory.h"
 #include "EnhancedInputSubsystems.h"
@@ -100,10 +101,12 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveInput);
+	EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveTriggered);
+	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::HandleMoveCompleted);
+	EIC->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ThisClass::HandleMoveCompleted);
 	EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
 	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
-	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::Jump);
+	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 	EIC->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::RequestSprint);
 	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::RequestSprint);
@@ -114,7 +117,7 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
 }
 
-void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
+void ATHPlayerCharacter::HandleMoveTriggered(const FInputActionValue& InValue)
 {
 	if (ensure(IsValid(Controller)))
 	{
@@ -127,6 +130,11 @@ void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
 		AddMovementInput(ForwardDirection, InMovementVector.X);
 		AddMovementInput(RightDirection, InMovementVector.Y);
 	}
+}
+
+void ATHPlayerCharacter::HandleMoveCompleted(const FInputActionValue& InValue)
+{
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Movement_Stopped, FGameplayEventData());
 }
 
 void ATHPlayerCharacter::HandleLookInput(const FInputActionValue& InValue)
@@ -179,18 +187,18 @@ void ATHPlayerCharacter::ToggleCrouch()
 void ATHPlayerCharacter::RequestSprint(const FInputActionValue& InValue)
 {
 	const bool bIsPressed = InValue.Get<bool>();
-	
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+    
+	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
+	if (ASC)
 	{
-		FGameplayTagContainer SprintTagContainer(TAG_Ability_Sprint);
-		
-		if (bIsPressed == true)
+		FGameplayTag SprintTag = TAG_Ability_Sprint;
+		if (bIsPressed)
 		{
-			ASC->TryActivateAbilitiesByTag(SprintTagContainer);
+			ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(SprintTag));
 		}
-
 		else
 		{
+			const FGameplayTagContainer SprintTagContainer(SprintTag);
 			ASC->CancelAbilities(&SprintTagContainer);
 		}
 	}

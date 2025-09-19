@@ -50,8 +50,10 @@ public:
 	float GetSprintSpeed() const;
 
 private:
-	void HandleMoveInput(const FInputActionValue& InValue);
-
+	void HandleMoveTriggered(const FInputActionValue& InValue);
+	
+	void HandleMoveCompleted(const FInputActionValue& InValue);
+	
 	void HandleLookInput(const FInputActionValue& InValue);
 
 	void RequestSprint(const FInputActionValue& InValue);
@@ -100,7 +102,7 @@ private:
 	ATHItemBox* InteractableItemBox;
 	UPROPERTY()
 	ATHBaseItem* InteractableBaseItem;
-
+	
 public:	
 	void SetInteractableActor(ATHItemBox* NewItemBox);
 	void SetInteractableBaseItem(ATHBaseItem* NewBaseItem);

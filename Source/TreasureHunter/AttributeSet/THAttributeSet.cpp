@@ -1,6 +1,6 @@
-﻿#include "AttributeSet/THAttributeSet.h"
-#include "GameplayEffectExtension.h"
+#include "AttributeSet/THAttributeSet.h"
 #include "Net/UnrealNetwork.h"
+#include "GameplayEffectExtension.h"
 #include "Game/GameFlowTags.h"
 
 UTHAttributeSet::UTHAttributeSet()
@@ -25,45 +25,52 @@ void UTHAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, JumpPower, COND_None, REPNOTIFY_Always);
 }
 
-void UTHAttributeSet::PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData& Data)
+void UTHAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
 {
-	Super::PostGameplayEffectExecute(Data);
-
-	if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
-	{
-		if (auto* ASC = GetOwningAbilitySystemComponent())
-		{
-			if (GetStamina() <= KINDA_SMALL_NUMBER)
-			{
-				ASC->AddLooseGameplayTag(TAG_Status_Stamina_Empty);
-			}
-			else
-			{
-				ASC->RemoveLooseGameplayTag(TAG_Status_Stamina_Empty);
-			}
-		}
-		SetStamina(FMath::Clamp(GetStamina(), 0.f, GetMaxStamina()));
-	}
+    Super::PostGameplayEffectExecute(Data);
+	
+    if (Data.EvaluatedData.Attribute == GetStaminaAttribute())
+    {
+        SetStamina(FMath::Clamp(GetStamina(), 0.f, GetMaxStamina()));
+    	
+        UAbilitySystemComponent* ASC = GetOwningAbilitySystemComponent();
+        if (ASC)
+        {
+            if (GetStamina() <= 0.0f)
+            {
+                ASC->AddLooseGameplayTag(TAG_Status_Stamina_Empty);
+            }
+            else
+            {
+                ASC->RemoveLooseGameplayTag(TAG_Status_Stamina_Empty);
+            }
+        	
+            if (GetStamina() >= GetMaxStamina())
+            {
+                ASC->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(TAG_Effect_Stamina_Regen));
+            }
+        }
+    }
 }
 
 void UTHAttributeSet::OnRep_Stamina(const FGameplayAttributeData& OldStamina)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, Stamina, OldStamina)
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, Stamina, OldStamina);
 }
 
 void UTHAttributeSet::OnRep_MaxStamina(const FGameplayAttributeData& OldMaxStamina)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, MaxStamina, OldMaxStamina);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, MaxStamina, OldMaxStamina);
 }
 
 void UTHAttributeSet::OnRep_WalkSpeed(const FGameplayAttributeData& OldWalkSpeed)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, WalkSpeed, OldWalkSpeed);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, WalkSpeed, OldWalkSpeed);
 }
 
 void UTHAttributeSet::OnRep_SprintSpeed(const FGameplayAttributeData& OldSprintSpeed)
 {
-	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, SprintSpeed, OldSprintSpeed);
+    GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, SprintSpeed, OldSprintSpeed);
 }
 
 void UTHAttributeSet::OnRep_JumpPower(const FGameplayAttributeData& OldJumpPower)
