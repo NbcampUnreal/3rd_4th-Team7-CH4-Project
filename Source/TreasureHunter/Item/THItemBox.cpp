@@ -10,7 +10,6 @@
 
 ATHItemBox::ATHItemBox()
 {
-	PrimaryActorTick.bCanEverTick = true;
     bReplicates = true;
     ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
     RootComponent = ItemMesh;
@@ -36,10 +35,6 @@ void ATHItemBox::BeginPlay()
     }
 }
 
-void ATHItemBox::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-}
 
 
 void ATHItemBox::ResetUseTime()
