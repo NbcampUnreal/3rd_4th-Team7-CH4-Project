@@ -106,6 +106,7 @@ public:
 	void SetInteractableBaseItem(ATHBaseItem* NewBaseItem);
 	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
 	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnJumpPowerChanged(const FOnAttributeChangeData& Data);
 
 	bool bIsSprinting = false;
 	
@@ -124,6 +125,8 @@ public:
 	void OnUseItemSlot1();
 	UFUNCTION()
 	void OnUseItemSlot2();
+
+	virtual void Jump() override;
 
 	UFUNCTION()
 	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);

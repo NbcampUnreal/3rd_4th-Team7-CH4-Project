@@ -365,6 +365,32 @@ void ATHPlayerCharacter::OnSprintSpeedChanged(const FOnAttributeChangeData& Data
 	}
 }
 
+void ATHPlayerCharacter::OnJumpPowerChanged(const FOnAttributeChangeData& Data)
+{
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->JumpZVelocity = Data.NewValue;
+	}
+}
+
+void ATHPlayerCharacter::Jump()
+{
+	float CurrentJumpPower = 0.f;
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		const UAttributeSet* BaseSet = ASC->GetAttributeSet(UTHAttributeSet::StaticClass());
+		if (const UTHAttributeSet* AS = Cast<UTHAttributeSet>(BaseSet))
+		{
+			CurrentJumpPower = AS->GetJumpPower();
+		}
+	}
+
+	GetCharacterMovement()->JumpZVelocity = CurrentJumpPower;
+
+	Super::Jump();
+}
+
 void ATHPlayerCharacter::OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	FVector NormalImpulse, const FHitResult& Hit)
 {
@@ -397,5 +423,8 @@ void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount
 		EnableInput(GetController<APlayerController>());
 	}
 }
+
+
+
 
 
