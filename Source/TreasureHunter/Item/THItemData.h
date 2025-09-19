@@ -68,7 +68,7 @@ public:
     float DurationSec = 0.f;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item|UI")
-    TSoftClassPtr<UUserWidget> VictimOverlayWidgetClass; // If FullScreenOverlay
+    TSubclassOf<UUserWidget> VictimOverlayWidgetClass; // If FullScreenOverlay
 
 
 
