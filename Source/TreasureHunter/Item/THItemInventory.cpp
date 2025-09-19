@@ -120,6 +120,14 @@ void UTHItemInventory::UseItem(int32 SlotIndex)
 			if (UAbilitySystemComponent* ASC = PlayerCharacter->GetAbilitySystemComponent())
 			{
 				const FGameplayAbilitySpec Spec(ItemData->GameplayAbilityClass, 1, INDEX_NONE, PlayerCharacter);
+
+				//// ⭐ 아이템 데이터의 SetByCaller 데이터를 Spec에 복사합니다. ⭐
+				//for (const auto& Elem : ItemData->SetByCallerData)
+				//{
+				//	Spec.SetByCallerTagMagnitudes.Add(Elem.Key, Elem.Value);
+				//}
+
+
 				const FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
 				bActivated = ASC->TryActivateAbility(Handle);
 			}
@@ -145,7 +153,7 @@ void UTHItemInventory::UseItem(int32 SlotIndex)
 
 void UTHItemInventory::Client_NotifyItemActivated_Implementation(FName ItemRow, int32 SlotIndex)
 {
-	OnItemActivated.Broadcast(SlotIndex, ItemRow); // For UI 
+	OnItemActivated.Broadcast(SlotIndex, ItemRow);
 }
 
 

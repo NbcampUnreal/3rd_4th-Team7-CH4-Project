@@ -24,8 +24,6 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_UseItem(int32 SlotIndex);
-	/*UFUNCTION(Server, Reliable, WithValidation)
-	void Server_AddItem(FName NewItemID);*/
 
 	UFUNCTION(BlueprintPure, Category = "Inventory")
 	FName GetItemInSlot(int32 SlotIndex) const;
