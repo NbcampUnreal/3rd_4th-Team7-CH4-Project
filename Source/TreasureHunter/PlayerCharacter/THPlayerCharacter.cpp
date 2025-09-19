@@ -15,7 +15,7 @@
 #include "MotionWarpingComponent.h"
 #include "GameplayEffect.h"
 
-ATHPlayerCharacter::ATHPlayerCharacter()
+ATHPlayerCharacter::ATHPlayerCharacter() 
 {
 	PrimaryActorTick.bCanEverTick = false;
 
