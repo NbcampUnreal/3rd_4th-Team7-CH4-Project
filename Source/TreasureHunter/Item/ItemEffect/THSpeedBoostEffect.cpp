@@ -4,7 +4,7 @@
 UTHSpeedBoostEffect::UTHSpeedBoostEffect()
 {
     DurationPolicy = EGameplayEffectDurationType::HasDuration;
-    DurationMagnitude = FScalableFloat(10.f);
+    DurationMagnitude = FScalableFloat(30.f);
 
     FGameplayModifierInfo WalkModifier;
     WalkModifier.Attribute = UTHAttributeSet::GetWalkSpeedAttribute();

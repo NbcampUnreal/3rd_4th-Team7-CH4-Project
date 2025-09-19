@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "GameplayEffect.h"
-#include "AttributeSet/THAttributeSet.h"
 #include "THSpeedBoostEffect.generated.h"
 
 
@@ -14,5 +13,6 @@ class TREASUREHUNTER_API UTHSpeedBoostEffect : public UGameplayEffect
 public:
 
 	UTHSpeedBoostEffect();
+
 	
 };
