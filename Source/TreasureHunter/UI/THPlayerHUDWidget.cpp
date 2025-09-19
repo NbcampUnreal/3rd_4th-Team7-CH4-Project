@@ -13,6 +13,8 @@
 #include "Components/SizeBox.h"
 #include "TimerManager.h"
 #include "Game/GameFlowTags.h"
+#include "Item/THItemDataManager.h"
+#include "Item/THItemData.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTHHUD, Log, All);
 
@@ -153,6 +155,11 @@ void UTHPlayerHUDWidget::BindAttributeDelegates()
 	SprintSpeedChangedHandle =
 		AbilitySystem->GetGameplayAttributeValueChangeDelegate(Attr->GetSprintSpeedAttribute())
 		.AddUObject(this, &ThisClass::OnSprintSpeedChanged);
+
+	OverlayAttrChangedHandle =
+		AbilitySystem->GetGameplayAttributeValueChangeDelegate(Attr->GetOverlayWidgetAttribute())
+		.AddUObject(this, &ThisClass::OnOverlayWidgetAttrChanged);
+
 }
 
 void UTHPlayerHUDWidget::UnbindAttributeDelegates()
@@ -378,6 +385,37 @@ void UTHPlayerHUDWidget::OnJumpAttrChanged(float NewJumpValue)
 	Recompute(EBuffKind::Jump);
 }
 
+void UTHPlayerHUDWidget::OnOverlayWidgetAttrChanged(const FOnAttributeChangeData& Data)
+{
+	//로직에 따라 오버레이 위젯을 띄우거나 제거
+	if (Data.NewValue == 0)
+	{
+		//오버레이 제거
+		RemoveDebuffOverlay();
+	}
+	else
+	{
+		//데이터 매니저에서 데이터 가져와서 배치
+		const FTHItemData* OverlayData = nullptr;
+		ATHItemDataManager* DM = ATHItemDataManager::Get(GetWorld());
+		if (!DM) return;
+		if (Data.NewValue == 1)
+		{
+			OverlayData = DM->GetItemDataByRow("Overlay01");
+		}
+
+
+
+		//데이터 확정 되면 오버레이 띄우기
+		if (OverlayData != nullptr)
+		{
+			ShowFullScreenOverlay(OverlayData->VictimOverlayWidgetClass, OverlayData->DurationSec);
+		}
+
+	}
+}
+
+
 // ----------------------------------- Visuals -----------------------------------------------
 void UTHPlayerHUDWidget::Recompute(EBuffKind Kind)
 {
@@ -583,7 +621,6 @@ void UTHPlayerHUDWidget::StopDurationTimer()
 void UTHPlayerHUDWidget::ShowFullScreenOverlay(TSubclassOf<UUserWidget> OverlayClass, float DurationSec)
 {
 	if (!OverlayClass || !GetWorld()) return;
-
 	if (ActiveDebuffOverlay && ActiveDebuffOverlay->IsInViewport())
 	{
 		ActiveDebuffOverlay->RemoveFromParent();
@@ -594,8 +631,8 @@ void UTHPlayerHUDWidget::ShowFullScreenOverlay(TSubclassOf<UUserWidget> OverlayC
 	if (ActiveDebuffOverlay)
 	{
 		ActiveDebuffOverlay->AddToViewport(INT_MAX);
-		FTimerHandle Tmp;
-		GetWorld()->GetTimerManager().SetTimer(Tmp, [this]()
+		//FTimerHandle Tmp;		
+		GetWorld()->GetTimerManager().SetTimer(/*Tmp*/DebuffOverlayTimerHandle, [this]()
 			{
 				if (ActiveDebuffOverlay)
 				{
@@ -605,6 +642,22 @@ void UTHPlayerHUDWidget::ShowFullScreenOverlay(TSubclassOf<UUserWidget> OverlayC
 			}, FMath::Max(0.05f, DurationSec), false);
 	}
 }
+
+
+void UTHPlayerHUDWidget::RemoveDebuffOverlay()
+{
+	if (GetWorld()->GetTimerManager().IsTimerActive(DebuffOverlayTimerHandle))
+	{
+		GetWorld()->GetTimerManager().ClearTimer(DebuffOverlayTimerHandle);
+	}
+	if (ActiveDebuffOverlay)
+	{
+		ActiveDebuffOverlay->RemoveFromParent();
+		ActiveDebuffOverlay = nullptr;
+	}
+}
+
+
 #pragma endregion
 
 #pragma region Climbing&Rank
