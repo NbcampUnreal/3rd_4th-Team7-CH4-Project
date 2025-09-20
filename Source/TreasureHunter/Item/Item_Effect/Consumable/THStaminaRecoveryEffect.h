@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
 #include "GameplayEffect.h"
 #include "THStaminaRecoveryEffect.generated.h"
 

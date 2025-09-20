@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
 #include "GameplayEffect.h"
 #include "UI/THPlayerHUDWidget.h"
 #include "THShotInkEffect.generated.h"

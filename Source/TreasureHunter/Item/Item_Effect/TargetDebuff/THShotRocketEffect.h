@@ -1,6 +1,5 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "GameplayEffect.h"
 #include "THShotRocketEffect.generated.h"
 

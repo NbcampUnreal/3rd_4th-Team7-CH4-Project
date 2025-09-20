@@ -1,4 +1,4 @@
-﻿#include "Item/ItemEffect/THImmunePotionEffect.h"
+﻿#include "THImmunePotionEffect.h"
 
 UTHImmunePotionEffect::UTHImmunePotionEffect()
 {

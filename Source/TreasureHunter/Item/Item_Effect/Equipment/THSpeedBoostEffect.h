@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
 #include "GameplayEffect.h"
 #include "THSpeedBoostEffect.generated.h"
 
@@ -14,5 +13,4 @@ public:
 
 	UTHSpeedBoostEffect();
 
-	
 };

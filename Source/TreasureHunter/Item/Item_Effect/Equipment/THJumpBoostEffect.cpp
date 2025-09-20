@@ -1,6 +1,6 @@
-﻿#include "Item/ItemEffect/THJumpBoostEffect.h"
+﻿#include "THJumpBoostEffect.h"
 #include "AttributeSet/THAttributeSet.h"
-#include "GameplayEffectTypes.h"
+#include "Game/GameFlowTags.h"
 
 UTHJumpBoostEffect::UTHJumpBoostEffect()
 {
@@ -11,7 +11,10 @@ UTHJumpBoostEffect::UTHJumpBoostEffect()
 	FGameplayModifierInfo JumpPowerModifier;
 	JumpPowerModifier.Attribute = UTHAttributeSet::GetJumpPowerAttribute();
 	JumpPowerModifier.ModifierOp = EGameplayModOp::Additive;
-	JumpPowerModifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(150.f));
+
+	FSetByCallerFloat SBC;
+	SBC.DataTag = TAG_Data_JumpDelta;
+	JumpPowerModifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(SBC);
 	Modifiers.Add(JumpPowerModifier);
 }
 

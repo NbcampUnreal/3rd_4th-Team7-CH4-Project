@@ -1,6 +1,6 @@
-﻿#include "Item/ItemEffect/THStaminaRecoveryEffect.h"
+﻿#include "THStaminaRecoveryEffect.h"
 #include "AttributeSet/THAttributeSet.h"
-#include "GameplayEffectTypes.h"
+#include "Game/GameFlowTags.h"
 
 UTHStaminaRecoveryEffect::UTHStaminaRecoveryEffect()
 {
@@ -8,10 +8,11 @@ UTHStaminaRecoveryEffect::UTHStaminaRecoveryEffect()
 
 	FGameplayModifierInfo StaminaModifier;
 	StaminaModifier.Attribute = UTHAttributeSet::GetStaminaAttribute();
-
 	StaminaModifier.ModifierOp = EGameplayModOp::Additive;
 
-	StaminaModifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(20.f));
+	FSetByCallerFloat SBC;
+	SBC.DataTag = TAG_Data_StaminaDelta;
+	StaminaModifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(SBC);
 
 	Modifiers.Add(StaminaModifier);
 }

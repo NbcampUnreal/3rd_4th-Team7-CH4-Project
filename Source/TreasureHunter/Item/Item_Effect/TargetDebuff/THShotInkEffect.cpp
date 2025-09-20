@@ -1,4 +1,4 @@
-﻿#include "Item/ItemEffect/THShotInkEffect.h"
+﻿#include "THShotInkEffect.h"
 #include "AttributeSet/THAttributeSet.h"
 
 UTHShotInkEffect::UTHShotInkEffect()
