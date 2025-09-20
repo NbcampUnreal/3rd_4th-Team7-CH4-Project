@@ -1,4 +1,4 @@
-﻿#include "Item/THItemDataManager.h"
+﻿#include "THItemDataManager.h"
 #include "THItemData.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -89,21 +89,21 @@ void ATHItemDataManager::PreloadAllIcons()
 #pragma endregion
 
 #pragma region GetItem
-TSubclassOf<UGameplayAbility> ATHItemDataManager::GetItemAbilityClassByRow(const FName& RowName)
-{
-    if (!IsValid(ItemDataTable))
-    {
-        return nullptr;
-    }
-
-    const FTHItemData* ItemData = GetItemDataByRow(RowName);
-    if (ItemData && IsValid(ItemData->GameplayAbilityClass))
-    {
-        return ItemData->GameplayAbilityClass;
-    }
-
-    return nullptr;
-}
+//TSubclassOf<UGameplayAbility> ATHItemDataManager::GetItemAbilityClassByRow(const FName& RowName)
+//{
+//    if (!IsValid(ItemDataTable))
+//    {
+//        return nullptr;
+//    }
+//
+//    const FTHItemData* ItemData = GetItemDataByRow(RowName);
+//    if (ItemData && IsValid(ItemData->GameplayAbilityClass))
+//    {
+//        return ItemData->GameplayAbilityClass;
+//    }
+//
+//    return nullptr;
+//}
 
 const FTHItemData* ATHItemDataManager::GetItemDataByRow(const FName& RowName)
 {

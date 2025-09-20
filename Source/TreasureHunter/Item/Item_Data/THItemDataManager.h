@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "Engine/DataTable.h"
 #include "THItemDataManager.generated.h"
@@ -27,8 +26,8 @@ public:
     UPROPERTY(EditDefaultsOnly, Category = "Item Data")
     UDataTable* ItemDataTable;
 
-    UFUNCTION(BlueprintCallable)
-    TSubclassOf<UGameplayAbility> GetItemAbilityClassByRow(const FName& RowName);
+    //UFUNCTION(BlueprintCallable)
+    //TSubclassOf<UGameplayAbility> GetItemAbilityClassByRow(const FName& RowName); -> 어빌리티 통일로 이제 필요 없음 
     
     const FTHItemData* GetItemDataByRow(const FName& RowName);
 
