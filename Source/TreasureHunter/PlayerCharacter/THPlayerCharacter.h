@@ -52,10 +52,13 @@ public:
 
 private:
 	void HandleMoveInput(const FInputActionValue& InValue);
+	void OnMoveInputReleased(const FInputActionValue& InValue);
 
 	void HandleLookInput(const FInputActionValue& InValue);
 
-	void RequestSprint(const FInputActionValue& InValue);
+	/*void RequestSprint(const FInputActionValue& InValue);*/
+	void OnSprintPressed(const FInputActionValue&);
+	void OnSprintReleased(const FInputActionValue&);
 
 	void RequestMantle(const FInputActionValue& InValue);
 
