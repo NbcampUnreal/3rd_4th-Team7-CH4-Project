@@ -1,7 +1,7 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
-#include "Item/Spawn/THSpawnObject.h"
+#include "THSpawnObject.h"
+#include "GameplayTagContainer.h"
 #include "THSlowTrap.generated.h"
 
 class UStaticMeshComponent;
@@ -11,38 +11,59 @@ class UGameplayEffect;
 UCLASS()
 class TREASUREHUNTER_API ATHSlowTrap : public ATHSpawnObject
 {
-	GENERATED_BODY()
-	
+    GENERATED_BODY()
+
 public:
-	ATHSlowTrap();
+    ATHSlowTrap();
 
 protected:
-	virtual void BeginPlay() override;
+    virtual void BeginPlay() override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void OnPlacerActorReplicated() override;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<UStaticMeshComponent> TrapMesh;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    UStaticMeshComponent* TrapMesh;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	TObjectPtr<USphereComponent> OverlapSphere;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+    USphereComponent* OverlapSphere;
 
-	UPROPERTY(Replicated)
-	bool bIsActive;
+    UPROPERTY(Replicated)
+    bool bIsActive = false;
 
-	UFUNCTION()
-	void ApplySlowEffect(AActor* TargetActor);
+    UFUNCTION()
+    void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
+        UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+        bool bFromSweep, const FHitResult& SweepResult);
 
-	void ActivateTrap();
+    // 서버에서 적용되는 Slow GE 
+    UPROPERTY(EditDefaultsOnly, Category = "Trap|Effect")
+    TSubclassOf<UGameplayEffect> SlowGEClass;
 
-	FTimerHandle ActivationTimerHandle;
+    UPROPERTY(EditAnywhere, Category = "Trap|Effect") // 음수로 세팅 -> 아래 나오는 값들은 생성자에서 초기화 하는 게 더 좋음
+    float WalkDelta = -150.f;
 
-	UFUNCTION()
-	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+    UPROPERTY(EditAnywhere, Category = "Trap|Effect") // 음수로 세팅
+    float SprintDelta = -500.f;
 
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-		
-	virtual void OnPlacerActorReplicated() override;
+    UPROPERTY(EditAnywhere, Category = "Trap|Effect")
+    float DurationSec = 5.f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trap|Ability")
-	TSubclassOf<class UGameplayAbility> SlowAbilityClass;
+    // 면역 태그
+    UPROPERTY(EditDefaultsOnly, Category = "Trap|Tags")
+    FGameplayTag ImmunityTag = FGameplayTag::RequestGameplayTag("Item.ImmunePotion.Active");
 
+    UPROPERTY(EditDefaultsOnly, Category = "Trap|Tags")
+    FGameplayTag GrantedActiveTag = FGameplayTag::RequestGameplayTag("Item.SpeedSlow.Active");
+
+    // 활성 지연(스폰 후 N초 뒤부터 작동)
+    UPROPERTY(EditAnywhere, Category = "Trap")
+    float ActivateDelaySec = 0.2f;
+
+private:
+    void ActivateTrap();
+    void ApplySlowTo(AActor* TargetActor);
+
+public:
+    UFUNCTION()
+    void InitFromItemRow(TSubclassOf<UGameplayEffect> InGE, float InWalkDelta, float InSprintDelta, float InDurationSec);
 };

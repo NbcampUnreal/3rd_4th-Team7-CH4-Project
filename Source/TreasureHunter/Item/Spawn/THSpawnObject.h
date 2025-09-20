@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "THSpawnObject.generated.h"
 
@@ -16,7 +15,7 @@ public:
 	TObjectPtr<AActor> PlacerActor;
 
 	UFUNCTION(BlueprintCallable, Category = "Placer")
-	void SetPlacerActor(AActor* NewPlacer);
+	void SetPlacerAndOwner(AActor* NewPlacer);
 
 protected:
 	virtual void BeginPlay() override;

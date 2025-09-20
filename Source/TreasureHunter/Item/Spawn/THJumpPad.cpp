@@ -1,8 +1,9 @@
-﻿#include "Item/Spawn/THJumpPad.h"
+﻿#include "THJumpPad.h"
+
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
-#include "GameFramework/Character.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/Character.h"
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 
