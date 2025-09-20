@@ -6,8 +6,9 @@
 #include "AbilitySystemInterface.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffectTypes.h"
-#include "Item/THItemBox.h"
-#include "Item/THBaseItem.h"
+
+#include "Item/Item_InteractObjects/THItemBox.h"
+#include "Item/Item_InteractObjects/THBaseItem.h"
 
 #include "THPlayerCharacter.generated.h"
 
@@ -144,4 +145,8 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
+
+private:
+	void UpdateMaxWalkSpeedFromAttributes(); // 걷기/스프린트 값 중 현재 상태에 맞는 값으로 CMC 갱신
+	void OnSprintStateTagChanged(const FGameplayTag Tag, int32 NewCount); // 스프린트 상태 태그 변화 콜백
 };

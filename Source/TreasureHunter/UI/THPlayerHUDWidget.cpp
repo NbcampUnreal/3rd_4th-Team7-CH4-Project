@@ -13,8 +13,8 @@
 #include "Components/SizeBox.h"
 #include "TimerManager.h"
 #include "Game/GameFlowTags.h"
-#include "Item/THItemDataManager.h"
-#include "Item/THItemData.h"
+#include "Item/Item_Data/THItemDataManager.h"
+#include "Item/Item_Data/THItemData.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogTHHUD, Log, All);
 
@@ -427,7 +427,11 @@ void UTHPlayerHUDWidget::Recompute(EBuffKind Kind)
 		B.BaseLevel = ComputeLevel(Walk, B.BaseValue, B.Step);
 	}
 
-	/*if (Attr && Kind == EBuffKind::Jump) {} */
+	if (Attr && Kind == EBuffKind::Jump)
+	{
+		const float Jump = Attr->GetJumpPower();
+		B.BaseLevel = ComputeLevel(Jump, B.BaseValue, B.Step);
+	}
 
 	B.FinalLevel = FMath::Clamp(B.BaseLevel + B.AddLevel, 0, 2);
 	ApplyVisuals(Kind);

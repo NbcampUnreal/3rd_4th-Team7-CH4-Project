@@ -34,11 +34,9 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
-	
-	GetCharacterMovement()->MaxWalkSpeed = 200.f;
-	
-	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 
+	// 컴포넌트 직접 속도 제어 말고 
+	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
 
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
@@ -74,8 +72,18 @@ void ATHPlayerCharacter::PossessedBy(AController* NewController)
 		{
 			ASC->RegisterGameplayTagEvent(TAG_State_Debuff_Stun, EGameplayTagEventType::NewOrRemoved)
 			.AddUObject(this, &ATHPlayerCharacter::OnStunTagChanged);
+
+			// 스프린트 상태 태그 콜백 등록
+			ASC->RegisterGameplayTagEvent(TAG_State_Movement_Sprinting, EGameplayTagEventType::NewOrRemoved)
+				.AddUObject(this, &ATHPlayerCharacter::OnSprintStateTagChanged);
+
+			// 시작 시점 동기화(현재 태그 상태 반영)
+			OnSprintStateTagChanged(TAG_State_Movement_Sprinting,
+				ASC->HasMatchingGameplayTag(TAG_State_Movement_Sprinting) ? 1 : 0);
 		}
 	}
+
+	UpdateMaxWalkSpeedFromAttributes();
 }
 
 void ATHPlayerCharacter::OnRep_PlayerState()
@@ -91,8 +99,18 @@ void ATHPlayerCharacter::OnRep_PlayerState()
 		{
 			ASC->RegisterGameplayTagEvent(TAG_State_Debuff_Stun, EGameplayTagEventType::NewOrRemoved)
 			.AddUObject(this, &ATHPlayerCharacter::OnStunTagChanged);
+
+			// 스프린트 상태 태그 콜백 등록
+			ASC->RegisterGameplayTagEvent(TAG_State_Movement_Sprinting, EGameplayTagEventType::NewOrRemoved)
+				.AddUObject(this, &ATHPlayerCharacter::OnSprintStateTagChanged);
+
+			// 시작 시점 동기화(현재 태그 상태 반영)
+			OnSprintStateTagChanged(TAG_State_Movement_Sprinting,
+				ASC->HasMatchingGameplayTag(TAG_State_Movement_Sprinting) ? 1 : 0);
 		}
 	}
+
+	UpdateMaxWalkSpeedFromAttributes();
 }
 
 void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -216,20 +234,18 @@ void ATHPlayerCharacter::RequestMantle(const FInputActionValue& InValue)
 		ASC->TryActivateAbilitiesByTag(MantleTagContainer);
 	}
 }
-
 void ATHPlayerCharacter::BindToAttributeChanges()
 {
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (ASC)
+	if (auto* ASC = GetAbilitySystemComponent())
 	{
-		const UTHAttributeSet* AS = Cast<UTHAttributeSet>(ASC->GetAttributeSet(UTHAttributeSet::StaticClass()));
-		if (AS)
-		{
-			ASC->GetGameplayAttributeValueChangeDelegate(AS->GetStaminaAttribute()).AddUObject(this, &ATHPlayerCharacter::OnStaminaChanged);
-		}
-
-		ASC->GetGameplayAttributeValueChangeDelegate(AS->GetWalkSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnWalkSpeedChanged);
-		ASC->GetGameplayAttributeValueChangeDelegate(AS->GetSprintSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnSprintSpeedChanged);
+		ASC->GetGameplayAttributeValueChangeDelegate(UTHAttributeSet::GetStaminaAttribute())
+			.AddUObject(this, &ThisClass::OnStaminaChanged);
+		ASC->GetGameplayAttributeValueChangeDelegate(UTHAttributeSet::GetWalkSpeedAttribute())
+			.AddUObject(this, &ThisClass::OnWalkSpeedChanged);
+		ASC->GetGameplayAttributeValueChangeDelegate(UTHAttributeSet::GetSprintSpeedAttribute())
+			.AddUObject(this, &ThisClass::OnSprintSpeedChanged);
+		ASC->GetGameplayAttributeValueChangeDelegate(UTHAttributeSet::GetJumpPowerAttribute())
+			.AddUObject(this, &ThisClass::OnJumpPowerChanged);
 	}
 }
 
@@ -351,18 +367,12 @@ void ATHPlayerCharacter::OnUseItemSlot2()
 
 void ATHPlayerCharacter::OnWalkSpeedChanged(const FOnAttributeChangeData& Data)
 {
-	if (!bIsSprinting) // 스프린트 중이 아닐 때만 워킹 속도를 업데이트
-	{
-		GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
-	}
+	UpdateMaxWalkSpeedFromAttributes();
 }
 
 void ATHPlayerCharacter::OnSprintSpeedChanged(const FOnAttributeChangeData& Data)
 {
-	if (bIsSprinting) // 스프린트 중일 때만 업데이트
-	{
-		GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
-	}
+	UpdateMaxWalkSpeedFromAttributes();
 }
 
 void ATHPlayerCharacter::OnJumpPowerChanged(const FOnAttributeChangeData& Data)
@@ -427,4 +437,25 @@ void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount
 
 
 
+void ATHPlayerCharacter::OnSprintStateTagChanged(const FGameplayTag /*Tag*/, int32 NewCount)
+{
+	bIsSprinting = (NewCount > 0);
+	UpdateMaxWalkSpeedFromAttributes();
+}
 
+void ATHPlayerCharacter::UpdateMaxWalkSpeedFromAttributes()
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		if (const UTHAttributeSet* AS = Cast<UTHAttributeSet>(ASC->GetAttributeSet(UTHAttributeSet::StaticClass())))
+		{
+			const bool bSprintNow = ASC->HasMatchingGameplayTag(TAG_State_Movement_Sprinting);
+			const float TargetSpeed = bSprintNow ? AS->GetSprintSpeed() : AS->GetWalkSpeed();
+
+			if (UCharacterMovementComponent* CMC = GetCharacterMovement())
+			{
+				CMC->MaxWalkSpeed = TargetSpeed;
+			}
+		}
+	}
+}

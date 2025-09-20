@@ -1,11 +1,12 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "THItemData.h"
-#include "Components/SphereComponent.h"
+#include "Item/Item_Data/THItemData.h"
 #include "THInteractPromptWidget.h"
 #include "THItemBox.generated.h"
+
+class USphereComponent; // 중복선언말고 전방선언
+
 
 
 UCLASS()

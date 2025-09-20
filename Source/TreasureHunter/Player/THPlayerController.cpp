@@ -8,8 +8,8 @@
 #include "Game/THGameStateBase.h"
 #include "Game/GameFlowTags.h"
 #include "Item/THItemInventory.h"
-#include "Item/THItemDataManager.h"
-#include "Item/THItemData.h"
+#include "Item/Item_Data/THItemDataManager.h"
+#include "Item/Item_Data/THItemData.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"

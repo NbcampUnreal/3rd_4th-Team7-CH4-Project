@@ -1,11 +1,10 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Components/SphereComponent.h"
-#include "THInteractPromptWidget.h"
 #include "THBaseItem.generated.h"
 
+class USphereComponent; // 최대한 전방선언으로 의존성 떨어뜨리기 ! 불필요한 컴파일을 줄이고 메모리 사용 효율 높여줌 
+class UTHInteractPromptWidget;
 class UStaticMeshComponent;
 class ATHPlayerCharacter;
 

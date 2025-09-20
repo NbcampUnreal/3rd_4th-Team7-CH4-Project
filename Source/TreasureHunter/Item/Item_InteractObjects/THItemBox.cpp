@@ -1,11 +1,11 @@
-﻿#include "Item/THItemBox.h"
-#include "THItemData.h"
-#include "Item/THItemDataManager.h"
+﻿#include "THItemBox.h"
+#include "THBaseItem.h"
+#include "Item/Item_Data/THItemDataManager.h"
 #include "Components/SphereComponent.h"
+#include "PlayerCharacter/THPlayerCharacter.h"
+
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"
-#include "Item/THBaseItem.h"
-#include "PlayerCharacter/THPlayerCharacter.h"
 
 
 ATHItemBox::ATHItemBox()

@@ -1,6 +1,9 @@
-﻿#include "Item/THBaseItem.h"
+﻿#include "THBaseItem.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
 #include "Item/THItemInventory.h"
+#include "THInteractPromptWidget.h"
+
+#include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
 
 

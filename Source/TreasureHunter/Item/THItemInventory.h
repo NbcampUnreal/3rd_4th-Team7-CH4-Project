@@ -1,65 +1,67 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "THItemInventory.generated.h"
 
-
-
 class ATHItemDataManager;
 class UTexture2D;
+class UGameplayAbility;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventorySlotChanged, int32, SlotIndex, FName, ItemID);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnInventoryItemActivated, int32, SlotIndex, FName, ItemID);
 
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class TREASUREHUNTER_API UTHItemInventory : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
 
 public:
-	UTHItemInventory();
+    UTHItemInventory();
 
-	bool AddItem(FName NewItemRow);
+    bool AddItem(FName NewItemRow);
 
-	UFUNCTION(Server, Reliable)
-	void Server_UseItem(int32 SlotIndex);
+    UFUNCTION(Server, Reliable)
+    void Server_UseItem(int32 SlotIndex);
 
-	UFUNCTION(BlueprintPure, Category = "Inventory")
-	FName GetItemInSlot(int32 SlotIndex) const;
+    UFUNCTION(BlueprintPure, Category = "Inventory")
+    FName GetItemInSlot(int32 SlotIndex) const;
 
-	UPROPERTY(BlueprintAssignable, Category = "Inventory")
-	FOnInventorySlotChanged OnInventorySlotChanged;
+    UPROPERTY(BlueprintAssignable, Category = "Inventory")
+    FOnInventorySlotChanged OnInventorySlotChanged;
 
-	UPROPERTY(BlueprintAssignable, Category = "Inventory")
-	FOnInventoryItemActivated OnItemActivated;
+    UPROPERTY(BlueprintAssignable, Category = "Inventory")
+    FOnInventoryItemActivated OnItemActivated;
 
 protected:
-	virtual void BeginPlay() override;
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    virtual void BeginPlay() override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UPROPERTY(ReplicatedUsing = OnRep_ItemSlot1)
-	FName ItemSlot1 = NAME_None;
-	UPROPERTY(ReplicatedUsing = OnRep_ItemSlot2)
-	FName ItemSlot2 = NAME_None;
+    UPROPERTY(ReplicatedUsing = OnRep_ItemSlot1)
+    FName ItemSlot1 = NAME_None;
+    UPROPERTY(ReplicatedUsing = OnRep_ItemSlot2)
+    FName ItemSlot2 = NAME_None;
 
-	UFUNCTION()
-	void OnRep_ItemSlot1();
+    UFUNCTION()
+    void OnRep_ItemSlot1();
 
-	UFUNCTION()
-	void OnRep_ItemSlot2();
+    UFUNCTION()
+    void OnRep_ItemSlot2();
 
-	void UseItem(int32 SlotIndex);
+    void UseItem(int32 SlotIndex);
 
-	UFUNCTION(Client, Reliable)
-	void Client_NotifyItemActivated(FName ItemRow, int32 SlotIndex);
-	
+    UFUNCTION(Client, Reliable)
+    void Client_NotifyItemActivated(FName ItemRow, int32 SlotIndex);
+
+    // 아이템 사용 시에 Generic 어빌리티 발동
+    UPROPERTY(EditDefaultsOnly, Category = "Inventory|Ability")
+    TSubclassOf<UGameplayAbility> GenericItemAbilityClass;
+
 private:
-	UPROPERTY()
-	TObjectPtr<ATHItemDataManager> ItemDataManager;
+    UPROPERTY()
+    TObjectPtr<ATHItemDataManager> ItemDataManager;
 
-	bool bUseTimeCheck = false;
+    bool bUseTimeCheck = false;
 
-	FTimerHandle UseTimerHandle;
-	void ResetUseTime();
+    FTimerHandle UseTimerHandle;
+    void ResetUseTime();
 };
