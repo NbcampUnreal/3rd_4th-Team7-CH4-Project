@@ -1,4 +1,4 @@
-#include "Notify/THMantleNotify.h"
+#include "THMantleNotify.h"
 
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"

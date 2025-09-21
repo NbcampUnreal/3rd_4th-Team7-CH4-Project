@@ -12,7 +12,10 @@ UTHSprintAbility::UTHSprintAbility()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-	AbilityTags.AddTag(TAG_Ability_Sprint);
+	FGameplayTagContainer Tags = GetAssetTags();
+	Tags.AddTag(TAG_Ability_Sprint);
+	SetAssetTags(Tags);
+
 	ActivationOwnedTags.AddTag(TAG_State_Movement_Sprinting);
 	//ActivationBlockedTags.AddTag(TAG_Status_State_Mantling);
 	ActivationBlockedTags.AddTag(TAG_Status_Stamina_Empty);

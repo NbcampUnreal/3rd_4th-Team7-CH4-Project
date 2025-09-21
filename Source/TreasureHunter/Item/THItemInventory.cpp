@@ -2,7 +2,7 @@
 #include "Item/Item_Data/THItemDataManager.h"
 #include "Item/Item_Data/THItemData.h"
 #include "Item/Item_Data/THItemRowSource.h"
-#include "Playser/PlayerCharacter/THPlayerCharacter.h"
+#include "Player/PlayerCharacter/THPlayerCharacter.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "AbilitySystemComponent.h"

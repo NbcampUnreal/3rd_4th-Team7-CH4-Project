@@ -9,6 +9,7 @@
 #include "GAS/Tags/GameFlowTags.h"
 #include "Engine/OverlapResult.h"
 #include "Player/PlayerCharacter/THPlayerCharacter.h"
+#include "GameplayEffectComponents/TargetTagsGameplayEffectComponent.h"
 
 
 UTHPushAbility::UTHPushAbility()
@@ -16,12 +17,12 @@ UTHPushAbility::UTHPushAbility()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	// [FIX] 서버 권위에서 판정/런치 수행
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
-
-	//CooldownGameplayEffectClass = UCoolDownEffect_Push::StaticClass();
-	//AbilityTags.AddTag(TAG_Cooldown_Ability_Push); // BP에서 세팅 
 	
-	AbilityTags.AddTag(TAG_Ability_Push);
+	FGameplayTagContainer Tags = GetAssetTags();
+	Tags.AddTag(TAG_Ability_Push);
+	SetAssetTags(Tags);
 
+	CooldownGameplayEffectClass = UCoolDownEffect_Push::StaticClass();
 }
 
 bool UTHPushAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handle,

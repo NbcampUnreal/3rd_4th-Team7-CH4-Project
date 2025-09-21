@@ -387,7 +387,7 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 }
 #pragma endregion
 
-#pragma ItemInteraction
+#pragma region ItemInteraction
 void ATHPlayerCharacter::SetInteractableActor(ATHItemBox* NewItemBox)
 {
 	InteractableItemBox = NewItemBox;

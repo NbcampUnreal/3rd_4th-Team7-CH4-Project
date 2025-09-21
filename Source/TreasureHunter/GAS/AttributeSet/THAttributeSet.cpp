@@ -1,7 +1,7 @@
-﻿#include "AttributeSet/THAttributeSet.h"
+﻿#include "GAS/AttributeSet/THAttributeSet.h"
 #include "GameplayEffectExtension.h"
 #include "Net/UnrealNetwork.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 
 UTHAttributeSet::UTHAttributeSet()
 {
