@@ -1,10 +1,10 @@
 #include "Game/THGameModeBase.h"
 #include "Game/THGameStateBase.h"
 #include "Player/THPlayerState.h"
-#include "Player/THTitlePlayerController.h"
-#include "Player/THPlayerController.h"
+#include "Player/Controller/THTitlePlayerController.h"
+#include "Player/Controller/THPlayerController.h"
 #include "UI/THLoadingWidget.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 
 ATHGameModeBase::ATHGameModeBase()
 {

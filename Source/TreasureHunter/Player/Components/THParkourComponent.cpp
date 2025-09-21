@@ -1,4 +1,4 @@
-#include "ParkourComponent/THParkourComponent.h"
+#include "THParkourComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"

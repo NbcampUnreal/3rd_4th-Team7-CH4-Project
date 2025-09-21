@@ -3,7 +3,7 @@
 
 #include "Game/THGameStateBase.h"
 #include "Net/UnrealNetwork.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 #include "Player/THPlayerState.h"
 
 void ATHGameStateBase::BeginPlay()

@@ -1,5 +1,5 @@
-#include "GameplayEffect/CoolDownEffect_Push.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Effect/CoolDownEffect_Push.h"
+#include "GAS/Tags/GameFlowTags.h"
 #include "GameplayTagContainer.h"
 #include "ScalableFloat.h"
 

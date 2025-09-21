@@ -27,6 +27,8 @@ protected:
 
 	UFUNCTION()
 	void OnMontageCompleted();
+	UFUNCTION()
+	void OnMontageInterrupted();
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FVector PushBoxSize = FVector(100.f, 100.f, 100.f);
@@ -34,8 +36,8 @@ protected:
 	float PushRange = 200.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float PushForce = 500.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float PushTimer = 0.2f;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	//float PushTimer = 0.2f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UAnimMontage* PushMontage;

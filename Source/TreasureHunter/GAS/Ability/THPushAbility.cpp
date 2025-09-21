@@ -1,24 +1,24 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Ability/THPushAbility.h"
+#include "GAS/Ability/THPushAbility.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "AbilitySystemComponent.h"
-#include "GameplayEffect/CoolDownEffect_Push.h"
+#include "GAS/Effect/CoolDownEffect_Push.h"
 #include "GameplayTagContainer.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 #include "Engine/OverlapResult.h"
-#include "PlayerCharacter/THPlayerCharacter.h"
+#include "Player/PlayerCharacter/THPlayerCharacter.h"
 
 
 UTHPushAbility::UTHPushAbility()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+	// [FIX] 서버 권위에서 판정/런치 수행
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 
-	CooldownGameplayEffectClass = UCoolDownEffect_Push::StaticClass();
-
-	AbilityTags.AddTag(TAG_Cooldown_Ability_Push);
+	//CooldownGameplayEffectClass = UCoolDownEffect_Push::StaticClass();
+	//AbilityTags.AddTag(TAG_Cooldown_Ability_Push); // BP에서 세팅 
 	
 	AbilityTags.AddTag(TAG_Ability_Push);
 
@@ -45,34 +45,34 @@ void UTHPushAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	}
 
 	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo();
-	
 	//GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Red, FString::Printf(TEXT("Push!")));
 	
 	if (PlayerCharacter)
 	{
-		TArray<FOverlapResult> OverlapResults;
-	
 		FVector Start = PlayerCharacter->GetActorLocation();
 		FVector Forward = PlayerCharacter->GetActorForwardVector();
-		FVector End = Start + (Forward * PushRange);
+		//FVector End = Start + (Forward * PushRange);
 
-		TArray<FHitResult> HitResults;
-		FCollisionShape Box = FCollisionShape::MakeBox(PushBoxSize);
+		const FVector Center = Start + Forward * (PushRange * 0.5f);
+		TArray<FOverlapResult> OverlapResults;
+
+		//TArray<FHitResult> HitResults;
+		//FCollisionShape Box = FCollisionShape::MakeBox(PushBoxSize);
 		FRotator Rotation = PlayerCharacter->GetActorRotation();
 
 		FCollisionObjectQueryParams ObjectQueryParams;
 		ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
 
-		FCollisionQueryParams QueryParams;
-		QueryParams.AddIgnoredActor(PlayerCharacter);
+		FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(PushOverlap), false, PlayerCharacter);
+		//FCollisionQueryParams QueryParams;
+		//QueryParams.AddIgnoredActor(PlayerCharacter);
 
 		bool bHit = GetWorld()->OverlapMultiByObjectType(
 			OverlapResults,
-			Start,
-			FQuat::Identity,
+			Center,
+			Rotation.Quaternion(), // [FIX] 회전 적용
 			ObjectQueryParams,
-			Box,
+			FCollisionShape::MakeBox(FVector(PushRange * 0.5f, PushBoxSize.Y, PushBoxSize.Z)),
 			QueryParams
 			);
 
@@ -82,11 +82,10 @@ void UTHPushAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 			{
 				if (ACharacter* Target = Cast<ACharacter>(Hit.GetActor()))
 				{
-					FVector TargetLocation = Target->GetActorLocation();
-					FVector CurrentLocation = PlayerCharacter->GetActorLocation();
-					FVector LaunchVector = (TargetLocation - CurrentLocation).GetSafeNormal();
-			
-					Target->LaunchCharacter((LaunchVector * PushForce) + FVector(0,0, 100.0f), true, true);
+					if (Target == PlayerCharacter) continue;
+
+					const FVector Dir = (Target->GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
+					Target->LaunchCharacter((Dir * PushForce) + FVector(0,0, 100.0f), true, true);
 		
 				}
 
@@ -103,15 +102,17 @@ void UTHPushAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 		1.2f
 		);
 
+		if (!Task) return;
+
 		Task->OnCompleted.AddDynamic(this, &UTHPushAbility::OnMontageCompleted);
+		Task->OnInterrupted.AddDynamic(this, &UTHPushAbility::OnMontageInterrupted); // [FIX]
+		Task->OnCancelled.AddDynamic(this, &UTHPushAbility::OnMontageInterrupted);   // [FIX]
 
 		Task->ReadyForActivation();
-	}
-	else
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
 	}
 
+	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
 void UTHPushAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
@@ -123,4 +124,9 @@ void UTHPushAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const F
 void UTHPushAbility::OnMontageCompleted()
 {
 	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), false, false);
+}
+
+void UTHPushAbility::OnMontageInterrupted()
+{
+	EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
 }

@@ -1,6 +1,6 @@
-#include "Animation/THAnimInstance.h"
+#include "THAnimInstance.h"
 
-#include "PlayerCharacter/THPlayerCharacter.h"
+#include "Player/PlayerCharacter/THPlayerCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "KismetAnimationLibrary.h"
 #include "Kismet/KismetMathLibrary.h"

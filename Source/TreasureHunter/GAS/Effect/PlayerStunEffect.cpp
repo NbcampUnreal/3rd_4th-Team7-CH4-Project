@@ -1,6 +1,6 @@
-#include "GameplayEffect/PlayerStunEffect.h"
+#include "GAS/Effect/PlayerStunEffect.h"
 #include "NativeGameplayTags.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 #include "GameplayEffectComponents/TargetTagsGameplayEffectComponent.h"
 
 

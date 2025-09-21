@@ -1,14 +1,9 @@
 ﻿#pragma once
 
-#include "CoreMinimal.h"
-#include "InputActionValue.h"
+#pragma region Includes
 #include "GameFramework/Character.h"
 #include "AbilitySystemInterface.h"
-#include "AbilitySystemComponent.h"
 #include "GameplayEffectTypes.h"
-
-#include "Item/Item_InteractObjects/THItemBox.h"
-#include "Item/Item_InteractObjects/THBaseItem.h"
 
 #include "THPlayerCharacter.generated.h"
 
@@ -19,9 +14,18 @@ class UInputAction;
 class UTHAttributeSet;
 class UGameplayEffect;
 class UMotionWarpingComponent;
-struct UInputActionValue;
+class ATHItemBox;
+class ATHBaseItem;
+struct FInputActionValue;
+#pragma endregion
 
-UCLASS()
+/*
+함수 정의는 외부에서 쓰는 거 아니면 최대한 private으로
+그리고 가독성을 위해서 카테고리 별로 나누고, 선언 순서대로 정의하는 습관 
+정의하지 않은 함수들은 지우는 게 좋음 
+*/
+
+UCLASS() 
 class TREASUREHUNTER_API ATHPlayerCharacter : public ACharacter, public IAbilitySystemInterface
 {
 	GENERATED_BODY()
@@ -35,40 +39,55 @@ public:
 
 	virtual void OnRep_PlayerState() override;
 
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-
-	virtual void OnStaminaChanged(const FOnAttributeChangeData& Data);
-
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
+protected:
+	UFUNCTION()
+	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+#pragma region Movement
 public:
-	FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; }
-	
-	FORCEINLINE UCameraComponent* GetCamera() const { return Camera; }
-
 	float GetWalkSpeed() const;
-
 	float GetSprintSpeed() const;
 
 private:
 	void HandleMoveInput(const FInputActionValue& InValue);
 	void OnMoveInputReleased(const FInputActionValue& InValue);
-
 	void HandleLookInput(const FInputActionValue& InValue);
 
-	/*void RequestSprint(const FInputActionValue& InValue);*/
 	void OnSprintPressed(const FInputActionValue&);
 	void OnSprintReleased(const FInputActionValue&);
 
 	void RequestMantle(const FInputActionValue& InValue);
-
 	void RequestPush(const FInputActionValue& InValue);
 
 	void BindToAttributeChanges();
-
 	void ToggleCrouch();
 
+	void UpdateMaxWalkSpeedFromAttributes(); // 걷기/스프린트 값 중 현재 상태에 맞는 값으로 CMC 갱신
+
+	void OnStunTagChanged(const FGameplayTag, int32 NewCount);
+	void OnSprintStateTagChanged(const FGameplayTag Tag, int32 NewCount); // 스프린트 상태 태그 변화 콜백
+
+public:
+	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnJumpPowerChanged(const FOnAttributeChangeData& Data);
+
 protected:
+	virtual void Jump() override;
+private:
+	bool bIsSprinting = false;
+#pragma endregion
+
+#pragma region InputActions
+public:
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> MantleAction;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputMappingContext> InputMappingContext;
 
@@ -98,7 +117,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SlotUse2Action;
+#pragma endregion
 
+#pragma region ItemInteraction
 private:
 	UPROPERTY()
 	ATHItemBox* InteractableItemBox;
@@ -108,21 +129,13 @@ private:
 public:	
 	void SetInteractableActor(ATHItemBox* NewItemBox);
 	void SetInteractableBaseItem(ATHBaseItem* NewBaseItem);
-	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
-	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
-	void OnJumpPowerChanged(const FOnAttributeChangeData& Data);
 
-	bool bIsSprinting = false;
-	
+public:
 	UFUNCTION()
 	void OnInteract();
-	
-	UFUNCTION(Server, Reliable, WithValidation)
+	UFUNCTION(Server, Reliable) // [FIX] UE5.4 이후부터는 이거 안씀 
 	void Server_HandleInteract(ATHItemBox* InteractableBox);
-	void HandleBoxInteract();
-	void HandleBaseItemInteract();
-
-	UFUNCTION(Server, Reliable, WithValidation)
+	UFUNCTION(Server, Reliable)
 	void Server_HandleBaseItemInteract(ATHBaseItem* InteractableItem);
 
 	UFUNCTION()
@@ -130,16 +143,17 @@ public:
 	UFUNCTION()
 	void OnUseItemSlot2();
 
-	virtual void Jump() override;
+private:
+	void HandleBoxInteract();
+	void HandleBaseItemInteract();
+#pragma endregion
 
-	UFUNCTION()
-	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+#pragma region Components
+public:
+	FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; }
+	FORCEINLINE UCameraComponent* GetCamera() const { return Camera; }
 
-	void OnStunTagChanged(const FGameplayTag,int32 NewCount);
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> MantleAction;
-
+protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TObjectPtr<USpringArmComponent> SpringArm;
 
@@ -148,8 +162,5 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
-
-private:
-	void UpdateMaxWalkSpeedFromAttributes(); // 걷기/스프린트 값 중 현재 상태에 맞는 값으로 CMC 갱신
-	void OnSprintStateTagChanged(const FGameplayTag Tag, int32 NewCount); // 스프린트 상태 태그 변화 콜백
+#pragma endregion
 };

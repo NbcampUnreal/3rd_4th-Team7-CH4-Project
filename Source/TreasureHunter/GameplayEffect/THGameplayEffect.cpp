@@ -1,2 +1,0 @@
-#include "GameplayEffect/THGameplayEffect.h"
-

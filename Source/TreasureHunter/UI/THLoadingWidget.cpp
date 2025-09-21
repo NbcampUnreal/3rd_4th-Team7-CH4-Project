@@ -3,7 +3,7 @@
 
 #include "UI/THLoadingWidget.h"
 #include "Components/ProgressBar.h"
-#include "Player/THTitlePlayerController.h"
+#include "Player/Controller/THTitlePlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
 void UTHLoadingWidget::LoadProgressState()

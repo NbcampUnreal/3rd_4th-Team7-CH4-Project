@@ -4,8 +4,8 @@
 #include "UI/THGameOverWidget.h"
 #include "Components/Button.h"
 #include "Kismet/GameplayStatics.h"
-#include "Player/THPlayerController.h"
-#include "Game/GameFlowTags.h"
+#include "Player/Controller/THPlayerController.h"
+#include "GAS/Tags/GameFlowTags.h"
 
 void UTHGameOverWidget::NativeConstruct()
 {

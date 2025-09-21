@@ -1,11 +1,11 @@
 #include "Player/THPlayerState.h"
 
-#include "AttributeSet/THAttributeSet.h"
+#include "GAS/AttributeSet/THAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "GameplayEffect.h"
 #include "Abilities/GameplayAbility.h"
 #include "Net/UnrealNetwork.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 
 ATHPlayerState::ATHPlayerState()
 	: bStartupAbilitiesGiven(false)

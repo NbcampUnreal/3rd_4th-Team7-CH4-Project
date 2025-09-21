@@ -9,7 +9,7 @@
 
 #include "AbilitySystemComponent.h"
 #include "Kismet/GameplayStatics.h"
-#include "PlayerCharacter/THPlayerCharacter.h"
+#include "Player/PlayerCharacter/THPlayerCharacter.h"
 
 #include "GameFramework/Actor.h"
 #include "Engine/World.h"

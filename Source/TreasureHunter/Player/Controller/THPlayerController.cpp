@@ -4,16 +4,16 @@
 #include "THPlayerController.h"
 #include "UI/THPlayerHUDWidget.h"
 #include "UI/THGameOverWidget.h"
-#include "THPlayerState.h"
+#include "Player/THPlayerState.h"
 #include "Game/THGameStateBase.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 #include "Item/THItemInventory.h"
 #include "Item/Item_Data/THItemDataManager.h"
 #include "Item/Item_Data/THItemData.h"
 
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
-#include "AttributeSet/THAttributeSet.h"
+#include "GAS/AttributeSet/THAttributeSet.h"
 #include "Kismet/GameplayStatics.h"
 
 

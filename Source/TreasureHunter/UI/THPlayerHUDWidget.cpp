@@ -4,7 +4,7 @@
 #include "THPlayerHUDWidget.h"
 
 #include "AbilitySystemComponent.h"
-#include "AttributeSet/THAttributeSet.h"
+#include "GAS/AttributeSet/THAttributeSet.h"
 #include "GameplayEffectTypes.h"
 #include "Blueprint/WidgetTree.h"
 #include "Components/HorizontalBox.h"
@@ -12,7 +12,7 @@
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
 #include "TimerManager.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 #include "Item/Item_Data/THItemDataManager.h"
 #include "Item/Item_Data/THItemData.h"
 

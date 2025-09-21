@@ -1,12 +1,12 @@
-#include "Ability/THMantleAbility.h"
-#include "AttributeSet/THAttributeSet.h"
+#include "GAS/Ability/THMantleAbility.h"
+#include "GAS/AttributeSet/THAttributeSet.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
-#include "PlayerCharacter/THPlayerCharacter.h"
-#include "ParkourComponent/THParkourComponent.h"
+#include "Player/PlayerCharacter/THPlayerCharacter.h"
+#include "Player/Components/THParkourComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 #include "MotionWarpingComponent.h"
 
 UTHMantleAbility::UTHMantleAbility()
@@ -26,14 +26,14 @@ bool UTHMantleAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
 		return false;
 	}
 	
-	const UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	if (const UTHAttributeSet* AS = Cast<UTHAttributeSet>(ASC->GetAttributeSet(UTHAttributeSet::StaticClass())))
-	{
-		if (AS->GetStamina() <= KINDA_SMALL_NUMBER)
-		{
-			return false;
-		}
-	}
+	//const UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+	//if (const UTHAttributeSet* AS = Cast<UTHAttributeSet>(ASC->GetAttributeSet(UTHAttributeSet::StaticClass())))
+	//{
+	//	if (AS->GetStamina() <= KINDA_SMALL_NUMBER)
+	//	{
+	//		return false;
+	//	}
+	//}
 	
 	const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
 	const UTHParkourComponent* ParkourComponent = Character ? Character->FindComponentByClass<UTHParkourComponent>() : nullptr;
@@ -64,25 +64,38 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		return;
 	}
 
+	// [FIX] 현재 이동 모드/스프링암/캡슐 상태 백업
+	if (UCharacterMovementComponent* CMC = PlayerCharacter->GetCharacterMovement())
+	{
+		SavedMovementMode = CMC->MovementMode;
+		SavedCustomMovementMode = CMC->CustomMovementMode;
+		CMC->SetMovementMode(MOVE_Flying); // [FIX] 맨틀 중 충돌/지면 영향 배제
+	}
 	if (UCapsuleComponent* Capsule = PlayerCharacter->GetCapsuleComponent())
 	{
+		SavedCapsuleProfile = Capsule->GetCollisionProfileName();
 		Capsule->SetCollisionProfileName(FName("Mantling"));
+
 	}
 	
 	if (USpringArmComponent* SpringArm = PlayerCharacter->GetSpringArm())
 	{
+		bSpringArmCollisionSaved = SpringArm->bDoCollisionTest;
 		SpringArm->bDoCollisionTest = false;
 	}
 	
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
-	if (StaminaCostEffect)
+	// [FIX] ASC 체크 
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured())
 	{
-		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-		EffectContext.AddSourceObject(this);
-		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(StaminaCostEffect, GetAbilityLevel(), EffectContext);
-		if (SpecHandle.IsValid())
+		if (StaminaCostEffect)
 		{
-			(void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+			FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+			EffectContext.AddSourceObject(this);
+			FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(StaminaCostEffect, GetAbilityLevel(), EffectContext);
+			if (SpecHandle.IsValid())
+			{
+				(void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+			}
 		}
 	}
 
@@ -112,11 +125,6 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		MotionWarpingComp->AddOrUpdateWarpTarget(ForwardWarpTargetParams);
 	}
 	
-	if (UCharacterMovementComponent* CMC = PlayerCharacter->GetCharacterMovement())
-    {
-        CMC->SetMovementMode(MOVE_Flying);
-    }
-
 	UAnimMontage* MantleMontage = ParkourComponent->GetMantlingMontage();
 	if (UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, MantleMontage))
 	{
@@ -124,30 +132,49 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		MontageTask->OnInterrupted.AddDynamic(this, &UTHMantleAbility::OnMontageInterrupted);
 		MontageTask->OnCancelled.AddDynamic(this, &UTHMantleAbility::OnMontageInterrupted);
 		MontageTask->ReadyForActivation();
+		return;
 	}
-	else
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-	}
+	EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
 }
 
-void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
+void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
-	if (const FGameplayAbilityActorInfo* LocalActorInfo = GetCurrentActorInfo())
+	if (const FGameplayAbilityActorInfo* LocalInfo = GetCurrentActorInfo())
 	{
-		if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(LocalActorInfo->AvatarActor.Get()))
+		if (ATHPlayerCharacter* PC = Cast<ATHPlayerCharacter>(LocalInfo->AvatarActor.Get()))
 		{
-			if (USpringArmComponent* SpringArm = PlayerCharacter->GetSpringArm())
+			// [FIX] 스프링암 충돌 원복
+			if (USpringArmComponent* SpringArm = PC->GetSpringArm())
 			{
-				SpringArm->bDoCollisionTest = true;
+				SpringArm->bDoCollisionTest = bSpringArmCollisionSaved;
 			}
-
-			if (UCapsuleComponent* Capsule = PlayerCharacter->GetCapsuleComponent())
+			// [FIX] 캡슐 프로파일 원복
+			if (UCapsuleComponent* Capsule = PC->GetCapsuleComponent())
 			{
-				Capsule->SetCollisionProfileName(FName("Pawn"));
+				if (SavedCapsuleProfile != NAME_None)
+				{
+					Capsule->SetCollisionProfileName(SavedCapsuleProfile);
+				}
+				else
+				{
+					Capsule->SetCollisionProfileName(FName("Pawn"));
+				}
+			}
+			// [FIX] 워프 타깃 정리
+			if (UMotionWarpingComponent* MW = PC->MotionWarpingComponent)
+			{
+				MW->RemoveWarpTarget(FName("MantleUp"));
+				MW->RemoveWarpTarget(FName("MantleForward"));
+			}
+			// [FIX] 이동 모드 복원
+			if (UCharacterMovementComponent* CMC = PC->GetCharacterMovement())
+			{
+				CMC->SetMovementMode(SavedMovementMode, SavedCustomMovementMode);
 			}
 		}
 	}
+
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 

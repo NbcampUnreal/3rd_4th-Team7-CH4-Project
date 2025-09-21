@@ -6,7 +6,7 @@
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Game/THGameStateBase.h"
-#include "Player/THTitlePlayerController.h"
+#include "Player/Controller/THTitlePlayerController.h"
 #include "Player/THPlayerState.h"
 
 void UTHMatchmakingWidget::NativeConstruct()

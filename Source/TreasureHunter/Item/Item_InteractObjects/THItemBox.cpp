@@ -2,7 +2,7 @@
 #include "THBaseItem.h"
 #include "Item/Item_Data/THItemDataManager.h"
 #include "Components/SphereComponent.h"
-#include "PlayerCharacter/THPlayerCharacter.h"
+#include "Player/PlayerCharacter/THPlayerCharacter.h"
 
 #include "GameFramework/Pawn.h"
 #include "Kismet/GameplayStatics.h"

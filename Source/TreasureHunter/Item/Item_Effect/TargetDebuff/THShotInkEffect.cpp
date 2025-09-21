@@ -1,5 +1,5 @@
 ﻿#include "THShotInkEffect.h"
-#include "AttributeSet/THAttributeSet.h"
+#include "GAS/AttributeSet/THAttributeSet.h"
 
 UTHShotInkEffect::UTHShotInkEffect()
 {

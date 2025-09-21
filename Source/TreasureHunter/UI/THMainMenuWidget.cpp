@@ -7,7 +7,7 @@
 #include "Components/TextBlock.h"
 #include "Components/Image.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "Player/THTitlePlayerController.h"
+#include "Player/Controller/THTitlePlayerController.h"
 
 void UTHMainMenuWidget::NativeConstruct()
 {

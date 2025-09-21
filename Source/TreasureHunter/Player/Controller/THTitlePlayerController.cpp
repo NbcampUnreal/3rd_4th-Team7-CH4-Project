@@ -1,13 +1,13 @@
-#include "Player/THTitlePlayerController.h"
+#include "THTitlePlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
 #include "UI/THMainMenuWidget.h"
 #include "UI/THMatchmakingWidget.h"
 #include "UI/THLoadingWidget.h"
 #include "Game/THGameStateBase.h"
-#include "THPlayerState.h"
+#include "Player/THPlayerState.h"
 #include "Game/THGameModeBase.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/Tags/GameFlowTags.h"
 
 void ATHTitlePlayerController::BeginPlay()
 {

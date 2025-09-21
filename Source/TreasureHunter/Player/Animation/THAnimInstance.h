@@ -25,21 +25,22 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TObjectPtr<UCharacterMovementComponent> CharacterMovementComponent;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	FVector Velocity;
+	// [FIX] 런타임 계산 값 → Transient/BlueprintReadOnly
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Movement")
+	FVector Velocity = FVector::ZeroVector;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	float GroundSpeed;
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Movement")
+	float GroundSpeed = 0.f;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	float Direction;
-        
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Movement")
+	float Direction = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Movement")
 	uint8 bShouldMove : 1;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Movement")
 	uint8 bIsFalling : 1;
-        
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+
+	UPROPERTY(BlueprintReadOnly, Transient, Category = "Movement")
 	uint8 bIsCrouching : 1;
 };

@@ -1,6 +1,6 @@
 ﻿#include "THJumpBoostEffect.h"
-#include "AttributeSet/THAttributeSet.h"
-#include "Game/GameFlowTags.h"
+#include "GAS/AttributeSet/THAttributeSet.h"
+#include "GAS/Tags/GameFlowTags.h"
 
 UTHJumpBoostEffect::UTHJumpBoostEffect()
 {

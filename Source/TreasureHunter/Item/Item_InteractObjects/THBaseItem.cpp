@@ -1,5 +1,5 @@
 ﻿#include "THBaseItem.h"
-#include "PlayerCharacter/THPlayerCharacter.h"
+#include "Player/PlayerCharacter/THPlayerCharacter.h"
 #include "Item/THItemInventory.h"
 #include "THInteractPromptWidget.h"
 

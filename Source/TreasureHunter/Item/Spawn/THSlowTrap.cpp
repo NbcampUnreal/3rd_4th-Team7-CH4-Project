@@ -1,6 +1,6 @@
 ﻿#include "THSlowTrap.h"
-#include "PlayerCharacter/THPlayerCharacter.h"
-#include "Game/GameFlowTags.h"
+#include "Player/PlayerCharacter/THPlayerCharacter.h"
+#include "GAS/Tags/GameFlowTags.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
