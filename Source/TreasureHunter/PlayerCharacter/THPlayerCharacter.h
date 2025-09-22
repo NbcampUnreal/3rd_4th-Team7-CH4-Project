@@ -56,7 +56,11 @@ private:
 	
 	void HandleLookInput(const FInputActionValue& InValue);
 
-	void RequestSprint(const FInputActionValue& InValue);
+	void OnMoveInputReleased(const FInputActionValue& InValue);
+
+	void OnSprintPressed(const FInputActionValue&);
+
+	void OnSprintReleased(const FInputActionValue&);
 
 	void RequestMantle(const FInputActionValue& InValue);
 
@@ -125,6 +129,7 @@ public:
 
 	UFUNCTION()
 	void OnUseItemSlot1();
+	
 	UFUNCTION()
 	void OnUseItemSlot2();
 
@@ -134,6 +139,8 @@ public:
 	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 	void OnStunTagChanged(const FGameplayTag,int32 NewCount);
+
+	void OnSprintingStateChanged(const FGameplayTag Tag, int32 NewCount);
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> MantleAction;

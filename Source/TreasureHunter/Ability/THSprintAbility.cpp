@@ -4,17 +4,20 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "Game/GameFlowTags.h"
-#include "GameFramework/Character.h"
-#include "GameFramework/CharacterMovementComponent.h"
 
 UTHSprintAbility::UTHSprintAbility()
 {
     InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
     NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
-    AbilityTags.AddTag(TAG_Ability_Sprint);
+    FGameplayTagContainer AbilityTagsContainer;
+    AbilityTagsContainer.AddTag(TAG_Ability_Sprint);
+    SetAssetTags(AbilityTagsContainer);
+    
     ActivationOwnedTags.AddTag(TAG_State_Movement_Sprinting);
+    
     ActivationBlockedTags.AddTag(TAG_Status_Stamina_Empty);
+    ActivationBlockedTags.AddTag(TAG_Status_State_Mantling);
 }
 
 bool UTHSprintAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
@@ -23,18 +26,7 @@ bool UTHSprintAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
     {
         return false;
     }
-
-    const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
-    if (!Character || !Character->GetCharacterMovement())
-    {
-        return false;
-    }
     
-    if (Character->GetCharacterMovement()->GetCurrentAcceleration().SizeSquared() < KINDA_SMALL_NUMBER)
-    {
-        return false;
-    }
-
     return true;
 }
 
@@ -47,19 +39,8 @@ void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
         EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
         return;
     }
-
-    ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
-    UCharacterMovementComponent* MovementComp = Character ? Character->GetCharacterMovement() : nullptr;
+    
     UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
-    const UTHAttributeSet* AttributeSet = ASC->GetSet<UTHAttributeSet>();
-
-    if (!MovementComp || !AttributeSet)
-    {
-        EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-        return;
-    }
-
-    MovementComp->MaxWalkSpeed = AttributeSet->GetSprintSpeed();
     
     ASC->RemoveActiveEffectsWithGrantedTags(FGameplayTagContainer(TAG_Effect_Stamina_Regen));
     
@@ -91,15 +72,11 @@ void UTHSprintAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 {
     if (ActorInfo && ActorInfo->AvatarActor.IsValid())
     {
-        ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
-        UCharacterMovementComponent* MovementComp = Character ? Character->GetCharacterMovement() : nullptr;
         UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
-        const UTHAttributeSet* AttributeSet = ASC->GetSet<UTHAttributeSet>();
-
-        if (MovementComp && AttributeSet)
+        const UTHAttributeSet* AttributeSet = ASC ? ASC->GetSet<UTHAttributeSet>() : nullptr;
+        
+        if (ASC && AttributeSet)
         {
-            MovementComp->MaxWalkSpeed = AttributeSet->GetWalkSpeed();
-            
             if (HasAuthority(&ActivationInfo) && StaminaCostEffectHandle.IsValid())
             {
                 ASC->RemoveActiveGameplayEffect(StaminaCostEffectHandle);

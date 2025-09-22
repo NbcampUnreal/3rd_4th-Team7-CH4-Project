@@ -4,7 +4,6 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "AttributeSet/THAttributeSet.h"
-#include "Ability/THSprintAbility.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemBlueprintLibrary.h"
 #include "Components/CapsuleComponent.h"
@@ -75,6 +74,9 @@ void ATHPlayerCharacter::PossessedBy(AController* NewController)
 		{
 			ASC->RegisterGameplayTagEvent(TAG_State_Debuff_Stun, EGameplayTagEventType::NewOrRemoved)
 			.AddUObject(this, &ATHPlayerCharacter::OnStunTagChanged);
+
+			ASC->RegisterGameplayTagEvent(TAG_State_Movement_Sprinting, EGameplayTagEventType::NewOrRemoved)
+			.AddUObject(this, &ATHPlayerCharacter::OnSprintingStateChanged);
 		}
 	}
 }
@@ -92,6 +94,9 @@ void ATHPlayerCharacter::OnRep_PlayerState()
 		{
 			ASC->RegisterGameplayTagEvent(TAG_State_Debuff_Stun, EGameplayTagEventType::NewOrRemoved)
 			.AddUObject(this, &ATHPlayerCharacter::OnStunTagChanged);
+
+			ASC->RegisterGameplayTagEvent(TAG_State_Movement_Sprinting, EGameplayTagEventType::NewOrRemoved)
+			.AddUObject(this, &ATHPlayerCharacter::OnSprintingStateChanged);
 		}
 	}
 }
@@ -108,8 +113,9 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
 	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-	EIC->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::RequestSprint);
-	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::RequestSprint);
+	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputReleased);
+	EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::OnSprintPressed);
+	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::OnSprintReleased);
 	EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
 	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
 	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
@@ -129,12 +135,32 @@ void ATHPlayerCharacter::HandleMoveTriggered(const FInputActionValue& InValue)
 
 		AddMovementInput(ForwardDirection, InMovementVector.X);
 		AddMovementInput(RightDirection, InMovementVector.Y);
+
+		if (InMovementVector.IsNearlyZero(0.01f))
+		{
+			if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+			{
+				FGameplayEventData Payload;
+				UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Movement_Stopped, Payload);
+			}
+		}
+	}
+}
+
+void ATHPlayerCharacter::OnMoveInputReleased(const FInputActionValue& InValue)
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		if (ASC->HasMatchingGameplayTag(TAG_State_Movement_Sprinting))
+		{
+			FGameplayEventData Payload;
+			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Movement_Stopped, Payload);
+		}
 	}
 }
 
 void ATHPlayerCharacter::HandleMoveCompleted(const FInputActionValue& InValue)
 {
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Movement_Stopped, FGameplayEventData());
 }
 
 void ATHPlayerCharacter::HandleLookInput(const FInputActionValue& InValue)
@@ -184,23 +210,21 @@ void ATHPlayerCharacter::ToggleCrouch()
 	}
 }
 
-void ATHPlayerCharacter::RequestSprint(const FInputActionValue& InValue)
+void ATHPlayerCharacter::OnSprintPressed(const FInputActionValue&)
 {
-	const bool bIsPressed = InValue.Get<bool>();
-    
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (ASC)
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
 	{
-		FGameplayTag SprintTag = TAG_Ability_Sprint;
-		if (bIsPressed)
-		{
-			ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(SprintTag));
-		}
-		else
-		{
-			const FGameplayTagContainer SprintTagContainer(SprintTag);
-			ASC->CancelAbilities(&SprintTagContainer);
-		}
+		FGameplayTagContainer SprintTags(TAG_Ability_Sprint);
+		ASC->TryActivateAbilitiesByTag(SprintTags);
+	}
+}
+
+void ATHPlayerCharacter::OnSprintReleased(const FInputActionValue&)
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		FGameplayTagContainer SprintTags(TAG_Ability_Sprint);
+		ASC->CancelAbilities(&SprintTags);
 	}
 }
 
@@ -243,6 +267,21 @@ void ATHPlayerCharacter::BindToAttributeChanges()
 
 void ATHPlayerCharacter::OnStaminaChanged(const FOnAttributeChangeData& Data)
 {
+}
+
+void ATHPlayerCharacter::OnSprintingStateChanged(const FGameplayTag Tag, int32 NewCount)
+{
+	const UTHAttributeSet* AS = Cast<UTHAttributeSet>(GetAbilitySystemComponent()->GetAttributeSet(UTHAttributeSet::StaticClass()));
+	if (!AS) return;
+
+	if (NewCount > 0)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = AS->GetSprintSpeed();
+	}
+	else
+	{
+		GetCharacterMovement()->MaxWalkSpeed = AS->GetWalkSpeed();
+	}
 }
 
 UAbilitySystemComponent* ATHPlayerCharacter::GetAbilitySystemComponent() const
@@ -356,7 +395,6 @@ void ATHPlayerCharacter::OnUseItemSlot2()
 	}
 }
 
-
 void ATHPlayerCharacter::OnWalkSpeedChanged(const FOnAttributeChangeData& Data)
 {
 	if (!bIsSprinting) // 스프린트 중이 아닐 때만 워킹 속도를 업데이트
@@ -416,7 +454,6 @@ void ATHPlayerCharacter::OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* Othe
 				ASC->HandleGameplayEvent(EventData.EventTag, &EventData);
 			}
 		}
-		
 	}
 }
 
@@ -431,8 +468,3 @@ void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount
 		EnableInput(GetController<APlayerController>());
 	}
 }
-
-
-
-
-

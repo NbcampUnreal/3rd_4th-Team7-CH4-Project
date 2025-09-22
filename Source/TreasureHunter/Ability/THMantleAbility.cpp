@@ -14,7 +14,10 @@ UTHMantleAbility::UTHMantleAbility()
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 	
-	AbilityTags.AddTag(TAG_Ability_Mantle);
+	FGameplayTagContainer AbilityTagsContainer;
+	AbilityTagsContainer.AddTag(TAG_Ability_Mantle);
+	SetAssetTags(AbilityTagsContainer);
+	
 	ActivationOwnedTags.AddTag(TAG_Status_State_Mantling);
 	ActivationBlockedTags.AddTag(TAG_Status_Stamina_Empty);
 }
