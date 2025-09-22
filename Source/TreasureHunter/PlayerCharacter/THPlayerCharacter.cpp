@@ -15,7 +15,7 @@
 #include "MotionWarpingComponent.h"
 #include "GameplayEffect.h"
 
-ATHPlayerCharacter::ATHPlayerCharacter() 
+ATHPlayerCharacter::ATHPlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -108,8 +108,9 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
 	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-	EIC->BindAction(SprintAction, ETriggerEvent::Triggered, this, &ThisClass::RequestSprint);
-	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::RequestSprint);
+	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputReleased);
+	EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::OnSprintPressed);
+	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::OnSprintReleased);
 	EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
 	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
 	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
@@ -129,12 +130,35 @@ void ATHPlayerCharacter::HandleMoveTriggered(const FInputActionValue& InValue)
 
 		AddMovementInput(ForwardDirection, InMovementVector.X);
 		AddMovementInput(RightDirection, InMovementVector.Y);
+
+		if (InMovementVector.IsNearlyZero(0.01f))
+		{
+			if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+			{
+				if (ASC->HasMatchingGameplayTag(TAG_State_Movement_Sprinting))
+				{
+					FGameplayTagContainer SprintTagContainer(TAG_Ability_Sprint);
+					ASC->CancelAbilities(&SprintTagContainer);
+				}
+			}
+		}
+	}
+}
+
+void ATHPlayerCharacter::OnMoveInputReleased(const FInputActionValue& InValue)
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		if (ASC->HasMatchingGameplayTag(TAG_State_Movement_Sprinting))
+		{
+			FGameplayTagContainer SprintTags(TAG_Ability_Sprint);
+			ASC->CancelAbilities(&SprintTags);
+		}
 	}
 }
 
 void ATHPlayerCharacter::HandleMoveCompleted(const FInputActionValue& InValue)
 {
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, TAG_Event_Movement_Stopped, FGameplayEventData());
 }
 
 void ATHPlayerCharacter::HandleLookInput(const FInputActionValue& InValue)
@@ -184,23 +208,21 @@ void ATHPlayerCharacter::ToggleCrouch()
 	}
 }
 
-void ATHPlayerCharacter::RequestSprint(const FInputActionValue& InValue)
+void ATHPlayerCharacter::OnSprintPressed(const FInputActionValue&)
 {
-	const bool bIsPressed = InValue.Get<bool>();
-    
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (ASC)
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
 	{
-		FGameplayTag SprintTag = TAG_Ability_Sprint;
-		if (bIsPressed)
-		{
-			ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(SprintTag));
-		}
-		else
-		{
-			const FGameplayTagContainer SprintTagContainer(SprintTag);
-			ASC->CancelAbilities(&SprintTagContainer);
-		}
+		FGameplayTagContainer SprintTags(TAG_Ability_Sprint);
+		ASC->TryActivateAbilitiesByTag(SprintTags);
+	}
+}
+
+void ATHPlayerCharacter::OnSprintReleased(const FInputActionValue&)
+{
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		FGameplayTagContainer SprintTags(TAG_Ability_Sprint);
+		ASC->CancelAbilities(&SprintTags);
 	}
 }
 

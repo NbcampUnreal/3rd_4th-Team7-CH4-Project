@@ -20,9 +20,9 @@ void UTHAttributeSet::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, Stamina, COND_OwnerOnly, REPNOTIFY_Always);
 	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, MaxStamina, COND_OwnerOnly, REPNOTIFY_Always);
 	
-	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, WalkSpeed, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, SprintSpeed, COND_None, REPNOTIFY_Always);
-	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, JumpPower, COND_None, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, WalkSpeed, COND_OwnerOnly, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, SprintSpeed, COND_OwnerOnly, REPNOTIFY_Always);
+	DOREPLIFETIME_CONDITION_NOTIFY(UTHAttributeSet, JumpPower, COND_OwnerOnly, REPNOTIFY_Always);
 }
 
 void UTHAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data)
