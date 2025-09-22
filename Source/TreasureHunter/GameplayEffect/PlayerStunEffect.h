@@ -13,6 +13,6 @@ class TREASUREHUNTER_API UPlayerStunEffect : public UGameplayEffect
 	GENERATED_BODY()
 
 public:
-	UPlayerStunEffect(const FObjectInitializer& ObjectInitializer);
+	// UPlayerStunEffect(const FObjectInitializer& ObjectInitializer);
 	
 };

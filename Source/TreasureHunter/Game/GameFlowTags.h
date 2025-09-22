@@ -36,3 +36,6 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Phase_Finish);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Player_Ready);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Player_Character_First);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Player_Character_Second);
+
+// ----- Event -----
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Movement_Stopped);
