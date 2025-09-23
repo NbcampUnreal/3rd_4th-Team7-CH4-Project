@@ -6,6 +6,8 @@
 #include "UI/THLoadingWidget.h"
 #include "Game/GameFlowTags.h"
 
+#include "Kismet/GameplayStatics.h"
+
 ATHGameModeBase::ATHGameModeBase()
 {
 	MaxMatchPlayerNum = 2;
@@ -177,11 +179,21 @@ void ATHGameModeBase::LoadGame()
 
 void ATHGameModeBase::GameStart()
 {
+	CourseCalculate();
+
 	for (ATHPlayerController* Player : StartPlayerControllers)
 	{
 		Player->SetIgnoreMoveInput(false);
 		Player->SetIgnoreLookInput(false);
 	}
+
+	GetWorldTimerManager().SetTimer(
+		AccumulateUpdateTimerHandle,
+		this,
+		&ATHGameModeBase::AccumulatePlayerDistance,
+		0.1f,
+		true
+	);
 }
 
 void ATHGameModeBase::FinishGame()
@@ -305,6 +317,8 @@ void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
 	StartPlayerControllers.Add(Player);
 
 	Player->DisableInput(Player);
+
+	CheckPlayReady();
 }
 
 void ATHGameModeBase::StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad)
@@ -335,19 +349,121 @@ void ATHGameModeBase::OnLevelLoadedReady()
 	if (LoadedWorld)
 	{
 		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true);
-		bIsLevelLoading = true;
 	}
 }
 
 void ATHGameModeBase::CheckPlayReady()
 {
-	if (bIsLevelLoading && bIsPlayer1Ready && bIsPlayer2Ready)
+	if (GameModeFlow == TAG_Game_Phase_Play) return;
+	SetGameModeFlow(TAG_Game_Phase_Play);
+	ReadyPlayerNum = 0;
+}
+
+void ATHGameModeBase::CourseCalculate()
+{
+	TArray<AActor*> FoundActors;
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("Start"), FoundActors);
+	if (FoundActors.Num() > 0)
 	{
-		SetGameModeFlow(TAG_Game_Phase_Play);
-		ReadyPlayerNum = 0;
+		StartActor = FoundActors[0];
+		if (StartActor)
+		{
+			StartPos = StartActor->GetActorLocation();
+			FoundActors.Empty();
+		}
 	}
-	else
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("Check"), FoundActors);
+	if (FoundActors.Num() > 0)
 	{
-		return;
+		CheckActor = FoundActors[0];
+		if (CheckActor)
+		{
+			CheckPos = CheckActor->GetActorLocation();
+			FoundActors.Empty();
+		}
+	}
+	UGameplayStatics::GetAllActorsWithTag(GetWorld(), FName("Finish"), FoundActors);
+	if (FoundActors.Num() > 0)
+	{
+		FinishActor = FoundActors[0];
+		if (FinishActor)
+		{
+			FinishPos = FinishActor->GetActorLocation();
+			FoundActors.Empty();
+		}
+	}
+
+	if (!StartActor || !CheckActor || !FinishActor) return;
+
+	FlatSectionDist = FVector::Dist(StartPos, CheckPos);
+	ClimbSectionDist = FVector::Dist(CheckPos, FinishPos);
+	TotalDist = FlatSectionDist + ClimbSectionDist;
+
+	Section1Weight = FlatSectionDist / TotalDist;
+	Section2Weight = ClimbSectionDist / TotalDist;
+}
+
+bool ATHGameModeBase::IsInFlatSection(const FVector& PlayerPos) const
+{
+	FVector StartToCheck = CheckPos - StartPos;
+	FVector StartToPlayer = PlayerPos - StartPos;
+
+	float Projection = FVector::DotProduct(StartToPlayer, StartToCheck.GetSafeNormal());
+
+	return Projection < FlatSectionDist;
+}
+
+void ATHGameModeBase::AccumulatePlayerDistance()
+{
+	for (ATHPlayerController* Player : StartPlayerControllers)
+	{
+		APawn* PlayerPawn = Player->GetPawn();
+		if (!PlayerPawn) continue;
+
+		FVector PlayerPos = PlayerPawn->GetActorLocation();
+
+		float CurrentProgress = 0.0f;
+		if (IsInFlatSection(PlayerPos))
+		{
+			float FlatProgress = FVector::Dist(StartPos, PlayerPos) / FlatSectionDist;
+			CurrentProgress = FlatProgress * Section1Weight;
+		}
+		else
+		{
+			float ClimbProgress = FVector::Dist(CheckPos, PlayerPos) / ClimbSectionDist;
+			CurrentProgress = Section1Weight + ClimbProgress * Section2Weight;
+		}
+
+		uint8 QuantizedProgress = static_cast<uint8>(FMath::Clamp(CurrentProgress, 0.0f, 1.0f) * 255.0f);
+
+		uint8 OpponentProgress = 0;
+		if (StartPlayerControllers.Num() > 1)
+		{
+			for (ATHPlayerController* Other : StartPlayerControllers)
+			{
+				if (Other == Player) continue;
+				APawn* OtherPawn = Other->GetPawn();
+				if (!OtherPawn) continue;
+
+				FVector OtherPos = OtherPawn->GetActorLocation();
+
+				CurrentProgress = 0.0f;
+				if (IsInFlatSection(OtherPos))
+				{
+					float FlatProgress = FVector::Dist(StartPos, OtherPos) / FlatSectionDist;
+					CurrentProgress = FlatProgress * Section1Weight;
+				}
+				else
+				{
+					float ClimbProgress = FVector::Dist(CheckPos, OtherPos) / ClimbSectionDist;
+					CurrentProgress = Section1Weight + ClimbProgress * Section2Weight;
+				}
+
+				OpponentProgress = static_cast<uint8>(FMath::Clamp(CurrentProgress, 0.0f, 1.0f) * 255.0f);
+				break;
+			}
+		}
+
+		Player->Client_UpdateClimb_Implementation(QuantizedProgress, OpponentProgress);
 	}
 }
