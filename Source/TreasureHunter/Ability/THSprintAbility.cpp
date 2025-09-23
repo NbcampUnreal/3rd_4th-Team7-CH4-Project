@@ -1,6 +1,7 @@
 ﻿#include "Ability/THSprintAbility.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayTag.h"
 #include "Abilities/Tasks/AbilityTask_WaitGameplayEvent.h"
+#include "Abilities/GameplayAbility.h" 
 #include "AttributeSet/THAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "Game/GameFlowTags.h"
@@ -39,6 +40,7 @@ void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
         EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
         return;
     }
+    K2_AddGameplayCue(TAG_GameplayCue_Movement_Sprinting, MakeEffectContext(Handle, ActorInfo));
     
     UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
     
@@ -70,6 +72,8 @@ void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 
 void UTHSprintAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
+    K2_RemoveGameplayCue(TAG_GameplayCue_Movement_Sprinting);
+
     if (ActorInfo && ActorInfo->AvatarActor.IsValid())
     {
         UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
