@@ -422,19 +422,19 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 
 		FVector PlayerPos = PlayerPawn->GetActorLocation();
 
-		float CurrentDist = 0.0f;
+		float CurrentProgress = 0.0f;
 		if (IsInFlatSection(PlayerPos))
 		{
-			CurrentDist = FVector::Dist(StartPos, PlayerPos);
+			float FlatProgress = FVector::Dist(StartPos, PlayerPos) / FlatSectionDist;
+			CurrentProgress = FlatProgress * Section1Weight;
 		}
 		else
 		{
-			float FlatDone = FlatSectionDist;
-			float ClimbProgress = FVector::Dist(CheckPos, PlayerPos);
-			CurrentDist = FlatDone + ClimbProgress;
+			float ClimbProgress = FVector::Dist(CheckPos, PlayerPos) / ClimbSectionDist;
+			CurrentProgress = Section1Weight + ClimbProgress * Section2Weight;
 		}
 
-		uint8 QuantizedProgress = static_cast<uint8>(FMath::Clamp(CurrentDist / TotalDist, 0.0f, 1.0f) * 255.0f);
+		uint8 QuantizedProgress = static_cast<uint8>(FMath::Clamp(CurrentProgress, 0.0f, 1.0f) * 255.0f);
 
 		uint8 OpponentProgress = 0;
 		if (StartPlayerControllers.Num() > 1)
@@ -445,8 +445,21 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 				APawn* OtherPawn = Other->GetPawn();
 				if (!OtherPawn) continue;
 
-				float OtherDist = FVector::Dist(StartPos, OtherPawn->GetActorLocation());
-				OpponentProgress = static_cast<uint8>(FMath::Clamp(OtherDist / TotalDist, 0.0f, 1.0f) * 255.0f);
+				FVector OtherPos = OtherPawn->GetActorLocation();
+
+				CurrentProgress = 0.0f;
+				if (IsInFlatSection(OtherPos))
+				{
+					float FlatProgress = FVector::Dist(StartPos, OtherPos) / FlatSectionDist;
+					CurrentProgress = FlatProgress * Section1Weight;
+				}
+				else
+				{
+					float ClimbProgress = FVector::Dist(CheckPos, OtherPos) / ClimbSectionDist;
+					CurrentProgress = Section1Weight + ClimbProgress * Section2Weight;
+				}
+
+				OpponentProgress = static_cast<uint8>(FMath::Clamp(CurrentProgress, 0.0f, 1.0f) * 255.0f);
 				break;
 			}
 		}
