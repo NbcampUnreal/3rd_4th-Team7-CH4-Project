@@ -73,6 +73,12 @@ private:
 
 	void CheckPlayReady();
 
+	void AccumulatePlayerDistance();
+
+	void CourseCalculate();
+
+	bool IsInFlatSection(const FVector& PlayerPos) const;
+
 private:
 	FGameplayTag GameModeFlow;
 
@@ -88,6 +94,8 @@ private:
 
 	FTimerHandle MatchTimerHandle;
 
+	FTimerHandle AccumulateUpdateTimerHandle;
+
 	float MatchWaitTime;
 
 	TSoftObjectPtr<UWorld> OpenLevelPath;
@@ -99,11 +107,27 @@ private:
 	TSoftObjectPtr<UWorld> PlayLevelPath;
 
 	UPROPERTY()
-	uint8 bIsLevelLoading : 1;
+	AActor* StartActor;
 	UPROPERTY()
-	uint8 bIsPlayer1Ready : 1;
+	AActor* CheckActor;
 	UPROPERTY()
-	uint8 bIsPlayer2Ready : 1;
+	AActor* FinishActor;
+	
+	FVector StartPos;
+
+	FVector CheckPos;
+
+	FVector FinishPos;
+
+	float TotalDist;
+
+	float FlatSectionDist;
+
+	float ClimbSectionDist;
+
+	float Section1Weight;
+
+	float Section2Weight;
 
 public:
 	TArray<FPlayerData> LoginPlayerData;
