@@ -20,6 +20,10 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
+	FTimerHandle TurningTimerHandle;
+	void TurningItem();
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
 
@@ -61,5 +65,6 @@ public:
 	UPROPERTY()
 	TMap<APlayerController*, UTHInteractPromptWidget*> InteractPromptWidgets;
 
-
+	UPROPERTY(EditAnywhere, Category = "UI")
+	float RotationSpeed = 1.f;
 };
