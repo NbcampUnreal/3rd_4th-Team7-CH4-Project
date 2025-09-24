@@ -9,12 +9,22 @@
 ATHJumpPad::ATHJumpPad()
 {
     bReplicates = true;
+
 	
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+
 	JumpPadMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("JumpPadMesh"));
-	RootComponent = JumpPadMesh;
+	//RootComponent = JumpPadMesh;
+	JumpPadMesh->SetupAttachment(RootComponent);
+	JumpPadMesh->SetGenerateOverlapEvents(true);
 
     JumpPadMesh->OnComponentBeginOverlap.AddDynamic(this, &ATHJumpPad::OnOverlapBegin);
     JumpPadMesh->SetCollisionProfileName(TEXT("OverlapAllDynamic"));
+
+	JumpPadAniMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("JumpPadAniMesh"));
+	JumpPadAniMesh->SetupAttachment(RootComponent);
+	JumpPadAniMesh->SetCollisionProfileName(TEXT("NoCollision"));
+
 }
 
 
@@ -23,6 +33,12 @@ void ATHJumpPad::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifeti
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(ATHJumpPad, bIsActivated);
+}
+
+void ATHJumpPad::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+    
 }
 
 void ATHJumpPad::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -41,10 +57,7 @@ void ATHJumpPad::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Oth
     {
         if (HasAuthority())
         {
-            bIsActivated = false;
-            Character->LaunchCharacter(FVector(0.f, 0.f, LaunchStrength), false, false);
-            FTimerHandle DestroyTimerHandle;
-            GetWorldTimerManager().SetTimer(DestroyTimerHandle, this, &ATHJumpPad::DestroyJumpPad, 1.5f, false);
+            JumpAction(Character);
         }
         else
         {
@@ -59,12 +72,7 @@ void ATHJumpPad::Server_ActivateJumpPad_Implementation(ACharacter* CharacterToLa
     {
         return;
     }
-
-    bIsActivated = false;
-    CharacterToLaunch->LaunchCharacter(FVector(0.f, 0.f, LaunchStrength), false, false);
-
-    FTimerHandle DestroyTimerHandle;
-    GetWorldTimerManager().SetTimer(DestroyTimerHandle, this, &ATHJumpPad::DestroyJumpPad, 1.5f, false);
+    JumpAction(CharacterToLaunch);
 }
 
 bool ATHJumpPad::Server_ActivateJumpPad_Validate(ACharacter* CharacterToLaunch)
@@ -76,3 +84,28 @@ void ATHJumpPad::DestroyJumpPad()
 {
     Destroy();
 }
+
+
+void ATHJumpPad::JumpAction(ACharacter* CharacterToLaunch)
+{
+    bIsActivated = false;
+    PlayJumpPadAnimation();
+    CharacterToLaunch->LaunchCharacter(FVector(0.f, 0.f, LaunchStrength), false, false);
+    FTimerHandle DestroyTimerHandle;
+    GetWorldTimerManager().SetTimer(DestroyTimerHandle, this, &ATHJumpPad::DestroyJumpPad, 1.5f, false);
+}
+
+void ATHJumpPad::PlayJumpPadAnimation()
+{
+    if (UAnimInstance* AnimInst = JumpPadAniMesh->GetAnimInstance())
+    {
+        if (JumpPadMontage)
+        {
+			UE_LOG(LogTemp, Log, TEXT("Playing JumpPad Montage"));
+            AnimInst->Montage_Play(JumpPadMontage);
+        }
+    }
+
+}
+
+

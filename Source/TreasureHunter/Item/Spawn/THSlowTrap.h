@@ -7,6 +7,7 @@
 class UStaticMeshComponent;
 class USphereComponent;
 class UGameplayEffect;
+class UNiagaraSystem;
 
 UCLASS()
 class TREASUREHUNTER_API ATHSlowTrap : public ATHSpawnObject
@@ -44,5 +45,8 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Trap|Ability")
 	TSubclassOf<class UGameplayAbility> SlowAbilityClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects", meta = (AllowPrivateAccess = "true"))
+	UNiagaraSystem* SlowEffectNiagara;
 
 };

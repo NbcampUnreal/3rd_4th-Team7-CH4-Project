@@ -33,7 +33,27 @@ void ATHBaseItem::BeginPlay()
 	{
 		GetWorld()->GetTimerManager().SetTimer(PickedUpTimerHandle, this, &ATHBaseItem::EnablePickup, 0.3f, false);
 	}
+
+	GetWorld()->GetTimerManager().SetTimer(TurningTimerHandle, this, &ATHBaseItem::TurningItem, 0.02f, true);
 }
+
+void ATHBaseItem::TurningItem()
+{
+	FRotator NewRotation = FRotator(0, RotationSpeed, 0);
+	AddActorLocalRotation(NewRotation);
+}
+
+void ATHBaseItem::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	if (GetWorld())
+	{
+		GetWorld()->GetTimerManager().ClearTimer(TurningTimerHandle);
+	}
+
+}
+
 
 void ATHBaseItem::SetItemID(FName NewItemID)
 {

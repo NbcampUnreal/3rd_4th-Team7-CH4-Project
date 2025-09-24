@@ -7,6 +7,7 @@
 #include "Item/ItemEffect/THShotInkEffect.h"
 #include "Kismet/GameplayStatics.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
+#include "Game/GameFlowTags.h"
 
 
 void UTHUseShotInkAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -44,12 +45,12 @@ void UTHUseShotInkAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 					if (TargetASC)
 					{
 						//------이펙트 적용 불가 태그 체크
-						bool bBlockEffect = CheckTag(TargetASC, FGameplayTag::RequestGameplayTag("Item.ImmunePotion.Active"));
+						bool bBlockEffect = CheckTag(TargetASC, TAG_Item_ImmunePotion_Active);
 						if (bBlockEffect) return;
 
 
 						//------태그제거용
-						FGameplayTag SpeedBoostTag = FGameplayTag::RequestGameplayTag("Item.Ink.Active");						
+						FGameplayTag SpeedBoostTag = TAG_Item_Ink_Active;
 
 						FGameplayEffectQuery Query;
 						TArray<FActiveGameplayEffectHandle> ActiveEffects = TargetASC->GetActiveEffects(Query);

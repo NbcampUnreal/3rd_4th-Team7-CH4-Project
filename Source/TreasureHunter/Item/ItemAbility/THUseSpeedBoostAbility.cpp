@@ -4,6 +4,7 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "GameplayEffectTypes.h"
 #include "Item/ItemEffect/THSpeedBoostEffect.h"
+#include "Game/GameFlowTags.h"
 
 
 
@@ -33,7 +34,7 @@ void UTHUseSpeedBoostAbility::ActivateAbility(const FGameplayAbilitySpecHandle H
 
 
 		//------태그제거용
-		FGameplayTag SpeedBoostTag = FGameplayTag::RequestGameplayTag("Item.SpeedBoost.Active");
+		FGameplayTag SpeedBoostTag = TAG_Item_SpeedBoost_Active;
 		bool bFoundEffect = false;
 
 		FGameplayEffectQuery Query;
@@ -60,7 +61,7 @@ void UTHUseSpeedBoostAbility::ActivateAbility(const FGameplayAbilitySpecHandle H
 		{
 			FGameplayEffectSpec* Spec = SpeedSpecHandle.Data.Get();
 						
-			Spec->DynamicGrantedTags.AddTag(FGameplayTag::RequestGameplayTag("Item.SpeedBoost.Active"));
+			Spec->DynamicGrantedTags.AddTag(TAG_Item_SpeedBoost_Active);
 			
 			ASC->ApplyGameplayEffectSpecToSelf(*Spec);
 			

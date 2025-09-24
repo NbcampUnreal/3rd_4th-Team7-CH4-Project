@@ -4,13 +4,14 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "GameplayEffectTypes.h"
 #include "Item/ItemEffect/THSpeedSlowEffect.h"
+#include "Game/GameFlowTags.h"
 
 
 
 
 UTHSpeedSlowAbility::UTHSpeedSlowAbility()
 {
-	ActivationBlockedTags.AddTag(FGameplayTag::RequestGameplayTag(TEXT("Item.ImmunePotion.Active")));
+	ActivationBlockedTags.AddTag(TAG_Item_ImmunePotion_Active);
 }
 
 
@@ -35,7 +36,7 @@ void UTHSpeedSlowAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 
 
 		//------태그제거용		
-		FGameplayTag SpeedSlowTag = FGameplayTag::RequestGameplayTag("Item.SpeedSlow.Active");
+		FGameplayTag SpeedSlowTag = TAG_Item_SpeedSlow_Active;
 		
 		FGameplayEffectQuery Query;
 		TArray<FActiveGameplayEffectHandle> ActiveEffects = ASC->GetActiveEffects(Query);

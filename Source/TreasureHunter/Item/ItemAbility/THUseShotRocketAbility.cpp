@@ -5,6 +5,7 @@
 #include "Item/ItemEffect/THShotRocketEffect.h"
 #include "Kismet/GameplayStatics.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
+#include "Game/GameFlowTags.h"
 
 
 
@@ -44,12 +45,12 @@ void UTHUseShotRocketAbility::ActivateAbility(const FGameplayAbilitySpecHandle H
 					UAbilitySystemComponent* TargetASC = TargetCharacter->GetAbilitySystemComponent();
 					if (TargetASC)
 					{
-						bool bBlockEffect = CheckTag(TargetASC, FGameplayTag::RequestGameplayTag("Item.ImmunePotion.Active"));
+						bool bBlockEffect = CheckTag(TargetASC, TAG_Item_ImmunePotion_Active);
 						if (bBlockEffect) return;
 
 
 						//------태그제거용
-						FGameplayTag SpeedBoostTag = FGameplayTag::RequestGameplayTag("Item.Stun.Active");
+						FGameplayTag SpeedBoostTag = TAG_Item_Stun_Active;
 						
 						FGameplayEffectQuery Query;
 						TArray<FActiveGameplayEffectHandle> ActiveEffects = TargetASC->GetActiveEffects(Query);
@@ -84,21 +85,11 @@ void UTHUseShotRocketAbility::ActivateAbility(const FGameplayAbilitySpecHandle H
 							FGameplayTagContainer OwnedTags;
 							TargetASC->GetOwnedGameplayTags(OwnedTags);
 						}
-
-
-
-
 					}
-
-					
 					break;
 				}
 			}
 		}
-
-
-		
-		
 		
 	}
 	EndAbility(Handle, ActorInfo, ActivationInfo, false, false);

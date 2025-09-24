@@ -72,4 +72,24 @@ public:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_DestroyBox();
 	
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "plz")
+	USkeletalMeshComponent* BoxMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimSequence* OpenAnim;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimSequence* IdleAnim;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	UAnimSequence* OpenIdleAnim;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
+	float OpenIdleDuration = 2.0f; // OpenIdle 유지 시간
+
+	FTimerHandle DestroyTimerHandle;
+
+	void PlayOpenIdle();
+
 };

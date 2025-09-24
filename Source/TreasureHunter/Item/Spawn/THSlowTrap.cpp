@@ -8,6 +8,7 @@
 #include "AbilitySystemComponent.h"
 #include "Item/ItemAbility/THSpeedSlowAbility.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
+#include "NiagaraFunctionLibrary.h"
 
 
 
@@ -78,6 +79,13 @@ void ATHSlowTrap::ApplySlowEffect(AActor* TargetActor)
 			const FGameplayAbilitySpec Spec(SlowAbilityClass, 1, INDEX_NONE, this);
 			const FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
 			ASC->TryActivateAbility(Handle);
+
+			// **추가할 코드: 나이아가라 스폰**
+			// TargetActor의 위치에 나이아가라 이펙트 재생
+			if (SlowEffectNiagara) // UPROPERTY(EditAnywhere) UNiagaraSystem* SlowEffectNiagara; 필요
+			{
+				UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SlowEffectNiagara, TargetActor->GetActorLocation());
+			}
 		}
 	}
 }

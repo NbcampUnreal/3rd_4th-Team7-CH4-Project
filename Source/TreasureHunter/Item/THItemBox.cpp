@@ -14,6 +14,10 @@ ATHItemBox::ATHItemBox()
     ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
     RootComponent = ItemMesh;
 
+    BoxMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BoxMesh"));    
+    BoxMesh->SetupAttachment(ItemMesh);
+
+
     OverlapSphere = CreateDefaultSubobject<USphereComponent>(TEXT("OverlapSphere"));
     OverlapSphere->SetupAttachment(RootComponent);
 
@@ -32,6 +36,18 @@ void ATHItemBox::BeginPlay()
     {
         OverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &ATHItemBox::OnOverlapBegin);
         OverlapSphere->OnComponentEndOverlap.AddDynamic(this, &ATHItemBox::OnOverlapEnd);
+    }
+
+    if (IdleAnim && BoxMesh)
+    {
+        BoxMesh->PlayAnimation(IdleAnim, true); // Idle 루프
+    }
+
+    if (BoxMesh)
+    {
+        FRotator Rot = BoxMesh->GetRelativeRotation();
+        Rot.Yaw += 180.f;
+        BoxMesh->SetRelativeRotation(Rot);
     }
 }
 
@@ -178,16 +194,55 @@ void ATHItemBox::OpenBox()
     if (!UseTimeCheck)
     {
         UseTimeCheck = true;
-        GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &ATHItemBox::ResetUseTime, 0.3f, false);
+        /*GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &ATHItemBox::ResetUseTime, 0.3f, false);*/
 
         FName RandomItemID = RandomItemGenerate(EItemType::Equipment);
         DropItem(RandomItemID);
 
-        Multicast_DestroyBox();
+
+        if (OpenAnim && BoxMesh)
+        {
+            BoxMesh->PlayAnimation(OpenAnim, false);
+
+            float Duration = OpenAnim->GetPlayLength();
+
+            // Open 끝난 뒤 OpenIdle 실행
+            GetWorldTimerManager().SetTimer(
+                DestroyTimerHandle,
+                FTimerDelegate::CreateUObject(this, &ATHItemBox::PlayOpenIdle),
+                Duration,
+                false
+            );
+        }
+        else
+        {
+            Multicast_DestroyBox();
+        }
     }
 }
 
 void ATHItemBox::Multicast_DestroyBox_Implementation()
 {
     Destroy();
+}
+
+void ATHItemBox::PlayOpenIdle()
+{
+    if (OpenIdleAnim && BoxMesh)
+    {
+        BoxMesh->PlayAnimation(OpenIdleAnim, true); // OpenIdle 루프 재생
+
+        // 몇 초 후 파괴
+        GetWorldTimerManager().SetTimer(
+            DestroyTimerHandle,
+            this,
+            &ATHItemBox::Multicast_DestroyBox,
+            OpenIdleDuration,
+            false
+        );
+    }
+    else
+    {
+        Multicast_DestroyBox();
+    }
 }

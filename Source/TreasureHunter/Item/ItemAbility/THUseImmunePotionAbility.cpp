@@ -4,6 +4,7 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "GameplayEffectTypes.h"
 #include "Item/ItemEffect/THImmunePotionEffect.h"
+#include "Game/GameFlowTags.h"
 
 
 
@@ -25,7 +26,7 @@ void UTHUseImmunePotionAbility::ActivateAbility(const FGameplayAbilitySpecHandle
 		UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
 		int32 Level = GetAbilityLevel(Handle, ActorInfo);
 
-		FGameplayTag ImmunePotionTag = FGameplayTag::RequestGameplayTag("Item.ImmunePotion.Active");
+		FGameplayTag ImmunePotionTag = TAG_Item_ImmunePotion_Active;
 		RemoveDebuff(ASC, ImmunePotionTag);
 		
 
@@ -43,9 +44,9 @@ void UTHUseImmunePotionAbility::ActivateAbility(const FGameplayAbilitySpecHandle
 			ASC->GetOwnedGameplayTags(OwnedTags);
 		}
 
-		RemoveDebuff(ASC, FGameplayTag::RequestGameplayTag("Item.SpeedSlow.Active"));
-		RemoveDebuff(ASC, FGameplayTag::RequestGameplayTag("Item.Stun.Active"));
-		RemoveDebuff(ASC, FGameplayTag::RequestGameplayTag("Item.Ink.Active"));
+		RemoveDebuff(ASC, TAG_Item_SpeedSlow_Active);
+		RemoveDebuff(ASC, TAG_Item_Stun_Active);
+		RemoveDebuff(ASC, TAG_Item_Ink_Active);
 	}
 	EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
 }
