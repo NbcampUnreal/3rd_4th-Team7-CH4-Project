@@ -2,6 +2,7 @@
 #include "Item/ItemAbility/THUseJumpBoostAbility.h"
 #include "AbilitySystemComponent.h"
 #include "Item/ItemEffect/THJumpBoostEffect.h"
+#include "Game/GameFlowTags.h"
 
 
 
@@ -23,7 +24,7 @@ void UTHUseJumpBoostAbility::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
 		int32 Level = GetAbilityLevel(Handle, ActorInfo);
 
-		FGameplayTag JumpBoostTag = FGameplayTag::RequestGameplayTag("Item.JumpBoost.Active");
+		FGameplayTag JumpBoostTag = TAG_Item_JumpBoost_Active;
 
 		FGameplayEffectQuery Query;
 		TArray<FActiveGameplayEffectHandle> ActiveEffects = ASC->GetActiveEffects(Query);
@@ -46,7 +47,7 @@ void UTHUseJumpBoostAbility::ActivateAbility(const FGameplayAbilitySpecHandle Ha
 		{
 			FGameplayEffectSpec* Spec = JumpSpecHandle.Data.Get();
 
-			Spec->DynamicGrantedTags.AddTag(FGameplayTag::RequestGameplayTag("Item.JumpBoost.Active"));
+			Spec->DynamicGrantedTags.AddTag(TAG_Item_JumpBoost_Active);
 
 			ASC->ApplyGameplayEffectSpecToSelf(*Spec);
 		}
