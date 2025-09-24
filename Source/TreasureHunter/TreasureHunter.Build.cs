@@ -21,8 +21,9 @@ public class TreasureHunter : ModuleRules
 			"UMG",
 			"Slate",
 			"SlateCore",
-			"MotionWarping"
-		});
+			"MotionWarping",
+            "Niagara"
+        });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 		
