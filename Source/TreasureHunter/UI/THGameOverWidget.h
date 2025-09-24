@@ -8,7 +8,8 @@
 class UButton;
 class UImage;
 class UWidgetAnimation;
-
+class UOverlay;
+class UTextBlock;
 
 UCLASS()
 class TREASUREHUNTER_API UTHGameOverWidget : public UUserWidget
@@ -24,6 +25,18 @@ private:
 	UFUNCTION()
 	void HandleMainMenuClicked();
 
+	UFUNCTION()
+	void HandleAcceptClicked();
+	UFUNCTION()
+	void HandleDeclineClicked();
+
+public:
+	void SetRestartEnabled(bool bEnabled);
+	void ShowDeclineText(const FText& InText);
+	void ShowWaitingForOpponent();
+	void ShowRematchModal();
+	void HideRematchModal();
+
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* RestartButton;
@@ -35,4 +48,17 @@ protected:
 
 	UPROPERTY(Transient, meta = (BindWidgetAnim))
 	UWidgetAnimation* ButtonAppearingAnim;
+	UPROPERTY(Transient, meta = (BindWidgetAnim))
+	UWidgetAnimation* LoadingAnim;
+
+	UPROPERTY(meta = (BindWidget))
+	UOverlay* RematchModal;
+
+	UPROPERTY(meta = (BindWidget))
+	UButton* AcceptButton;
+	UPROPERTY(meta = (BindWidget))
+	UButton* DeclineButton;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* DeclineText;
 };

@@ -6,11 +6,13 @@
 #include "UI/THGameOverWidget.h"
 #include "THPlayerState.h"
 #include "Game/THGameStateBase.h"
+#include "Game/THGameModeBase.h"
 #include "Game/GameFlowTags.h"
 #include "Item/THItemInventory.h"
 #include "Item/THItemDataManager.h"
 #include "Item/THItemData.h"
 
+#include "Engine/World.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemInterface.h"
 #include "AttributeSet/THAttributeSet.h"
@@ -37,6 +39,7 @@ void ATHPlayerController::BeginPlay()
 	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 	{
 		GS->OnPhaseChanged.AddDynamic(this, &ATHPlayerController::HandlePhaseChange);
+		GS->OnRematchChanged.AddDynamic(this, &ThisClass::HandleRematchChanged);
 	}
 }
 
@@ -45,6 +48,7 @@ void ATHPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 	{
 		GS->OnPhaseChanged.RemoveDynamic(this, &ATHPlayerController::HandlePhaseChange);
+		GS->OnRematchChanged.RemoveDynamic(this, &ThisClass::HandleRematchChanged);
 	}
 	Super::EndPlay(EndPlayReason);
 }
@@ -242,15 +246,6 @@ void ATHPlayerController::HandleItemActivated(int32 SlotIndex, FName ItemID)
 		}
 		break;
 
-		case EItemUIIndicator::FullScreenOverlay:
-		{
-			if (Row->UseKind == EItemUseKind::TargetDebuff && Row->VictimOverlayWidgetClass/*.IsValid()*/)
-			{
-				//Server_ApplyTargetOverlayToOpponent(ItemID);
-			}
-		}
-		break;
-
 		default:
 			UE_LOG(LogTemp, Log, TEXT("[PC] Case: None/Default"));
 			break;
@@ -306,6 +301,71 @@ void ATHPlayerController::Client_UpdateWinner_Implementation(bool bBunnyWinning)
 	if (PlayerHUD)
 	{
 		PlayerHUD->SetRankUIUpdate(bBunnyWinning);
+	}
+}
+#pragma endregion
+
+#pragma region Rematch
+void ATHPlayerController::Server_RequestRematch_Implementation()
+{
+	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
+	{
+		// Request Rematch 
+	}
+}
+
+void ATHPlayerController::Server_RespondRematch_Implementation(bool bAccept)
+{
+	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
+	{
+		// Rematch Response 
+	}
+}
+
+void ATHPlayerController::Server_LeaveToMainMenu_Implementation()
+{
+	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
+	{
+		// Leave at GameOver
+	}
+}
+
+void ATHPlayerController::HandleRematchChanged(FGameplayTag NewTag)
+{
+	EnsureGameOver();
+	if (!GameOverWidget) return;
+
+	const ATHGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr;
+	const bool bIAmResponder = (GS && GS->GetRematchResponder() == PlayerState);
+
+	if (NewTag.MatchesTagExact(TAG_Game_Rematch_Pending))
+	{
+		GameOverWidget->SetRestartEnabled(false);
+		if (bIAmResponder)  GameOverWidget->ShowRematchModal();
+		else                GameOverWidget->ShowWaitingForOpponent();
+	}
+	else if (NewTag.MatchesTagExact(TAG_Game_Rematch_Declined))
+	{
+		GameOverWidget->HideRematchModal();
+		GameOverWidget->SetRestartEnabled(false);
+		GameOverWidget->ShowDeclineText(FText::FromString(TEXT("The other player declined rematch")));
+	}
+	else if (NewTag.MatchesTagExact(TAG_Game_Rematch_OpponentLeft))
+	{
+		GameOverWidget->HideRematchModal();
+		GameOverWidget->SetRestartEnabled(false);
+		GameOverWidget->ShowDeclineText(FText::FromString(TEXT("The other player has left the game")));
+	}
+	else if (NewTag.MatchesTagExact(TAG_Game_Rematch_Timeout))
+	{
+		GameOverWidget->HideRematchModal();
+		GameOverWidget->SetRestartEnabled(false);
+		GameOverWidget->ShowDeclineText(FText::FromString(TEXT("Rematch timed out")));
+	}
+	else if (NewTag.MatchesTagExact(TAG_Game_Rematch_AcceptedBoth))
+	{
+		GameOverWidget->HideRematchModal();
+		GameOverWidget->SetRestartEnabled(false);
 	}
 }
 #pragma endregion

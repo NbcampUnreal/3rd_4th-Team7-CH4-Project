@@ -81,4 +81,20 @@ public:
 	UFUNCTION(Client, Reliable) // Always Active
 	void Client_UpdateWinner(bool bBunnyWinning);
 #pragma endregion
+
+#pragma region Rematch
+public:
+	UFUNCTION(Server, Reliable)
+	void Server_RequestRematch();
+
+	UFUNCTION(Server, Reliable)
+	void Server_RespondRematch(bool bAccept);
+
+	UFUNCTION(Server, Reliable)
+	void Server_LeaveToMainMenu();
+
+private:
+	UFUNCTION()
+	void HandleRematchChanged(FGameplayTag NewTag);
+#pragma endregion
 };

@@ -34,6 +34,13 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Phase_Loading);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Phase_Play);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Phase_Finish);
 
+// ----- Game Phase: AfterGameOver -----
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Rematch_Pending);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Rematch_AcceptedBoth);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Rematch_Declined);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Rematch_OpponentLeft);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Game_Rematch_Timeout);
+
 // ----- Player State -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Player_Ready);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Player_Character_First);
