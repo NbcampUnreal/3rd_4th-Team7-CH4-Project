@@ -53,6 +53,14 @@ void ATHGameStateBase::SetPhase(const FGameplayTag& NewPhase)
 	}
 }
 
+void ATHGameStateBase::SetWinnerTag(const FGameplayTag& NewWinner)
+{
+	if (!HasAuthority()) return;
+
+	WinnerTag = NewWinner;
+	ForceNetUpdate();
+}
+
 void ATHGameStateBase::OnRep_PhaseTag()
 {
 	OnPhaseChanged.Broadcast(PhaseTag);
