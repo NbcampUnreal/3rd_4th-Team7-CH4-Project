@@ -33,6 +33,13 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Phase_Loading, "Game.Phase.Loading", "Le
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Phase_Play, "Game.Phase.Play", "GamePlaying");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Phase_Finish, "Game.Phase.Finish", "GameFinish");
 
+// ----- Game Phase: AfterGameOver -----
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Rematch_Pending, "Game.Rematch.Pending", "Pending");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Rematch_AcceptedBoth, "Game.Rematch.AcceptedBoth", "AcceptRematch");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Rematch_Declined, "Game.Rematch.Declined", "DeclineRematch");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Rematch_OpponentLeft, "Game.Rematch.OpponentLeft", "OpponentLeft");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Game_Rematch_Timeout, "Game.Rematch.Timeout", "Timeout");
+
 // ----- Player State -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Player_Ready, "Player.Ready", "Player Ready");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Player_Character_First, "Player.Character.First", "Bunny Selected");

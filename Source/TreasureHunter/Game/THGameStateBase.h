@@ -7,6 +7,7 @@
 #include "THGameStateBase.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPhaseChangedSig, FGameplayTag, NewPhase);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnRematchChangedSig, FGameplayTag, NewTag);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnSlotsUpdatedSig);
 
@@ -81,5 +82,47 @@ public:
 
 	void ResetSlots();
 
+#pragma endregion
+
+#pragma region Rematch
+public:
+	UFUNCTION()
+	void OnRep_RematchTag();
+
+	UFUNCTION(BlueprintCallable, Category = "Rematch")
+	APlayerState* GetRematchRequester() const { return RematchRequester; }
+
+	UFUNCTION(BlueprintCallable, Category = "Rematch")
+	APlayerState* GetRematchResponder() const { return RematchResponder; }
+
+	UFUNCTION(BlueprintCallable, Category = "Rematch")
+	uint8 GetRematchAcceptMask() const { return RematchAcceptMask; }
+
+	UFUNCTION(BlueprintCallable, Category = "Rematch")
+	float GetRematchExpireAt() const { return RematchExpireAt; }
+
+	UFUNCTION(BlueprintCallable, Category = "Rematch")
+	void ResetRematchState();
+
+public:
+	UPROPERTY(BlueprintAssignable)
+	FOnRematchChangedSig OnRematchChanged;
+
+protected:
+	UPROPERTY(ReplicatedUsing = OnRep_RematchTag, BlueprintReadOnly, Category = "Rematch")
+	FGameplayTag RematchTag;
+
+private:
+	UPROPERTY(Replicated)
+	TObjectPtr<APlayerState> RematchRequester = nullptr;
+
+	UPROPERTY(Replicated)
+	TObjectPtr<APlayerState> RematchResponder = nullptr;
+
+	UPROPERTY(Replicated)
+	uint8 RematchAcceptMask = 0; // 0=Requester, 1=Responder
+
+	UPROPERTY(Replicated)
+	float RematchExpireAt = 0.f;
 #pragma endregion
 };

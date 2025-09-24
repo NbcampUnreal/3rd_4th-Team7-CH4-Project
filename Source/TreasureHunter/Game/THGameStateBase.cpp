@@ -32,6 +32,12 @@ void ATHGameStateBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(ATHGameStateBase, WinnerTag);
 	DOREPLIFETIME(ATHGameStateBase, SlotOwners);
 	DOREPLIFETIME(ATHGameStateBase, bSlotsLockedIn);
+
+	DOREPLIFETIME(ATHGameStateBase, RematchTag);
+	DOREPLIFETIME(ATHGameStateBase, RematchRequester);
+	DOREPLIFETIME(ATHGameStateBase, RematchResponder);
+	DOREPLIFETIME(ATHGameStateBase, RematchAcceptMask);
+	DOREPLIFETIME(ATHGameStateBase, RematchExpireAt);
 }
 
 #pragma region Phase
@@ -140,5 +146,23 @@ void ATHGameStateBase::OnRep_SlotOwners()
 void ATHGameStateBase::OnRep_SlotsLockedIn()
 {
 	OnSlotsUpdated.Broadcast();
+}
+#pragma endregion
+
+#pragma region Rematch
+void ATHGameStateBase::OnRep_RematchTag()
+{
+	OnRematchChanged.Broadcast(RematchTag);
+}
+
+void ATHGameStateBase::ResetRematchState() // Initialize when Phase Finish
+{
+	RematchTag = FGameplayTag();
+	RematchRequester = nullptr;
+	RematchResponder = nullptr;
+	RematchAcceptMask = 0;
+	RematchExpireAt = 0.f;
+	OnRep_RematchTag();
+	ForceNetUpdate();
 }
 #pragma endregion
