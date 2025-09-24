@@ -37,6 +37,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetPhase(const FGameplayTag& NewPhase);
 
+	UFUNCTION(BlueprintCallable)
+	void SetWinnerTag(const FGameplayTag& NewWinner);
+
 private:
 	UFUNCTION()
 	void OnRep_PhaseTag();
