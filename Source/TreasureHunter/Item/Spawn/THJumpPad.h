@@ -5,6 +5,7 @@
 #include "THJumpPad.generated.h"
 
 class UStaticMeshComponent;
+class USkeletalMeshComponent;
 UCLASS()
 class TREASUREHUNTER_API ATHJumpPad : public AActor
 {
@@ -13,7 +14,14 @@ class TREASUREHUNTER_API ATHJumpPad : public AActor
 public:
 	ATHJumpPad();
 
+    void JumpAction(ACharacter* CharacterToLaunch);
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
+    USkeletalMeshComponent* JumpPadAniMesh;
 
+    UPROPERTY(EditAnywhere, Category = "Animation")
+    UAnimMontage* JumpPadMontage;
+
+	void PlayJumpPadAnimation();
 
 private:
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta = (AllowPrivateAccess = "true"))
@@ -35,4 +43,6 @@ private:
     void DestroyJumpPad();
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	virtual void Tick(float DeltaTime) override;
 };
