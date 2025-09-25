@@ -18,6 +18,7 @@ class UInputAction;
 class UTHAttributeSet;
 class UGameplayEffect;
 class UMotionWarpingComponent;
+class UNiagaraComponent;
 struct UInputActionValue;
 
 UCLASS()
@@ -153,4 +154,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
+	TObjectPtr<UNiagaraComponent> StunEffectComponent;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
+	TObjectPtr<UNiagaraComponent> FootStepComponent;
 };

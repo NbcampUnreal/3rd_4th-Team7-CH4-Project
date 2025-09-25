@@ -18,6 +18,11 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Event_Movement_Stopped, "Event.Movement.Stopp
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Effect_Stamina_Regen, "Effect.Stamina.Regen", "Stamina Regen");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Effect_Stamina_Drain, "Effect.Stamina.Drain", "Stamina drain while sprint");
 
+// ----- Cue -----
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_GamePlayCue_StompStun, "GamePlayCue.StompStun","Stomp Stun Cue");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_GamePlayCue_FootStep, "GamePlayCue.FootStep","Foot Step Cue");
+
+
 // ----- Movement / State -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_State_Movement_Sprinting, "State.Movement.Sprinting", "Sprinting state");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Status_State_Mantling, "Status.State.Mantling", "Mantling state");
