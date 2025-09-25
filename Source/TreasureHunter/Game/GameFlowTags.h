@@ -19,6 +19,10 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Movement_Stopped);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effect_Stamina_Regen);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effect_Stamina_Drain);
 
+// ----- Cue -----
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GamePlayCue_StompStun);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GamePlayCue_FootStep);
+
 // ----- Movement / State -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Sprinting);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Status_State_Mantling);

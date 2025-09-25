@@ -6,11 +6,14 @@
 #include "Components/CapsuleComponent.h"
 #include "Game/GameFlowTags.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
+#include "AbilitySystemGlobals.h"
+#include "Camera/TH_CameraShake.h"
+#include "Player/THPlayerController.h"
 
 UTHStompAbility::UTHStompAbility()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerOnly;
 
 	FAbilityTriggerData TriggerData;
 	TriggerData.TriggerSource = EGameplayAbilityTriggerSource::GameplayEvent;
@@ -39,9 +42,9 @@ void UTHStompAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	}
 
 	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
-
 	if (!PlayerCharacter || !TriggerEventData)
 	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true); // [FIX] 
 		return;
 	}
 
@@ -56,7 +59,7 @@ void UTHStompAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 				+ OtherCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight()
 				- Headoffset;
 
-			FVector ImpactPoint = HitResult->ImpactPoint;
+			//FVector ImpactPoint = HitResult->ImpactPoint;
 			/*DrawDebugSphere(
 				GetWorld(),
 				ImpactPoint,           // 위치
@@ -82,8 +85,15 @@ void UTHStompAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 			{
 				PlayerCharacter->LaunchCharacter(StompJumpForce,false, true);
 
-				if (UAbilitySystemComponent* TargetASC = Cast<ATHPlayerCharacter>(OtherCharacter)->GetAbilitySystemComponent())
+				// [FIX] ASC 접근 일반화(캐스팅 의존 제거)
+				if (UAbilitySystemComponent* TargetASC = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OtherCharacter))
 				{
+					FGameplayCueParameters CueParams;
+					CueParams.Instigator = PlayerCharacter;
+					CueParams.Location = HitResult->ImpactPoint;
+					TargetASC->ExecuteGameplayCue(TAG_GamePlayCue_StompStun, CueParams);
+					
+					
 					if (StunEffectClass)
 					{
 						FGameplayEffectContextHandle EffectContext = TargetASC->MakeEffectContext();
