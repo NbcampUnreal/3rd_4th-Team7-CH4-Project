@@ -48,6 +48,8 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Player_Character_Second);
 
 // ----- GameplayCue -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GameplayCue_Movement_Sprinting);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GamePlayCue_StompStun);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_GamePlayCue_FootStep);
 
 // ----- Item Effects -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Item_SpeedBoost_Active);

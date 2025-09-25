@@ -47,6 +47,8 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Player_Character_Second, "Player.Character.Se
 
 // ----- GameplayCue -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_GameplayCue_Movement_Sprinting, "GameplayCue.Movement.Sprinting", "Speedlines while sprinting");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_GamePlayCue_StompStun, "GamePlayCue.StompStun","Stomp Stun Cue");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_GamePlayCue_FootStep, "GamePlayCue.FootStep","Foot Step Cue");
 
 // ----- Item Effects -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Item_SpeedBoost_Active, "Item.SpeedBoost.Active", "Speed boost effect is active.");

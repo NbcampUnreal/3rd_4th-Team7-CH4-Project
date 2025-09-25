@@ -13,6 +13,7 @@
 #include "Game/GameFlowTags.h"
 #include "MotionWarpingComponent.h"
 #include "GameplayEffect.h"
+#include "NiagaraComponent.h"
 
 ATHPlayerCharacter::ATHPlayerCharacter()
 {
@@ -42,6 +43,15 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
 
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
+
+	StunEffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("StunEffectComponent"));
+	StunEffectComponent->SetupAttachment(GetMesh(), TEXT("StunEffectSocket"));
+	StunEffectComponent->bAutoActivate = false;
+
+	FootStepComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FootStepComponent"));
+	FootStepComponent->SetupAttachment(GetMesh(), TEXT("FootStep"));
+	FootStepComponent->bAutoActivate = false;
+
 }
 
 void ATHPlayerCharacter::BeginPlay()
@@ -462,9 +472,17 @@ void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount
 	if (NewCount > 0)
 	{
 		DisableInput(GetController<APlayerController>());
+		if (StunEffectComponent)
+		{
+			StunEffectComponent->Activate(true);
+		}
 	}
 	else
 	{
 		EnableInput(GetController<APlayerController>());
+		if (StunEffectComponent)
+		{
+			StunEffectComponent->Deactivate();
+		}
 	}
 }
