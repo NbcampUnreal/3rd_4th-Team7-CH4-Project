@@ -55,3 +55,6 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Item_ImmunePotion_Active, "Item.ImmunePotion.
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Item_SpeedSlow_Active, "Item.SpeedSlow.Active", "Speed Slow effect is active.");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Item_Stun_Active, "Item.Stun.Active", "Stun effect is active.");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Item_Ink_Active, "Item.Ink.Active", "Ink effect is active.");
+
+// ----- Item Cue -----
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Cue_ImmunePotion, "GameplayCue.Buff.ImmunePotion", "Cue for immune potion effect");
