@@ -55,14 +55,14 @@ void UTHUseShotInkAbility::ActivateAbility(const FGameplayAbilitySpecHandle Hand
 						FGameplayEffectQuery Query;
 						TArray<FActiveGameplayEffectHandle> ActiveEffects = TargetASC->GetActiveEffects(Query);
 
-						for (const FActiveGameplayEffectHandle& Handle : ActiveEffects)
+						for (const FActiveGameplayEffectHandle& EffectsHandle : ActiveEffects)
 						{
-							const FActiveGameplayEffect* ActiveGE = TargetASC->GetActiveGameplayEffect(Handle);
+							const FActiveGameplayEffect* ActiveGE = TargetASC->GetActiveGameplayEffect(EffectsHandle);
 							if (ActiveGE)
 							{
 								if (ActiveGE->Spec.DynamicGrantedTags.HasTag(SpeedBoostTag))
 								{
-									TargetASC->RemoveActiveGameplayEffect(Handle);
+									TargetASC->RemoveActiveGameplayEffect(EffectsHandle);
 									break;
 								}
 							}

@@ -41,14 +41,14 @@ void UTHSpeedSlowAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handl
 		FGameplayEffectQuery Query;
 		TArray<FActiveGameplayEffectHandle> ActiveEffects = ASC->GetActiveEffects(Query);
 		
-		for (const FActiveGameplayEffectHandle& Handle : ActiveEffects)
+		for (const FActiveGameplayEffectHandle& EffectsHandle : ActiveEffects)
 		{
-			const FActiveGameplayEffect* ActiveGE = ASC->GetActiveGameplayEffect(Handle);
+			const FActiveGameplayEffect* ActiveGE = ASC->GetActiveGameplayEffect(EffectsHandle);
 			if (ActiveGE)
 			{
 				if (ActiveGE->Spec.DynamicGrantedTags.HasTag(SpeedSlowTag))
 				{
-					ASC->RemoveActiveGameplayEffect(Handle);
+					ASC->RemoveActiveGameplayEffect(EffectsHandle);
 				}
 			}
 		}
