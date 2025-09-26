@@ -245,9 +245,12 @@ bool ATHGameModeBase::GetBunnyIsWinning() const
 void ATHGameModeBase::PlayerDetected(AActor* Player)
 {
 	ATHPlayerController* DetectedPC = Cast<ATHPlayerController>(Player->GetInstigatorController());
-	if (IsValid(DetectedPC))
+	if (IsValid(DetectedPC) && GameModeFlow != TAG_Game_Phase_Finish)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Finish Game!!"));
+		ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState);
+		GS->WinnerTag = DetectedPC->GetPlayerState<ATHPlayerState>()->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First) ? TAG_Player_Character_First : TAG_Player_Character_Second;
+		
+		SetGameModeFlow(TAG_Game_Phase_Finish);
 	}
 }
 
@@ -384,7 +387,10 @@ void ATHGameModeBase::HandleSeamlessTravelPlayer(AController*& C)
 void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
 {
 	++StartPlayerNum;
-	StartPlayerControllers.Add(Player);
+	if (!StartPlayerControllers.Contains(Player))
+	{
+		StartPlayerControllers.Add(Player);
+	}
 
 	Player->DisableInput(Player);
 
@@ -399,12 +405,6 @@ void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
 		{
 			bIsPlayer2Ready = true;
 		}
-
-		UE_LOG(LogTemp, Error, TEXT("Current Start Player Name : %s"), *NewPlayerState->Nickname);
-		UE_LOG(LogTemp, Error, TEXT("PC: %s"), Player ? *Player->GetName() : TEXT("nullptr"));
-		UE_LOG(LogTemp, Error, TEXT("PS: %s"), NewPlayerState ? *NewPlayerState->GetName() : TEXT("nullptr"));
-		/*UE_LOG(LogTemp, Warning, TEXT("Player1 is Ready %s"), bIsPlayer1Ready ? TEXT("READY") : TEXT("NOT"));
-		UE_LOG(LogTemp, Warning, TEXT("Player2 is Ready %s"), bIsPlayer1Ready ? TEXT("READY") : TEXT("NOT"));*/
 	}
 
 	CheckPlayReady();
@@ -564,44 +564,29 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 				ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState);
 				if (PlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First))
 				{
-					if (QuantizedProgress >= OpponentProgress)
+					if (QuantizedProgress > OpponentProgress)
 					{
-						if (!bBunnyHasBeenWinning)
-						{
-							bBunnyHasBeenWinning = true;
-							Player->Client_UpdateWinner(bBunnyHasBeenWinning);
-						}
+						bBunnyHasBeenWinning = true;
 					}
-					else
+					else if (QuantizedProgress < OpponentProgress)
 					{
-						if (bBunnyHasBeenWinning)
-						{
-							bBunnyHasBeenWinning = false;
-							Player->Client_UpdateWinner(bBunnyHasBeenWinning);
-						}
+						bBunnyHasBeenWinning = false;
 					}
 				}
 				else if (PlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_Second))
 				{
-					if (QuantizedProgress >= OpponentProgress)
+					if (QuantizedProgress > OpponentProgress)
 					{
-						if (bBunnyHasBeenWinning)
-						{
-							bBunnyHasBeenWinning = false;
-							Player->Client_UpdateWinner(bBunnyHasBeenWinning);
-						}
+						bBunnyHasBeenWinning = false;
 					}
-					else
+					else if(QuantizedProgress < OpponentProgress)
 					{
-						if (!bBunnyHasBeenWinning)
-						{
-							bBunnyHasBeenWinning = true;
-							Player->Client_UpdateWinner(bBunnyHasBeenWinning);
-						}
+						bBunnyHasBeenWinning = true;
 					}
 				}
 				break;
 			}
 		}
+		Player->Client_UpdateWinner(bBunnyHasBeenWinning);
 	}
 }
