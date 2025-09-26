@@ -10,6 +10,8 @@
 
 ATHGameModeBase::ATHGameModeBase()
 {
+	bUseSeamlessTravel = true;
+
 	MaxMatchPlayerNum = 2;
 	MatchWaitTime = 5.0f;
 	SetGameModeFlow(TAG_Game_Phase_Wait);
@@ -25,9 +27,18 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 	{
 		EnterTitlePlayerControllers(TitlePlayerController);
 	}
-	else if (IsValid(MatchPlayerController) && IsValid(NewPlayer->Player))
+}
+
+void ATHGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
+{
+	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
+
+	ATHPlayerController* MatchPlayerController = Cast<ATHPlayerController>(NewPlayer);
+	if (IsValid(MatchPlayerController) && IsValid(NewPlayer->Player))
 	{
 		GameStartPlayerControllers(MatchPlayerController);
+		ATHPlayerState* NewPS = Cast<ATHPlayerState>(MatchPlayerController->PlayerState);
+		UE_LOG(LogTemp, Error, TEXT("Player NickName %s"), *NewPS->Nickname);
 	}
 }
 
@@ -66,7 +77,7 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 	if (HasAuthority())
 	{
 		GameModeFlow = NewPhase;
-		if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
+		if (ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState))
 		{
 			GS->SetPhase(GameModeFlow);
 		}
@@ -226,6 +237,20 @@ void ATHGameModeBase::OpenChangeLevel(FGameplayTag NextFlow)
 	StartLevelLoad(LaodPath);
 }
 
+bool ATHGameModeBase::GetBunnyIsWinning() const
+{
+	return bBunnyHasBeenWinning;
+}
+
+void ATHGameModeBase::PlayerDetected(AActor* Player)
+{
+	ATHPlayerController* DetectedPC = Cast<ATHPlayerController>(Player->GetInstigatorController());
+	if (IsValid(DetectedPC))
+	{
+
+	}
+}
+
 FGameplayTag ATHGameModeBase::GetGameModeFlow() const
 {
 	return GameModeFlow;
@@ -308,7 +333,51 @@ void ATHGameModeBase::EnterTitlePlayerControllers(ATHTitlePlayerController* NewP
 	}
 
 	FString GuidStr = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);;
+	ATHPlayerState* NewPS = Cast<ATHPlayerState>(NewPlayer->PlayerState);
+	NewPS->PlayerAddress = Address;
+	NewPS->PlayerUniqueId = GuidStr;
+
 	SetPlayerData(Address, GuidStr);
+}
+
+void ATHGameModeBase::GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList)
+{
+	Super::GetSeamlessTravelActorList(bToTransition, ActorList);
+
+	for (ATHTitlePlayerController* MatchPC : MatchPlayerControllers)
+	{
+		ATHPlayerState* MatchPS = Cast<ATHPlayerState>(MatchPC->PlayerState);
+		if (MatchPS)
+		{
+			EnteredPlayerStates.Add(MatchPS);
+		}
+	}
+}
+
+void ATHGameModeBase::HandleSeamlessTravelPlayer(AController*& C)
+{
+	Super::HandleSeamlessTravelPlayer(C);
+	
+	if (ATHPlayerController* PlayerPC = Cast<ATHPlayerController>(C))
+	{		
+		if (!PlayerPC->PlayerState)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("PlayerState is Null"));
+			for (ATHPlayerState* OldPS : EnteredPlayerStates)
+			{
+				if (OldPS && OldPS->GetUniqueID() == PlayerPC->PlayerState->GetUniqueID())
+				{
+					PlayerPC->PlayerState = OldPS;
+					UE_LOG(LogTemp, Warning, TEXT("PlayerState Change!"));
+					break;
+				}
+			}
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("PlayerState is Not Null"));
+		}
+	}
 }
 
 void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
@@ -317,6 +386,23 @@ void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
 	StartPlayerControllers.Add(Player);
 
 	Player->DisableInput(Player);
+
+	for (ATHPlayerController* Player : StartPlayerControllers)
+	{
+		ATHPlayerState* NewPlayerState = Cast<ATHPlayerState>(Player->PlayerState);
+		if (NewPlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First))
+		{
+			bIsPlayer1Ready = true;
+		}
+		else if (NewPlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_Second))
+		{
+			bIsPlayer2Ready = true;
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("Current Start Player Name : %s"), *NewPlayerState->Nickname);
+		UE_LOG(LogTemp, Warning, TEXT("Player1 is Ready %s"), bIsPlayer1Ready ? TEXT("READY") : TEXT("NOT"));
+		UE_LOG(LogTemp, Warning, TEXT("Player2 is Ready %s"), bIsPlayer1Ready ? TEXT("READY") : TEXT("NOT"));
+	}
 
 	CheckPlayReady();
 }
@@ -355,6 +441,7 @@ void ATHGameModeBase::OnLevelLoadedReady()
 void ATHGameModeBase::CheckPlayReady()
 {
 	if (GameModeFlow == TAG_Game_Phase_Play) return;
+
 	SetGameModeFlow(TAG_Game_Phase_Play);
 	ReadyPlayerNum = 0;
 }
@@ -396,7 +483,7 @@ void ATHGameModeBase::CourseCalculate()
 	if (!StartActor || !CheckActor || !FinishActor) return;
 
 	FlatSectionDist = FVector::Dist(StartPos, CheckPos);
-	ClimbSectionDist = FVector::Dist(CheckPos, FinishPos);
+	ClimbSectionDist = FMath::Abs(FinishPos.Z - CheckPos.Z);
 	TotalDist = FlatSectionDist + ClimbSectionDist;
 
 	Section1Weight = FlatSectionDist / TotalDist;
@@ -430,7 +517,9 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 		}
 		else
 		{
-			float ClimbProgress = FVector::Dist(CheckPos, PlayerPos) / ClimbSectionDist;
+			float ClimbProgress = (PlayerPos.Z - CheckPos.Z) / ClimbSectionDist;
+			ClimbProgress = FMath::Clamp(ClimbProgress, 0.f, 1.f);
+
 			CurrentProgress = Section1Weight + ClimbProgress * Section2Weight;
 		}
 
@@ -455,15 +544,39 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 				}
 				else
 				{
-					float ClimbProgress = FVector::Dist(CheckPos, OtherPos) / ClimbSectionDist;
+					float ClimbProgress = (OtherPos.Z - CheckPos.Z) / ClimbSectionDist;
+					ClimbProgress = FMath::Clamp(ClimbProgress, 0.f, 1.f);
+
 					CurrentProgress = Section1Weight + ClimbProgress * Section2Weight;
 				}
 
 				OpponentProgress = static_cast<uint8>(FMath::Clamp(CurrentProgress, 0.0f, 1.0f) * 255.0f);
+				Player->Client_UpdateClimb(QuantizedProgress, OpponentProgress);
+
+				ATHPlayerState* PlayerState = Cast<ATHPlayerState>(Player->PlayerState);
+				if (QuantizedProgress > OpponentProgress)
+				{
+					ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState);
+					if (PlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First))
+					{
+						if (!bBunnyHasBeenWinning)
+						{
+							bBunnyHasBeenWinning = true;
+							Player->Client_UpdateWinner(bBunnyHasBeenWinning);
+						}
+					}
+					else if (PlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_Second))
+					{
+						if (bBunnyHasBeenWinning)
+						{
+							bBunnyHasBeenWinning = false;
+							Player->Client_UpdateWinner(bBunnyHasBeenWinning);
+						}
+					}
+				}
 				break;
 			}
 		}
-
-		Player->Client_UpdateClimb_Implementation(QuantizedProgress, OpponentProgress);
+		Player->Client_UpdateClimb(QuantizedProgress, OpponentProgress);
 	}
 }

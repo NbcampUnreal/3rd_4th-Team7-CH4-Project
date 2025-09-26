@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameplayTagContainer.h"
+#include "AbilitySystemComponent.h"
 #include "THGameModeBase.generated.h"
 
 struct FPlayerData
@@ -15,6 +16,7 @@ struct FPlayerData
 class UUserWidget;
 class ATHTitlePlayerController;
 class ATHPlayerController;
+class ATHPlayerState;
 
 UCLASS()
 class TREASUREHUNTER_API ATHGameModeBase : public AGameModeBase
@@ -25,6 +27,8 @@ public:
 	ATHGameModeBase();
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
+
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
 	virtual void Logout(AController* Exiting) override;
 
@@ -52,6 +56,11 @@ public:
 
 	void OpenChangeLevel(FGameplayTag NextFlow);
 
+	bool GetBunnyIsWinning() const;
+
+	UFUNCTION(BlueprintCallable, Category = "Trigger")
+	void PlayerDetected(AActor* Player);
+
 private:
 	FGameplayTag GetGameModeFlow() const;
 
@@ -64,6 +73,10 @@ private:
 	void StopMatch(bool Rematch);
 
 	void EnterTitlePlayerControllers(ATHTitlePlayerController* NewPlayer);
+
+	void GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList) override;
+
+	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
 
 	void GameStartPlayerControllers(ATHPlayerController* NewPlayer);
 
@@ -106,6 +119,9 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "LevelPath", Meta = (AllowPrivateAccess))
 	TSoftObjectPtr<UWorld> PlayLevelPath;
 
+	bool bIsPlayer1Ready;
+	bool bIsPlayer2Ready;
+
 	UPROPERTY()
 	AActor* StartActor;
 	UPROPERTY()
@@ -129,12 +145,16 @@ private:
 
 	float Section2Weight;
 
+	bool bBunnyHasBeenWinning;
+
 public:
 	TArray<FPlayerData> LoginPlayerData;
 
 	TArray<FPlayerData> StartPlayerData;
 
 	TArray<APlayerController*> LoginPlayerControllers;
+
+	TArray<ATHPlayerState*> EnteredPlayerStates;
 
 	TArray<ATHTitlePlayerController*> MatchWaitPlayerControllers;
 
