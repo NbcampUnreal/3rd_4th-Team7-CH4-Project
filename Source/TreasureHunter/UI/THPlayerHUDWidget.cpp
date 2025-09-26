@@ -11,6 +11,7 @@
 #include "Components/Image.h"
 #include "Components/ProgressBar.h"
 #include "Components/SizeBox.h"
+#include "Components/TextBlock.h"	
 #include "TimerManager.h"
 #include "Game/GameFlowTags.h"
 #include "Item/THItemDataManager.h"
@@ -667,11 +668,15 @@ void UTHPlayerHUDWidget::SetRankUIUpdate(bool bBunnyWinning)
 	{
 		PlayAnimation(RabbitUpAnim);
 		bHasBunnyBeenWinning = true;
+		if (BunnyRank) BunnyRank->SetText(FText::FromString("1ST"));
+		if (MouseRank) MouseRank->SetText(FText::FromString("2nd"));
 	}
 	else if (!bBunnyWinning && bHasBunnyBeenWinning)
 	{
 		PlayAnimation(RabbitUpAnim, 0.f, 1, EUMGSequencePlayMode::Reverse);
 		bHasBunnyBeenWinning = false;
+		if (BunnyRank) BunnyRank->SetText(FText::FromString("2nd"));
+		if (MouseRank) MouseRank->SetText(FText::FromString("1ST"));
 	}
 }
 
