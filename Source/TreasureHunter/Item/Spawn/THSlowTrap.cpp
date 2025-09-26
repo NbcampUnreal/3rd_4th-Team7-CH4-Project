@@ -57,6 +57,11 @@ void ATHSlowTrap::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* Ot
 		if (OtherActor && OtherActor->IsA<ACharacter>())
 		{
 			ApplySlowEffect(OtherActor);
+			if (SlowEffectNiagara)
+			{
+				Multicast_ItemUseEffect();
+				Multicast_SpawnSlowEffect(OtherActor->GetActorLocation());
+			}
 			bIsActive = false;
 			Destroy();
 			return;
@@ -79,13 +84,6 @@ void ATHSlowTrap::ApplySlowEffect(AActor* TargetActor)
 			const FGameplayAbilitySpec Spec(SlowAbilityClass, 1, INDEX_NONE, this);
 			const FGameplayAbilitySpecHandle Handle = ASC->GiveAbility(Spec);
 			ASC->TryActivateAbility(Handle);
-
-			// **추가할 코드: 나이아가라 스폰**
-			// TargetActor의 위치에 나이아가라 이펙트 재생
-			if (SlowEffectNiagara) // UPROPERTY(EditAnywhere) UNiagaraSystem* SlowEffectNiagara; 필요
-			{
-				UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SlowEffectNiagara, TargetActor->GetActorLocation());
-			}
 		}
 	}
 }
@@ -107,4 +105,23 @@ void ATHSlowTrap::OnPlacerActorReplicated()
 	{
 		TrapMesh->SetHiddenInGame(true, true);
 	}
+}
+
+void ATHSlowTrap::Multicast_SpawnSlowEffect_Implementation(FVector Location)
+{
+	if (SlowEffectNiagara)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SlowEffectNiagara, Location);
+	}
+}
+
+
+void ATHSlowTrap::Multicast_ItemUseEffect_Implementation()
+{
+	UGameplayStatics::PlaySoundAtLocation(
+		GetWorld(),
+		EffectSound,
+		GetActorLocation(),
+		FRotator::ZeroRotator
+	);
 }

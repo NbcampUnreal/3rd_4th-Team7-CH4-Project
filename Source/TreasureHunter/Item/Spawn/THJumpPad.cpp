@@ -6,6 +6,7 @@
 #include "TimerManager.h"
 #include "Net/UnrealNetwork.h"
 
+
 ATHJumpPad::ATHJumpPad()
 {
     bReplicates = true;
@@ -14,7 +15,7 @@ ATHJumpPad::ATHJumpPad()
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 
 	JumpPadMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("JumpPadMesh"));
-	//RootComponent = JumpPadMesh;
+	
 	JumpPadMesh->SetupAttachment(RootComponent);
 	JumpPadMesh->SetGenerateOverlapEvents(true);
 
@@ -101,7 +102,6 @@ void ATHJumpPad::PlayJumpPadAnimation()
     {
         if (JumpPadMontage)
         {
-			UE_LOG(LogTemp, Log, TEXT("Playing JumpPad Montage"));
             AnimInst->Montage_Play(JumpPadMontage);
         }
     }
