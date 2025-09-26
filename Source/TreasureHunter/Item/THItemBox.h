@@ -5,9 +5,7 @@
 #include "THItemData.h"
 #include "Components/SphereComponent.h"
 #include "THInteractPromptWidget.h"
-#include "Player/THPlayerController.h"
 #include "THItemBox.generated.h"
-
 
 
 UCLASS()
@@ -30,10 +28,10 @@ public:
 
 	
 	UFUNCTION(BlueprintCallable, Category = "ItemBox")
-	void OpenBox(ATHPlayerController* PC);
+	void OpenBox();
 
 	
-	FName RandomItemGenerate(ATHPlayerController* PC);
+	FName RandomItemGenerate(EItemType DropType);
 	void DropItem(FName RandomItemID);
 
 public:
@@ -88,23 +86,10 @@ public:
 	UAnimSequence* OpenIdleAnim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Animation")
-	float OpenIdleDuration = 2.0f;
+	float OpenIdleDuration = 2.0f; // OpenIdle 유지 시간
 
 	FTimerHandle DestroyTimerHandle;
 
 	void PlayOpenIdle();
 
-	void OverlapDisable();
-
-
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OpenBox();
-
-
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_PlayOpenIdle();
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound")
-	USoundBase* EffectSound;
 };
