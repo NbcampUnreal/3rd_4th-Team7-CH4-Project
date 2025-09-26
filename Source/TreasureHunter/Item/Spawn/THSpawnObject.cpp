@@ -20,6 +20,7 @@ void ATHSpawnObject::SetPlacerActor(AActor* NewPlacer)
 	if (HasAuthority())
 	{
 		PlacerActor = NewPlacer;
+		OnPlacerActorReplicated();
 	}
 }
 
@@ -31,11 +32,6 @@ void ATHSpawnObject::OnRep_PlacerActor()
 void ATHSpawnObject::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (HasAuthority())
-	{
-		OnPlacerActorReplicated();
-	}
 }
 
 void ATHSpawnObject::OnPlacerActorReplicated()
