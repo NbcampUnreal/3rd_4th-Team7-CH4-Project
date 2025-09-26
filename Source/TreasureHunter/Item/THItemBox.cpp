@@ -29,6 +29,7 @@ ATHItemBox::ATHItemBox()
     
 }
 
+
 void ATHItemBox::BeginPlay()
 {
 	Super::BeginPlay();
@@ -40,7 +41,7 @@ void ATHItemBox::BeginPlay()
 
     if (IdleAnim && BoxMesh)
     {
-        BoxMesh->PlayAnimation(IdleAnim, true); // Idle 루프
+        BoxMesh->PlayAnimation(IdleAnim, true);
     }
 
     if (BoxMesh)
@@ -59,7 +60,7 @@ void ATHItemBox::ResetUseTime()
 }
 
 
-FName ATHItemBox::RandomItemGenerate(EItemType DropType)
+FName ATHItemBox::RandomItemGenerate(ATHPlayerController* PC)
 {
     ATHItemDataManager* DataManager = Cast<ATHItemDataManager>(
         UGameplayStatics::GetActorOfClass(GetWorld(), ATHItemDataManager::StaticClass()));
@@ -68,6 +69,20 @@ FName ATHItemBox::RandomItemGenerate(EItemType DropType)
     {
         return FName("Invalid");
     }
+
+    EItemType DropType;
+    if(DataManager->WhoWinner(PC))
+    {
+		UE_LOG(LogTemp, Warning, TEXT("Winner Item Drop"));
+        DropType = EItemType::Winner;
+    }
+    else
+    {
+		UE_LOG(LogTemp, Warning, TEXT("Loser Item Drop"));
+        DropType = EItemType::Loser;
+	}
+
+
 
     TArray<FName> FilteredRowNames;
     int32 TotalWeight = 0;
@@ -79,8 +94,8 @@ FName ATHItemBox::RandomItemGenerate(EItemType DropType)
         const FTHItemData* ItemData = DataManager->GetItemDataByRow(RowName);
         if (!ItemData) continue;
 
-        if ((DropType == EItemType::Equipment && ItemData->ItemDropType == EItemType::Consumable) ||
-            (DropType == EItemType::Consumable && ItemData->ItemDropType == EItemType::Equipment))
+        if ((DropType == EItemType::Loser && ItemData->ItemDropType == EItemType::Winner) ||
+            (DropType == EItemType::Winner && ItemData->ItemDropType == EItemType::Loser))
         {
             continue;
         }
@@ -140,8 +155,7 @@ void ATHItemBox::DropItem(FName RandomItemRow)
 
     FActorSpawnParameters SpawnParams;
     SpawnParams.Owner = this;
-    SpawnParams.SpawnCollisionHandlingOverride =
-        ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+    SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 
     ATHBaseItem* DroppedItem = GetWorld()->SpawnActor<ATHBaseItem>(
         ItemData->BaseItemClass, Location, Rotation, SpawnParams);
@@ -156,6 +170,10 @@ void ATHItemBox::DropItem(FName RandomItemRow)
 void ATHItemBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
     UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
+    if (UseTimeCheck)
+    {
+        return;
+    }
     ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(OtherActor);
     if (PlayerChar && PlayerChar->IsLocallyControlled())
     {
@@ -187,52 +205,57 @@ void ATHItemBox::OnOverlapEnd(UPrimitiveComponent* OverlappedComponent, AActor* 
     }
 }
 
-void ATHItemBox::OpenBox()
+void ATHItemBox::OpenBox(ATHPlayerController* PC)
 {
     if (!HasAuthority()) return;
 
     if (!UseTimeCheck)
     {
-        UseTimeCheck = true;
-        /*GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &ATHItemBox::ResetUseTime, 0.3f, false);*/
+        UseTimeCheck = true;        
 
-        FName RandomItemID = RandomItemGenerate(EItemType::Equipment);
+        FName RandomItemID = RandomItemGenerate(PC);
         DropItem(RandomItemID);
 
-
-        if (OpenAnim && BoxMesh)
-        {
-            BoxMesh->PlayAnimation(OpenAnim, false);
-
-            float Duration = OpenAnim->GetPlayLength();
-
-            // Open 끝난 뒤 OpenIdle 실행
-            GetWorldTimerManager().SetTimer(
-                DestroyTimerHandle,
-                FTimerDelegate::CreateUObject(this, &ATHItemBox::PlayOpenIdle),
-                Duration,
-                false
-            );
-        }
-        else
-        {
-            Multicast_DestroyBox();
-        }
+        Multicast_OpenBox();
     }
 }
 
-void ATHItemBox::Multicast_DestroyBox_Implementation()
+void ATHItemBox::Multicast_OpenBox_Implementation()
 {
-    Destroy();
+    OverlapDisable();
+
+    UGameplayStatics::PlaySoundAtLocation(
+        GetWorld(),
+        EffectSound,
+        GetActorLocation(),
+        FRotator::ZeroRotator
+    );
+
+    if (OpenAnim && BoxMesh)
+    {
+        BoxMesh->PlayAnimation(OpenAnim, false);
+
+        float Duration = OpenAnim->GetPlayLength();
+        GetWorldTimerManager().SetTimer(
+            DestroyTimerHandle,
+            FTimerDelegate::CreateUObject(this, &ATHItemBox::Multicast_PlayOpenIdle),
+            Duration,
+            false
+        );
+    }
+    else
+    {
+        Multicast_DestroyBox();
+    }
 }
 
-void ATHItemBox::PlayOpenIdle()
+
+void ATHItemBox::Multicast_PlayOpenIdle_Implementation()
 {
     if (OpenIdleAnim && BoxMesh)
     {
-        BoxMesh->PlayAnimation(OpenIdleAnim, true); // OpenIdle 루프 재생
+        BoxMesh->PlayAnimation(OpenIdleAnim, true);
 
-        // 몇 초 후 파괴
         GetWorldTimerManager().SetTimer(
             DestroyTimerHandle,
             this,
@@ -245,4 +268,48 @@ void ATHItemBox::PlayOpenIdle()
     {
         Multicast_DestroyBox();
     }
+}
+
+
+
+
+
+
+
+
+
+
+void ATHItemBox::Multicast_DestroyBox_Implementation()
+{
+    Destroy();
+}
+
+void ATHItemBox::PlayOpenIdle()
+{
+    if (OpenIdleAnim && BoxMesh)
+    {
+        BoxMesh->PlayAnimation(OpenIdleAnim, true);
+
+        GetWorldTimerManager().SetTimer(
+            DestroyTimerHandle,
+            this,
+            &ATHItemBox::Multicast_DestroyBox,
+            OpenIdleDuration,
+            false
+        );
+    }
+    else
+    {
+        Multicast_DestroyBox();
+    }
+}
+
+
+
+void ATHItemBox::OverlapDisable()
+{
+    OverlapSphere->SetCollisionResponseToChannel(
+        ECollisionChannel::ECC_Pawn,
+        ECollisionResponse::ECR_Ignore
+    );
 }
