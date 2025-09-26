@@ -2,6 +2,7 @@
 #include "PlayerCharacter/THPlayerCharacter.h"
 #include "Item/THItemInventory.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
 
 
 ATHBaseItem::ATHBaseItem()
@@ -79,7 +80,6 @@ void ATHBaseItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComponent, AActo
 	APlayerController* PC = Cast<APlayerController>(PlayerChar->GetController());
 	if (!PC) return;
 
-	// 이미 생성되어 있는지 확인
 	if (!InteractPromptWidgets.Contains(PC) && InteractPromptClass)
 	{
 		UTHInteractPromptWidget* NewWidget = CreateWidget<UTHInteractPromptWidget>(PC, InteractPromptClass);
@@ -127,10 +127,15 @@ bool ATHBaseItem::ItemPickup(ATHPlayerCharacter* PlayerCharacter)
 
 		if (Inventory->AddItem(ItemID))
 		{
+			Multicast_PlayPickupEffect();
 			Destroy();
 			return true;
 		}
 		return false;
+	}
+	else
+	{
+		
 	}
 
 	return false;
@@ -144,4 +149,12 @@ void ATHBaseItem::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
     DOREPLIFETIME(ATHBaseItem, bIsPickedUp);
 }
 
-
+void ATHBaseItem::Multicast_PlayPickupEffect_Implementation()
+{	
+	UGameplayStatics::PlaySoundAtLocation(
+		GetWorld(),
+		EffectSound,
+		GetActorLocation(),
+		FRotator::ZeroRotator
+	);
+}

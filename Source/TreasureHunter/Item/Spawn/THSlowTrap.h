@@ -49,4 +49,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects", meta = (AllowPrivateAccess = "true"))
 	UNiagaraSystem* SlowEffectNiagara;
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_SpawnSlowEffect(FVector Location);
+
+public:
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ItemUseEffect();
+
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound")
+	USoundBase* EffectSound;
+
 };

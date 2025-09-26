@@ -135,6 +135,8 @@ void UTHItemInventory::UseItem(int32 SlotIndex)
 	}
 	if (!bActivated) return;
 
+	Client_PlayItemUseSound();
+
 	Client_NotifyItemActivated(ItemID, SlotIndex);
 	if (SlotIndex == 2)
 	{
@@ -160,4 +162,15 @@ void UTHItemInventory::Client_NotifyItemActivated_Implementation(FName ItemRow, 
 void UTHItemInventory::ResetUseTime()
 {
 	bUseTimeCheck = false;
+}
+
+
+void UTHItemInventory::Client_PlayItemUseSound_Implementation()
+{
+	UGameplayStatics::PlaySoundAtLocation(
+		GetWorld(),
+		EffectSound,
+		GetOwner()->GetActorLocation(),
+		FRotator::ZeroRotator
+	);
 }

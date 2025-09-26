@@ -25,6 +25,11 @@ bool UTHUseSpawnObjectAbility::CanActivateAbility(
 		return false;
 	}
 
+	if (MaxCreateObjectHeight == 0)
+	{
+		return true;
+	}
+
 	FVector StartLocation = AvatarActor->GetActorLocation();
 	FVector EndLocation = StartLocation - FVector(0, 0, MaxCreateObjectHeight);
 	FHitResult HitResult;
@@ -71,15 +76,16 @@ void UTHUseSpawnObjectAbility::ActivateAbility(const FGameplayAbilitySpecHandle 
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
+	
 	AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ObjectClass, SpawnLocation, AvatarActor->GetActorRotation(), SpawnParams);
-
+	
 	if (SpawnedActor)
 	{
 		ATHSpawnObject* SpawnedTrap = Cast<ATHSpawnObject>(SpawnedActor);
 		if (SpawnedTrap)
 		{
-			SpawnedTrap->PlacerActor = AvatarActor;
+			SpawnedTrap->SetPlacerActor(AvatarActor);
+			
 		}
 	}
 		

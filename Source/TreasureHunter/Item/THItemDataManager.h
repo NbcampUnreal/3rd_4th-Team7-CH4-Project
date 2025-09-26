@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
 #include "Engine/DataTable.h"
+#include "Player/THPlayerController.h"
 #include "THItemDataManager.generated.h"
 
 
@@ -38,6 +39,8 @@ public:
     UFUNCTION(BlueprintPure, Category = "Item Data")
     float GetItemDurationByRow(FName RowName);
 
+    bool WhoWinner(ATHPlayerController* PC);
+
 protected:
     UPROPERTY(EditAnywhere, Category = "Item Data|Perf")
     bool bPreloadAllIcons = false;
@@ -50,4 +53,6 @@ private:
 
     TMap<FName, const FTHItemData*> RowCache;
     TMap<FName, TWeakObjectPtr<UTexture2D>> IconCache;
+
+    
 };

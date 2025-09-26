@@ -67,4 +67,10 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "UI")
 	float RotationSpeed = 1.f;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayPickupEffect();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound")
+	USoundBase* EffectSound;
 };

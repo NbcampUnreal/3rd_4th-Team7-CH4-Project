@@ -62,4 +62,11 @@ private:
 
 	FTimerHandle UseTimerHandle;
 	void ResetUseTime();
+
+public:
+	UFUNCTION(Client, Reliable)
+	void Client_PlayItemUseSound();
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Sound")
+	USoundBase* EffectSound;
 };

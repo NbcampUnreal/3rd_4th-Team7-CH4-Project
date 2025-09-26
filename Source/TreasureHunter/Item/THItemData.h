@@ -10,9 +10,9 @@
 UENUM(BlueprintType)
 enum class EItemType : uint8
 {
-    Consumable UMETA(DisplayName = "Winner"),
-    Equipment  UMETA(DisplayName = "Loser"),
-    Material   UMETA(DisplayName = "Common"),
+    Winner UMETA(DisplayName = "Winner"),
+    Loser  UMETA(DisplayName = "Loser"),
+    Common   UMETA(DisplayName = "Common"),
 };
 
 UENUM(BlueprintType)
@@ -51,7 +51,7 @@ public:
 
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Drop")
-    EItemType ItemDropType = EItemType::Material;
+    EItemType ItemDropType = EItemType::Common;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item|Drop")
     int32 DropWeight = 0;
