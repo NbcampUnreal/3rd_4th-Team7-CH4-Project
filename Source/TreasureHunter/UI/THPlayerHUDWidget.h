@@ -10,6 +10,7 @@ class UImage;
 class UProgressBar;
 class UHorizontalBox;
 class USizeBox;
+class UTextBlock;
 class UWidgetAnimation;
 class UAbilitySystemComponent;
 class UTHAttributeSet;
@@ -205,6 +206,11 @@ protected:
 	UImage* OppositeClimbPoint;
 	UPROPERTY(Transient, BlueprintReadWrite, meta = (BindWidgetAnimOptional))
 	UWidgetAnimation* RabbitUpAnim;
+
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* BunnyRank;
+	UPROPERTY(meta = (BindWidget))
+	UTextBlock* MouseRank;
 
 private:
 	bool bHasBunnyBeenWinning;
