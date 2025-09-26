@@ -134,3 +134,32 @@ void ATHPlayerState::OnRep_Nickname()
 	OnNicknameUpdated.Broadcast(Nickname);
 }
 #pragma endregion
+
+#pragma region APlayerStateData
+void ATHPlayerState::CopyProperties(APlayerState* PlayerState)
+{
+	Super::CopyProperties(PlayerState);
+
+	if (ATHPlayerState* NewPS = Cast<ATHPlayerState>(PlayerState))
+	{
+		NewPS->PlayerAddress = PlayerAddress;
+		NewPS->PlayerUniqueId = PlayerUniqueId;
+		NewPS->Nickname = Nickname;
+
+		if (AbilitySystemComponent)
+		{
+			FGameplayTagContainer TempTags;
+			AbilitySystemComponent->GetOwnedGameplayTags(TempTags);
+
+			if (NewPS->AbilitySystemComponent)
+			{
+				for (const FGameplayTag& Tag : TempTags)
+				{
+					NewPS->AbilitySystemComponent->AddLooseGameplayTag(Tag);
+					UE_LOG(LogTemp, Error, TEXT("%s"), *Tag.ToString());
+				}
+			}
+		}
+	}
+}
+#pragma endregion

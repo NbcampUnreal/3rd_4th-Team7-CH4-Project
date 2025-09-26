@@ -76,4 +76,15 @@ public:
 	UPROPERTY(ReplicatedUsing=OnRep_Nickname, BlueprintReadOnly)
 	FString Nickname;
 #pragma endregion
+
+#pragma region PlayerData
+public:
+	UPROPERTY()
+	FString PlayerAddress;
+
+	UPROPERTY()
+	FString PlayerUniqueId;
+
+	virtual void CopyProperties(APlayerState* PlayerState) override;
+#pragma endregion
 };
