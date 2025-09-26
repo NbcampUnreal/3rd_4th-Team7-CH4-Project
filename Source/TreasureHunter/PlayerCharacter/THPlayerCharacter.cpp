@@ -350,8 +350,9 @@ bool ATHPlayerCharacter::Server_HandleInteract_Validate(ATHItemBox* Interactable
 void ATHPlayerCharacter::Server_HandleInteract_Implementation(ATHItemBox* InteractableBox)
 {
 	if (InteractableBox)
-	{
-		InteractableBox->OpenBox();
+	{	
+		ATHPlayerController* PC = Cast<ATHPlayerController>(GetController());
+		InteractableBox->OpenBox(PC);
 	}
 }
 
@@ -372,7 +373,8 @@ void ATHPlayerCharacter::HandleBoxInteract()
 {
     if (InteractableItemBox)
     {
-        InteractableItemBox->OpenBox();
+		ATHPlayerController* PC = Cast<ATHPlayerController>(GetController());
+        InteractableItemBox->OpenBox(PC);
         InteractableItemBox = nullptr;
     }
 }
