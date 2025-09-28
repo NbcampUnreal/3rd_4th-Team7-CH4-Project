@@ -48,7 +48,7 @@ void UTHClimbAbility::SetupMotionWarping(const FClimbTraceResult& InClimbTraceRe
 	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetAvatarActorFromActorInfo());
 	if (!PlayerCharacter) return;
 	
-	if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->MotionWarpingComponent)
+	if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->GetMotionWarpingComponent())
 	{
 		const float CurrentCapsuleRadius = PlayerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius();
 		const FRotator TargetRotation = FRotationMatrix::MakeFromX(-InClimbTraceResult.WallNormal).Rotator();

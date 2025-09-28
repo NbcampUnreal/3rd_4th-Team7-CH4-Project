@@ -5,7 +5,7 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "Game/GameFlowTags.h"
-#include "GameFramework/PlayerState.h" 
+#include "GameFramework/Character.h"
 #include "Player/THPlayerState.h"
 #include "Abilities/GameplayAbilityTypes.h"
 
@@ -33,7 +33,18 @@ bool UTHSprintAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
         return false;
     }
     
-    return true;
+    const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
+    if (Character)
+    {
+        const FVector HorizontalVelocity = FVector(Character->GetVelocity().X, Character->GetVelocity().Y, 0.0f);
+        
+        if (HorizontalVelocity.SizeSquared() > KINDA_SMALL_NUMBER)
+        {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)

@@ -415,8 +415,9 @@ void ATHPlayerCharacter::HandleBoxInteract()
 {
 	if (InteractableItemBox)
 	{
-	   InteractableItemBox->OpenBox();
-	   InteractableItemBox = nullptr;
+		ATHPlayerController* PC = Cast<ATHPlayerController>(GetController());
+		InteractableItemBox->OpenBox(PC);
+		InteractableItemBox = nullptr;
 	}
 }
 
@@ -590,7 +591,7 @@ void ATHPlayerCharacter::OnSprintingStateChanged(const FGameplayTag Tag, int32 N
 {
 	const UTHAttributeSet* AS = Cast<UTHAttributeSet>(GetAbilitySystemComponent()->GetAttributeSet(UTHAttributeSet::StaticClass()));
 	if (!AS) return;
-
+	
 	bIsSprinting = NewCount > 0;
 	GetCharacterMovement()->MaxWalkSpeed = bIsSprinting ? AS->GetSprintSpeed() : AS->GetWalkSpeed();
 }
@@ -623,11 +624,19 @@ void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount
 {
 	if (NewCount > 0)
 	{
-	   DisableInput(GetController<APlayerController>());
+		DisableInput(GetController<APlayerController>());
+		if (StunEffectComponent)
+		{
+			StunEffectComponent->Activate(true);
+		}
 	}
 	else
 	{
-	   EnableInput(GetController<APlayerController>());
+		EnableInput(GetController<APlayerController>());
+		if (StunEffectComponent)
+		{
+			StunEffectComponent->Deactivate();
+		}
 	}
 }
 
@@ -667,55 +676,6 @@ void ATHPlayerCharacter::OnInteract()
 		{
 			// 클라에서 서버에 요청
 			Server_HandleBaseItemInteract(InteractableBaseItem);
-		}
-	}
-}
-
-bool ATHPlayerCharacter::Server_HandleInteract_Validate(ATHItemBox* InteractableBox)
-{
-	return true;
-}
-
-void ATHPlayerCharacter::Server_HandleInteract_Implementation(ATHItemBox* InteractableBox)
-{
-	if (InteractableBox)
-	{	
-		ATHPlayerController* PC = Cast<ATHPlayerController>(GetController());
-		InteractableBox->OpenBox(PC);
-	}
-}
-
-bool ATHPlayerCharacter::Server_HandleBaseItemInteract_Validate(ATHBaseItem* InteractableItem)
-{
-	return true;
-}
-
-void ATHPlayerCharacter::Server_HandleBaseItemInteract_Implementation(ATHBaseItem* InteractableItem)
-{
-	if (InteractableItem)
-	{
-		InteractableItem->ItemPickup(this);
-	}
-}
-
-void ATHPlayerCharacter::HandleBoxInteract()
-{
-    if (InteractableItemBox)
-    {
-		ATHPlayerController* PC = Cast<ATHPlayerController>(GetController());
-        InteractableItemBox->OpenBox(PC);
-        InteractableItemBox = nullptr;
-    }
-}
-
-void ATHPlayerCharacter::HandleBaseItemInteract()
-{
-	if (InteractableBaseItem)
-	{
-		bool bPickedUp = InteractableBaseItem->ItemPickup(this);
-		if (bPickedUp)
-		{
-			InteractableBaseItem = nullptr;
 		}
 	}
 }
@@ -818,15 +778,6 @@ void ATHPlayerCharacter::ClearClimbStaminaEffects()
 
 void ATHPlayerCharacter::Server_SetClimbingWallNormal_Implementation(const FVector& InWallNormal)
 {
-	if (NewCount > 0)
-	{
-		DisableInput(GetController<APlayerController>());
-		if (StunEffectComponent)
-		{
-			StunEffectComponent->Activate(true);
-		}
-	}
-	else
 	ClimbingWallNormal = InWallNormal;
 	OnRep_ClimbingWallNormal();
 }
@@ -840,13 +791,9 @@ void ATHPlayerCharacter::Server_UpdateClimbingMovementState_Implementation(bool 
 void ATHPlayerCharacter::Server_HandleInteract_Implementation(ATHItemBox* InteractableBox)
 {
 	if (InteractableBox)
-	{
-		EnableInput(GetController<APlayerController>());
-		if (StunEffectComponent)
-		{
-			StunEffectComponent->Deactivate();
-		}
-		InteractableBox->OpenBox();
+	{	
+		ATHPlayerController* PC = Cast<ATHPlayerController>(GetController());
+		InteractableBox->OpenBox(PC);
 	}
 }
 

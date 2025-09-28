@@ -44,7 +44,7 @@ void UTHMantleAbility::SetupMotionWarping(const FMantleInfo& InMantleInfo)
 	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetCurrentActorInfo()->AvatarActor.Get());
 	if (!PlayerCharacter) return;
 	
-	if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->MotionWarpingComponent)
+	if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->GetMotionWarpingComponent())
 	{
 		FMotionWarpingTarget UpWarpTargetParams;
 		UpWarpTargetParams.Name = FName("MantleUp");

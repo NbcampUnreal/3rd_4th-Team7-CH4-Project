@@ -41,7 +41,9 @@ public:
 	FORCEINLINE UCameraComponent* GetCamera() const { return Camera; }
 	FORCEINLINE UTHParkourComponent* GetParkourComponent() const { return ParkourComponent; }
 	FORCEINLINE UTHClimbComponent* GetClimbComponent() const { return ClimbComponent; }
-
+	FORCEINLINE UMotionWarpingComponent* GetMotionWarpingComponent() const { return MotionWarpingComponent; }
+	FORCEINLINE UNiagaraComponent* GetFootStepComponent() const { return FootStepComponent; }
+	
 	float GetWalkSpeed() const;
 	float GetSprintSpeed() const;
 
@@ -156,16 +158,13 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Climb")
 	float MaxClimbSpeed = 150.f;
-	
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TObjectPtr<USpringArmComponent> SpringArm;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TObjectPtr<UCameraComponent> Camera;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UTHParkourComponent> ParkourComponent;
@@ -223,6 +222,7 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
 	TObjectPtr<UNiagaraComponent> FootStepComponent;
+	
 	TSubclassOf<UGameplayEffect> ClimbStaminaDrainEffectClass;
 	TSubclassOf<UGameplayEffect> ClimbStaminaRegenEffectClass;
 };
