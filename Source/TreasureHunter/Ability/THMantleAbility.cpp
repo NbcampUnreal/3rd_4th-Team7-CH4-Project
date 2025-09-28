@@ -3,9 +3,6 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
 #include "ParkourComponent/THParkourComponent.h"
-#include "GameFramework/SpringArmComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "Components/CapsuleComponent.h"
 #include "Game/GameFlowTags.h"
 #include "MotionWarpingComponent.h"
 
@@ -29,17 +26,10 @@ bool UTHMantleAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
 		return false;
 	}
 	
-	const UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
-	if (const UTHAttributeSet* AS = Cast<UTHAttributeSet>(ASC->GetAttributeSet(UTHAttributeSet::StaticClass())))
-	{
-		if (AS->GetStamina() <= KINDA_SMALL_NUMBER)
-		{
-			return false;
-		}
-	}
-	
-	const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
-	const UTHParkourComponent* ParkourComponent = Character ? Character->FindComponentByClass<UTHParkourComponent>() : nullptr;
+	const ATHPlayerCharacter* Character = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
+	if (!Character) return false;
+
+	const UTHParkourComponent* ParkourComponent = Character->GetParkourComponent();
 	if (ParkourComponent)
 	{
 		FMantleInfo DummyInfo;
@@ -49,79 +39,39 @@ bool UTHMantleAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
 	return false;
 }
 
-void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+void UTHMantleAbility::SetupMotionWarping(const FMantleInfo& InMantleInfo)
 {
-	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
-
-	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
+	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetCurrentActorInfo()->AvatarActor.Get());
+	if (!PlayerCharacter) return;
 	
-	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
-	
-	if (!PlayerCharacter)
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-
-	if (UCapsuleComponent* Capsule = PlayerCharacter->GetCapsuleComponent())
-	{
-		Capsule->SetCollisionProfileName(FName("Mantling"));
-	}
-	
-	if (USpringArmComponent* SpringArm = PlayerCharacter->GetSpringArm())
-	{
-		SpringArm->bDoCollisionTest = false;
-	}
-	
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
-	if (StaminaCostEffect)
-	{
-		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-		EffectContext.AddSourceObject(this);
-		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(StaminaCostEffect, GetAbilityLevel(), EffectContext);
-		if (SpecHandle.IsValid())
-		{
-			(void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
-		}
-	}
-
-	UTHParkourComponent* ParkourComponent = PlayerCharacter->FindComponentByClass<UTHParkourComponent>();
-	FMantleInfo MantleInfo;
-    
-	if (!ParkourComponent || !ParkourComponent->CheckMantle(MantleInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-	
-	if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->MotionWarpingComponent)
+	if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->GetMotionWarpingComponent())
 	{
 		FMotionWarpingTarget UpWarpTargetParams;
 		UpWarpTargetParams.Name = FName("MantleUp");
-		UpWarpTargetParams.Location = MantleInfo.UpWarpTarget.GetLocation();
-		UpWarpTargetParams.Rotation = MantleInfo.UpWarpTarget.GetRotation().Rotator();
-		
+		UpWarpTargetParams.Location = InMantleInfo.UpWarpTarget.GetLocation();
+		UpWarpTargetParams.Rotation = InMantleInfo.UpWarpTarget.GetRotation().Rotator();
 		MotionWarpingComp->AddOrUpdateWarpTarget(UpWarpTargetParams);
 		
 		FMotionWarpingTarget ForwardWarpTargetParams;
 		ForwardWarpTargetParams.Name = FName("MantleForward");
-		ForwardWarpTargetParams.Location = MantleInfo.ForwardWarpTarget.GetLocation();
-		ForwardWarpTargetParams.Rotation = MantleInfo.ForwardWarpTarget.GetRotation().Rotator();
-
+		ForwardWarpTargetParams.Location = InMantleInfo.ForwardWarpTarget.GetLocation();
+		ForwardWarpTargetParams.Rotation = InMantleInfo.ForwardWarpTarget.GetRotation().Rotator();
 		MotionWarpingComp->AddOrUpdateWarpTarget(ForwardWarpTargetParams);
 	}
+}
+
+void UTHMantleAbility::PlayMantleMontage()
+{
+	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(GetCurrentActorInfo()->AvatarActor.Get());
+	if (!PlayerCharacter) return;
 	
-	if (UCharacterMovementComponent* CMC = PlayerCharacter->GetCharacterMovement())
-    {
-        CMC->SetMovementMode(MOVE_Flying);
-    }
+	UTHParkourComponent* ParkourComponent = PlayerCharacter->GetParkourComponent();
+	if (!ParkourComponent) return;
 
 	UAnimMontage* MantleMontage = ParkourComponent->GetMantlingMontage();
-	if (UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, MantleMontage))
+	UAbilityTask_PlayMontageAndWait* MontageTask = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(this, NAME_None, MantleMontage);
+
+	if (MontageTask)
 	{
 		MontageTask->OnCompleted.AddDynamic(this, &UTHMantleAbility::OnMontageCompleted);
 		MontageTask->OnInterrupted.AddDynamic(this, &UTHMantleAbility::OnMontageInterrupted);
@@ -130,9 +80,51 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 	}
 	else
 	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		EndAbility(GetCurrentAbilitySpecHandle(), GetCurrentActorInfo(), GetCurrentActivationInfo(), true, true);
 	}
 }
+
+void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
+{
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
+	if (!PlayerCharacter)
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured())
+	{
+		FGameplayTagContainer ClimbAbilityTag(TAG_Ability_Climb);
+		ASC->CancelAbilities(&ClimbAbilityTag);
+	}
+
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
+	if (StaminaCostEffect)
+	{
+		(void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, MakeOutgoingGameplayEffectSpec(StaminaCostEffect, GetAbilityLevel()));
+	}
+	
+	UTHParkourComponent* ParkourComponent = PlayerCharacter->GetParkourComponent();
+	FMantleInfo MantleInfo;
+	if (!ParkourComponent || !ParkourComponent->CheckMantle(MantleInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+	
+	PlayerCharacter->OnMantleStart();
+	SetupMotionWarping(MantleInfo);
+	PlayMantleMontage();
+}
+
 
 void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
@@ -140,17 +132,17 @@ void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 	{
 		if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(LocalActorInfo->AvatarActor.Get()))
 		{
-			if (USpringArmComponent* SpringArm = PlayerCharacter->GetSpringArm())
-			{
-				SpringArm->bDoCollisionTest = true;
-			}
-
-			if (UCapsuleComponent* Capsule = PlayerCharacter->GetCapsuleComponent())
-			{
-				Capsule->SetCollisionProfileName(FName("Pawn"));
-			}
+			PlayerCharacter->OnMantleEnd();
 		}
 	}
+	
+	if (SprintCooldownEffect)
+	{
+		FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(SprintCooldownEffect, GetAbilityLevel());
+
+		(void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+	}
+	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }
 

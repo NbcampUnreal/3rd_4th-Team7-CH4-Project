@@ -10,13 +10,16 @@
 
 
 void UTHFootStepCue::HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Type EventType,
-                                       const FGameplayCueParameters& Parameters)
+									   const FGameplayCueParameters& Parameters)
 {
 	Super::HandleGameplayCue(MyTarget, EventType, Parameters);
 
 	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(MyTarget);
 
-	PlayerCharacter->FootStepComponent->Activate(true);
+	if (UNiagaraComponent* FootStepComp = PlayerCharacter->GetFootStepComponent())
+	{
+		FootStepComp->Activate(true);
+	}
 	
 	UGameplayStatics::PlaySoundAtLocation(
 		GetWorld(),            

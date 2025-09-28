@@ -5,6 +5,9 @@
 #include "AttributeSet/THAttributeSet.h"
 #include "AbilitySystemComponent.h"
 #include "Game/GameFlowTags.h"
+#include "GameFramework/Character.h"
+#include "Player/THPlayerState.h"
+#include "Abilities/GameplayAbilityTypes.h"
 
 UTHSprintAbility::UTHSprintAbility()
 {
@@ -19,6 +22,8 @@ UTHSprintAbility::UTHSprintAbility()
     
     ActivationBlockedTags.AddTag(TAG_Status_Stamina_Empty);
     ActivationBlockedTags.AddTag(TAG_Status_State_Mantling);
+
+    ActivationBlockedTags.AddTag(TAG_State_Cooldown_SprintAfterMantle);
 }
 
 bool UTHSprintAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
@@ -28,7 +33,18 @@ bool UTHSprintAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
         return false;
     }
     
-    return true;
+    const ACharacter* Character = Cast<ACharacter>(ActorInfo->AvatarActor.Get());
+    if (Character)
+    {
+        const FVector HorizontalVelocity = FVector(Character->GetVelocity().X, Character->GetVelocity().Y, 0.0f);
+        
+        if (HorizontalVelocity.SizeSquared() > KINDA_SMALL_NUMBER)
+        {
+            return true;
+        }
+    }
+    
+    return false;
 }
 
 void UTHSprintAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -86,13 +102,18 @@ void UTHSprintAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
                 ASC->RemoveActiveGameplayEffect(StaminaCostEffectHandle);
             }
             
-            if (HasAuthority(&ActivationInfo) && StaminaRegenEffect && AttributeSet->GetStamina() < AttributeSet->GetMaxStamina())
+            if (HasAuthority(&ActivationInfo) && AttributeSet->GetStamina() < AttributeSet->GetMaxStamina())
             {
-                const FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(StaminaRegenEffect);
-                
-                if (SpecHandle.IsValid())
+                AActor* OwnerActor = ASC->GetOwnerActor();
+                if (const ATHPlayerState* PS = Cast<ATHPlayerState>(OwnerActor))
                 {
-                    static_cast<void>(ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle));
+                    TSubclassOf<UGameplayEffect> DefaultRegenEffect = PS->GetStaminaRegenEffectClass();
+                    if (DefaultRegenEffect)
+                    {
+                        FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(DefaultRegenEffect, GetAbilityLevel());
+
+                        (void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+                    }
                 }
             }
         }

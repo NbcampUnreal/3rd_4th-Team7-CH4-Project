@@ -7,7 +7,6 @@
 class ATHPlayerCharacter;
 class UCharacterMovementComponent;
 
-
 UCLASS()
 class TREASUREHUNTER_API UTHAnimInstance : public UAnimInstance
 {
@@ -42,4 +41,16 @@ protected:
         
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	uint8 bIsCrouching : 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	uint8 bIsClimbing : 1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	float ClimbDirectionX;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	float ClimbDirectionY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climb")
+	float ClimbingBlendSpeed = 10.f;
 };

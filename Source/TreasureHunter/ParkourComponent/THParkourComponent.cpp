@@ -31,82 +31,108 @@ void UTHParkourComponent::BeginPlay()
 	}
 }
 
-bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
+bool UTHParkourComponent::TraceForWall(FHitResult& OutFrontHit) const
 {
-    if (!IsValid(OwnerCharacter) || !IsValid(OwnerMovementComponent))
-    {
-       return false;
-    }
-	
 	const bool bDrawDebug = CVarDebugMantle.GetValueOnGameThread() > 0;
 	const EDrawDebugTrace::Type DrawDebugType = bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None;
 	const TArray<AActor*> ActorsToIgnore = { OwnerCharacter };
 
 	const FVector ActorLocation = OwnerCharacter->GetActorLocation();
 	const FVector ActorForward = OwnerCharacter->GetActorForwardVector();
-	const float CapsuleHalfHeight = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	const float CapsuleRadius = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius();
 
-	FHitResult FrontHit;
 	const FVector FrontTraceStart = ActorLocation + FVector(0, 0, 50.f);
 	const FVector FrontTraceEnd = FrontTraceStart + ActorForward * MantleReachDistance;
 	const float FrontTraceRadius = CapsuleRadius - 2.f;
 
-	UKismetSystemLibrary::SphereTraceSingle(this, FrontTraceStart, FrontTraceEnd, FrontTraceRadius, UEngineTypes::ConvertToTraceType(ECC_WorldStatic), false, ActorsToIgnore, DrawDebugType, FrontHit, true);
+	UKismetSystemLibrary::SphereTraceSingle(this, FrontTraceStart, FrontTraceEnd, FrontTraceRadius, UEngineTypes::ConvertToTraceType(ECC_WorldStatic), false, ActorsToIgnore, DrawDebugType, OutFrontHit, true);
 
-	if (!FrontHit.bBlockingHit || FrontHit.ImpactNormal.Z > 0.1f)
-	{
-		return false;
-	}
+	return OutFrontHit.bBlockingHit && OutFrontHit.ImpactNormal.Z <= 0.1f;
+}
 
-	FHitResult SurfaceHit;
+bool UTHParkourComponent::TraceForLedge(const FHitResult& FrontHit, FHitResult& OutSurfaceHit) const
+{
+	const bool bDrawDebug = CVarDebugMantle.GetValueOnGameThread() > 0;
+	const EDrawDebugTrace::Type DrawDebugType = bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None;
+	const TArray<AActor*> ActorsToIgnore = { OwnerCharacter };
+	
+	const FVector ActorLocation = OwnerCharacter->GetActorLocation();
+	
 	const FVector DownwardTraceStart = FVector(FrontHit.ImpactPoint.X, FrontHit.ImpactPoint.Y, ActorLocation.Z + MaxMantleHeight);
 	const FVector DownwardTraceEnd = FVector(FrontHit.ImpactPoint.X, FrontHit.ImpactPoint.Y, ActorLocation.Z);
 
-	UKismetSystemLibrary::LineTraceSingle(this, DownwardTraceStart, DownwardTraceEnd, UEngineTypes::ConvertToTraceType(ECC_WorldStatic), false, ActorsToIgnore, DrawDebugType, SurfaceHit, true);
+	UKismetSystemLibrary::LineTraceSingle(this, DownwardTraceStart, DownwardTraceEnd, UEngineTypes::ConvertToTraceType(ECC_WorldStatic), false, ActorsToIgnore, DrawDebugType, OutSurfaceHit, true);
 	
-	if (!SurfaceHit.bBlockingHit)
-	{
-		return false;
-	}
+	const float MantleHeight = OutSurfaceHit.ImpactPoint.Z - ActorLocation.Z;
+	return OutSurfaceHit.bBlockingHit && (MantleHeight >= MinMantleHeight);
+}
 
-	const float MantleHeight = SurfaceHit.ImpactPoint.Z - ActorLocation.Z;
-	if (MantleHeight < MinMantleHeight)
-	{
-		return false;
-	}
-
+bool UTHParkourComponent::IsLandingSpaceClear(const FHitResult& SurfaceHit) const
+{
+	const bool bDrawDebug = CVarDebugMantle.GetValueOnGameThread() > 0;
+	const EDrawDebugTrace::Type DrawDebugType = bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None;
+	const TArray<AActor*> ActorsToIgnore = { OwnerCharacter };
+	
+	const float CapsuleHalfHeight = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	const float CapsuleRadius = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	
 	const FVector BoxTraceLocation = SurfaceHit.ImpactPoint + FVector(0, 0, CapsuleHalfHeight + 1.f);
 	const FVector BoxHalfSize(CapsuleRadius, CapsuleRadius, CapsuleHalfHeight);
 	FHitResult BoxHit;
 
 	const bool bIsSpaceBlocked = UKismetSystemLibrary::BoxTraceSingle(this, BoxTraceLocation, BoxTraceLocation, BoxHalfSize, FRotator::ZeroRotator, UEngineTypes::ConvertToTraceType(ECC_WorldStatic), false, ActorsToIgnore, DrawDebugType, BoxHit, true);
 
-	if (bIsSpaceBlocked)
+	return !bIsSpaceBlocked;
+}
+
+void UTHParkourComponent::CalculateWarpTargets(const FHitResult& FrontHit, const FHitResult& SurfaceHit, FMantleInfo& OutMantleInfo) const
+{
+	const float CapsuleRadius = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	const FVector LedgeTopLocation = SurfaceHit.ImpactPoint;
+	const FVector WallNormal = FrontHit.ImpactNormal;
+	const FVector InwardDirection = -WallNormal;
+	const FRotator TargetRotation = UKismetMathLibrary::MakeRotFromX(InwardDirection);
+
+	const FVector HandPlacementPoint = LedgeTopLocation + (InwardDirection * MantleHandPlacementOffset);
+	FVector UpTargetLocation = HandPlacementPoint + (WallNormal * CapsuleRadius);
+	UpTargetLocation.Z = LedgeTopLocation.Z + MantleUpZOffset;
+	OutMantleInfo.UpWarpTarget = FTransform(TargetRotation, UpTargetLocation);
+
+	FVector ForwardTargetLocation = LedgeTopLocation + (InwardDirection * (CapsuleRadius + MantleForwardOffset));
+	ForwardTargetLocation.Z += FinalLandingHeightOffset;
+	OutMantleInfo.ForwardWarpTarget = FTransform(TargetRotation, ForwardTargetLocation);
+}
+
+bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
+{
+    if (!IsValid(OwnerCharacter) || !IsValid(OwnerMovementComponent))
+    {
+       return false;
+    }
+
+	FHitResult FrontHit;
+	if (!TraceForWall(FrontHit))
 	{
 		return false;
 	}
+
+	FHitResult SurfaceHit;
+	if (!TraceForLedge(FrontHit, SurfaceHit))
+	{
+		return false;
+	}
+
+	if (!IsLandingSpaceClear(SurfaceHit))
+	{
+		return false;
+	}
+
+	CalculateWarpTargets(FrontHit, SurfaceHit, OutMantleInfo);
 	
-	const FVector LedgeLocation = SurfaceHit.ImpactPoint;
-	const FRotator WallNormalRotation = FRotationMatrix::MakeFromX(-FrontHit.ImpactNormal).Rotator();
-	const FVector InwardDirection = -FrontHit.ImpactNormal;
-
-	const FVector ProjectedLocationOnWall = UKismetMathLibrary::ProjectPointOnToPlane(ActorLocation, FrontHit.ImpactPoint, FrontHit.ImpactNormal);
-
-	FVector UpTargetLocation = FVector(ProjectedLocationOnWall.X, ProjectedLocationOnWall.Y, LedgeLocation.Z);
-	UpTargetLocation += InwardDirection * UpWarpTargetInwardOffset;
-	UpTargetLocation.Z += FinalLandingHeightOffset;
-	OutMantleInfo.UpWarpTarget = FTransform(WallNormalRotation, UpTargetLocation, FVector::OneVector);
-
-	FVector FinalLocation = FVector(ProjectedLocationOnWall.X, ProjectedLocationOnWall.Y, LedgeLocation.Z);
-	const float TotalInwardOffset = CapsuleRadius + MantleForwardOffset;
-	FinalLocation += InwardDirection * TotalInwardOffset;
-	FinalLocation.Z += FinalLandingHeightOffset;
-	OutMantleInfo.ForwardWarpTarget = FTransform(WallNormalRotation, FinalLocation, FVector::OneVector);
-	
-	OutMantleInfo.LedgeLocation = LedgeLocation;
+	OutMantleInfo.LedgeLocation = SurfaceHit.ImpactPoint;
 	OutMantleInfo.TargetComponent = SurfaceHit.GetComponent();
 
+	const bool bDrawDebug = CVarDebugMantle.GetValueOnGameThread() > 0;
 	if (bDrawDebug)
 	{
 		DrawDebugSphere(GetWorld(), OutMantleInfo.UpWarpTarget.GetLocation(), 15.f, 16, FColor::Yellow, false, 5.f);

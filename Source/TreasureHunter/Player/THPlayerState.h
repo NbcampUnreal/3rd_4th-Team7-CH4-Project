@@ -31,6 +31,8 @@ protected:
 public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
+	TSubclassOf<UGameplayEffect> GetStaminaRegenEffectClass() const { return StaminaRegenEffect; }
+	
 	UFUNCTION(BlueprintCallable, Category = "GAS")
 	UTHAttributeSet* GetAttributeSet() const;
 
