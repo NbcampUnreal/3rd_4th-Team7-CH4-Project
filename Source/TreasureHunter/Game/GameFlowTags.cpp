@@ -6,6 +6,7 @@
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Ability_Sprint, "Ability.Sprint", "Sprint");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Ability_Mantle, "Ability.Mantle", "Mantle");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Ability_Push, "Ability.Push", "Push");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Ability_Climb, "Ability.Climb", "Climb");
 
 // ----- Cooldown -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Cooldown_Ability_Push, "Cooldown.Ability.Push", "Push Cooldown");
@@ -13,15 +14,21 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Cooldown_Ability_Push, "Cooldown.Ability.Push
 // ----- Event -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Event_Hit_Falling, "Event.Hit.Falling", "Character Hit when Falling");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Event_Movement_Stopped, "Event.Movement.Stopped", "Character Stops");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Event_Climb_Up, "Event.Climb.Up", "Character up Climb");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Event_Climb_Move, "Event.Climb.Move", "Character start Climb");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Event_Climb_Stop, "Event.Climb.Stop", "Character stop Climb");
 
 // ----- Effect -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Effect_Stamina_Regen, "Effect.Stamina.Regen", "Stamina Regen");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Effect_Stamina_Drain, "Effect.Stamina.Drain", "Stamina drain while sprint");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Effect_Stamina_ClimbDrain, "Effect.Stamina.ClimbDrain", "Stamina drain while Climb");
 
 // ----- Movement / State -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_State_Movement_Sprinting, "State.Movement.Sprinting", "Sprinting state");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Status_State_Mantling, "Status.State.Mantling", "Mantling state");
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_State_Debuff_Stun, "State.Debuff.Stun", "Stun Debuff state");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_State_Movement_Climbing, "State.Movement.Climbing" , "Climbing state");
+UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_State_Cooldown_SprintAfterMantle, "State.Cooldown.SprintAfterMantle", "Cooldown.");
 
 // ----- Status -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Status_Stamina_Empty, "Status.Stamina.Empty", "No stamina");

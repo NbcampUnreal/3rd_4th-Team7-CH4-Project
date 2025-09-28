@@ -20,6 +20,10 @@ class UGameplayEffect;
 class UMotionWarpingComponent;
 class UNiagaraComponent;
 struct UInputActionValue;
+class UTHParkourComponent;
+class UTHClimbComponent;
+struct FInputActionValue;
+struct FClimbTraceResult;
 
 UCLASS()
 class TREASUREHUNTER_API ATHPlayerCharacter : public ACharacter, public IAbilitySystemInterface
@@ -28,47 +32,89 @@ class TREASUREHUNTER_API ATHPlayerCharacter : public ACharacter, public IAbility
 
 public:
 	ATHPlayerCharacter();
-
-	virtual void BeginPlay() override;
 	
 	virtual void PossessedBy(AController* NewController) override;
-
 	virtual void OnRep_PlayerState() override;
-
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-
-	virtual void OnStaminaChanged(const FOnAttributeChangeData& Data);
-
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
-public:
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; }
-	
 	FORCEINLINE UCameraComponent* GetCamera() const { return Camera; }
+	FORCEINLINE UTHParkourComponent* GetParkourComponent() const { return ParkourComponent; }
+	FORCEINLINE UTHClimbComponent* GetClimbComponent() const { return ClimbComponent; }
 
 	float GetWalkSpeed() const;
-
 	float GetSprintSpeed() const;
 
+	void OnMantleStart();
+	void OnMantleEnd();
+
+	void EnterClimbState(const FVector& WallNormal);
+	void LeaveClimbState();
+
+	void CacheClimbStaminaEffects(const TSubclassOf<UGameplayEffect>& InDrainEffect, const TSubclassOf<UGameplayEffect>& InRegenEffect);
+	void SwitchClimbStaminaEffect(bool bShouldRegen);
+	void ClearClimbStaminaEffects();
+
+protected:
+	virtual void BeginPlay() override;
+	virtual void Jump() override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UFUNCTION(Server, Reliable)
+	void Server_SetClimbingWallNormal(const FVector& InWallNormal);
+
+	UFUNCTION(Server, Reliable)
+	void Server_UpdateClimbingMovementState(bool bNewIsMoving);
+	
+public:
+	void SetClimbingWallNormal(const FVector& InWallNormal);
+	
+	UFUNCTION()
+	void OnRep_ClimbingWallNormal();
+
+	UPROPERTY(ReplicatedUsing = OnRep_ClimbingWallNormal)
+	FVector_NetQuantizeNormal ClimbingWallNormal;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State|Climb")
+	bool bIsClimbing = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "State|Climb")
+	FVector2D ClimbMovementDirection = FVector2D::ZeroVector;
+	
 private:
+	void InitializeAbilitySystem();
+	void InitializeAbilitySystemCallbacks();
+	
 	void HandleMoveTriggered(const FInputActionValue& InValue);
-	
 	void HandleMoveCompleted(const FInputActionValue& InValue);
-	
 	void HandleLookInput(const FInputActionValue& InValue);
-
-	void OnMoveInputReleased(const FInputActionValue& InValue);
-
-	void OnSprintPressed(const FInputActionValue&);
-
-	void OnSprintReleased(const FInputActionValue&);
-
+	void HandleClimbInput(const FInputActionValue& InValue);
+	void HandleClimbInputReleased(const FInputActionValue& InValue);
+	
+	void HandleGroundMovement(const FVector2D& InMovementVector);
+	void HandleClimbMovement(const FVector2D& InMovementVector);
+	
+	void UpdateClimbMovementState(const FVector2D& InMovementVector);
+	void AdjustToClimbSurface();
+	void ApplyClimbMovementInput(const FVector2D& InMovementVector);
+	
 	void RequestMantle(const FInputActionValue& InValue);
-
+	void RequestClimb(const FInputActionValue& InValue);
 	void RequestPush(const FInputActionValue& InValue);
-
+	
+	void OnSprintingStateChanged(const FGameplayTag Tag, int32 NewCount);
+	void OnClimbingStateChanged(const FGameplayTag Tag, int32 NewCount);
+	void OnStaminaChanged(const FOnAttributeChangeData& Data);
+	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnJumpPowerChanged(const FOnAttributeChangeData& Data);
+	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
+	
+	void OnMoveInputReleased(const FInputActionValue& InValue);
+	void OnSprintPressed(const FInputActionValue&);
+	void OnSprintReleased(const FInputActionValue&);
+	
 	void BindToAttributeChanges();
-
 	void ToggleCrouch();
 
 protected:
@@ -94,6 +140,12 @@ protected:
 	TObjectPtr<UInputAction> PushAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> MantleAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ClimbAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> InteractAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
@@ -102,20 +154,39 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> SlotUse2Action;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Climb")
+	float MaxClimbSpeed = 150.f;
+	
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<USpringArmComponent> SpringArm;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TObjectPtr<UCameraComponent> Camera;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UTHParkourComponent> ParkourComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UTHClimbComponent> ClimbComponent;
+
 private:
 	UPROPERTY()
 	ATHItemBox* InteractableItemBox;
+	
 	UPROPERTY()
 	ATHBaseItem* InteractableBaseItem;
+
+	float DefaultMaxFlySpeed = 0.f;
 	
 public:	
 	void SetInteractableActor(ATHItemBox* NewItemBox);
 	void SetInteractableBaseItem(ATHBaseItem* NewBaseItem);
-	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
-	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
-	void OnJumpPowerChanged(const FOnAttributeChangeData& Data);
-
-	bool bIsSprinting = false;
+	
+	void OnStunTagChanged(const FGameplayTag,int32 NewCount);
 	
 	UFUNCTION()
 	void OnInteract();
@@ -129,28 +200,20 @@ public:
 	void Server_HandleBaseItemInteract(ATHBaseItem* InteractableItem);
 
 	UFUNCTION()
+	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UFUNCTION()
 	void OnUseItemSlot1();
 	
 	UFUNCTION()
 	void OnUseItemSlot2();
-
-	virtual void Jump() override;
-
-	UFUNCTION()
-	void OnCapsuleHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
-
-	void OnStunTagChanged(const FGameplayTag,int32 NewCount);
-
-	void OnSprintingStateChanged(const FGameplayTag Tag, int32 NewCount);
 	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> MantleAction;
+	bool bIsSprinting = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TObjectPtr<USpringArmComponent> SpringArm;
+protected:
+	FActiveGameplayEffectHandle CurrentClimbStaminaEffectHandle;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TObjectPtr<UCameraComponent> Camera;
+	bool bIsClimbingAndMoving = false;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UMotionWarpingComponent> MotionWarpingComponent;
@@ -160,4 +223,6 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Effects")
 	TObjectPtr<UNiagaraComponent> FootStepComponent;
+	TSubclassOf<UGameplayEffect> ClimbStaminaDrainEffectClass;
+	TSubclassOf<UGameplayEffect> ClimbStaminaRegenEffectClass;
 };

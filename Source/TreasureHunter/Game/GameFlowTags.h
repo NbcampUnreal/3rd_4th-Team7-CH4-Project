@@ -7,6 +7,7 @@
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Sprint);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Mantle);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Push);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Ability_Climb);
 
 // ----- Cooldown -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Cooldown_Ability_Push);
@@ -14,15 +15,21 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Cooldown_Ability_Push);
 // ----- Event -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Hit_Falling);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Movement_Stopped);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Climb_Up);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Climb_Move);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Event_Climb_Stop);
 
 // ----- Effect -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effect_Stamina_Regen);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effect_Stamina_Drain);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Effect_Stamina_ClimbDrain);
 
 // ----- Movement / State -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Sprinting);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Status_State_Mantling);
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Debuff_Stun);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Movement_Climbing);
+UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_State_Cooldown_SprintAfterMantle);
 
 // ----- Status -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Status_Stamina_Empty);
