@@ -66,7 +66,7 @@ void UTHClimbAbility::SetupMotionWarping(const FClimbTraceResult& InClimbTraceRe
 		
 		const FVector HorizontalOffset = InClimbTraceResult.WallNormal * (CurrentCapsuleRadius - WallInset);
 		const FVector VerticalOffset = FVector(0.f, 0.f, LedgeGrabVerticalOffset);
-		const FVector FinalLedgeLocation = TargetPointOnWall + HorizontalOffset - VerticalOffset;
+		const FVector FinalLedgeLocation = TargetPointOnWall + HorizontalOffset + VerticalOffset;
 
 		FMotionWarpingTarget WarpTargetParams;
 		WarpTargetParams.Name = FName("LedgeGrab");
