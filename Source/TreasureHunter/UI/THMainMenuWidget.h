@@ -25,12 +25,8 @@ private:
 	void HandleGameStartClicked();
 	UFUNCTION()
 	void HandleQuitClicked();
-	UFUNCTION()
-	void OnNickNameCommitted(const FText& Text, ETextCommit::Type CommitMethod);
 
 public:
-	FString GetNickName() const;
-
 	void StopLoading();
 	
 protected:
@@ -39,21 +35,12 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* QuitButton;
 	UPROPERTY(meta = (BindWidget))
-	UEditableTextBox* EditableTextBox_Nickname;
-	UPROPERTY(meta = (BindWidget))
-	UTextBlock* NicknameWarningText;
+	UTextBlock* WarningText;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Nickname")
-	int32 MinNicknameLength = 2;
-
-	UPROPERTY(EditDefaultsOnly, Category = "Nickname")
-	int32 MaxNicknameLength = 12;
 
 	UPROPERTY(meta = (BindWidget))
 	UImage* LoadingIcon;
 	UPROPERTY(Transient, meta = (BindWidgetAnim))
 	UWidgetAnimation* LoadingAnim;
 
-private:
-	FString Nickname;
 };
