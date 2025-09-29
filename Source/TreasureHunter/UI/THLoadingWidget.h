@@ -27,7 +27,7 @@ private:
 	FTimerHandle LoadingTimerHandle;
 
 	float Accumulate;
-	float LoadTime = 0.01f;
+	float LoadTime = 0.1f;
 	float TotalLoadTime = 2.0f;
 	
 private:

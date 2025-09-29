@@ -6,13 +6,6 @@
 #include "AbilitySystemComponent.h"
 #include "THGameModeBase.generated.h"
 
-struct FPlayerData
-{
-	FString PlayerAddress;
-	FString PlayerName;
-	FString PlayerUniqueId;
-};
-
 class UUserWidget;
 class ATHTitlePlayerController;
 class ATHPlayerController;
@@ -25,99 +18,49 @@ class TREASUREHUNTER_API ATHGameModeBase : public AGameModeBase
 	
 public:
 	ATHGameModeBase();
-
+	virtual void BeginPlay() override;
 	virtual void PostLogin(APlayerController* NewPlayer) override;
-
 	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
-
 	virtual void Logout(AController* Exiting) override;
 
 	void SetGameModeFlow(const FGameplayTag& NewPhase);
 
-	void StartMatchGame(ATHTitlePlayerController* PC);
-
-	void DecidePlayCharacter();
-
-	void WaitGame();
-
-	void MatchGame();
-
 	void LoadGame();
-
 	void GameStart();
-
-	void FinishGame();
-
-	void ShowResult();
-
 	void InitialzationGameData();
 
-	void ManipluateController(bool Manipulate);
-
-	void OpenChangeLevel(FGameplayTag NextFlow);
-
-	bool GetBunnyIsWinning() const;
+	bool GetBunnyIsWinning() const { return bBunnyHasBeenWinning; }
 
 	UFUNCTION(BlueprintCallable, Category = "Trigger")
 	void PlayerDetected(AActor* Player);
 
 	void SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlayerController* Requester);
 
-private:
-	FGameplayTag GetGameModeFlow() const;
-
-	void SetPlayerData(FString& Adrress, FString& UniqueId);
-
-	bool CheckEnoughPlayer();
-
-	void StartMatchTimer();
-
-	void StopMatch(bool Rematch);
-
-	void EnterTitlePlayerControllers(ATHTitlePlayerController* NewPlayer);
-
+protected:
 	void GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList) override;
 
-	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
-
+private:
 	void GameStartPlayerControllers(ATHPlayerController* NewPlayer);
-
 	void StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad);
-
 	void OnLevelLoadedReady();
-
 	void CheckPlayReady();
-
 	void AccumulatePlayerDistance();
-
 	void CourseCalculate();
-
 	bool IsInFlatSection(const FVector& PlayerPos) const;
-
 	void ReMatchGame();
+	void ApplyOnlineNickname(ATHPlayerState* PlayerState);
 
 private:
 	FGameplayTag GameModeFlow;
-
 	FGameplayTag RequestRematchState;
 
 	int32 ServerEnterPlayerNum;
-
-	int32 CurMatchWaitPlayerNum;	
-
 	int32 MaxMatchPlayerNum;
-
-	int32 RequestPlayerNum;
-
 	int32 StartPlayerNum;
 
-	FTimerHandle MatchTimerHandle;
-
 	FTimerHandle AccumulateUpdateTimerHandle;
-
 	FTimerHandle LoadMainTimerHandle;
-
-	float MatchWaitTime;
+	FTimerHandle MatchTimerHandle;
 
 	TSoftObjectPtr<UWorld> OpenLevelPath;
 
@@ -138,33 +81,18 @@ private:
 	AActor* FinishActor;
 	
 	FVector StartPos;
-
 	FVector CheckPos;
-
 	FVector FinishPos;
 
 	float TotalDist;
-
 	float FlatSectionDist;
-
 	float ClimbSectionDist;
-
 	float Section1Weight;
-
 	float Section2Weight;
-
 	bool bBunnyHasBeenWinning;
 
 public:
-	TArray<FPlayerData> LoginPlayerData;
-
 	TArray<APlayerController*> LoginPlayerControllers;
-
 	TArray<ATHPlayerState*> EnteredPlayerStates;
-
-	TArray<ATHTitlePlayerController*> MatchWaitPlayerControllers;
-
-	TArray<ATHTitlePlayerController*> MatchPlayerControllers;
-
 	TArray<ATHPlayerController*> StartPlayerControllers;
 };

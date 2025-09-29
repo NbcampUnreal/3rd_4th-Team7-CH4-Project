@@ -17,16 +17,8 @@ public:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 #pragma region Phase
-	UFUNCTION(Server, Reliable)
-	void Server_RequestMatchAndSetNickname(const FString& InNickname);
-
-	UFUNCTION(Server, Reliable)
-	void Server_RequestLoadData(const FGameplayTag& NewPhase);
-
 	UFUNCTION()
 	void HandlePhaseChange(FGameplayTag NewPhase);
-
-	void OpenPlayLevel();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")

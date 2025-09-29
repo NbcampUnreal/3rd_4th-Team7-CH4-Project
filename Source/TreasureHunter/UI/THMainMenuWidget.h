@@ -24,6 +24,8 @@ private:
 	UFUNCTION()
 	void HandleGameStartClicked();
 	UFUNCTION()
+	void HandleJoinGameClicked();
+	UFUNCTION()
 	void HandleQuitClicked();
 
 public:
@@ -32,6 +34,8 @@ public:
 protected:
 	UPROPERTY(meta = (BindWidget))
 	UButton* GameStartButton;
+	UPROPERTY(meta = (BindWidget))
+	UButton* JoinGameButton;
 	UPROPERTY(meta = (BindWidget))
 	UButton* QuitButton;
 	UPROPERTY(meta = (BindWidget))

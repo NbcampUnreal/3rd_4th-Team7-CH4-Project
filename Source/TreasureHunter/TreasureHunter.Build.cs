@@ -14,20 +14,30 @@ public class TreasureHunter : ModuleRules
 			"Engine", 
 			"InputCore", 
 			"EnhancedInput",
-			"AnimGraphRuntime", 
 			"GameplayAbilities", 
 			"GameplayTags", 
 			"GameplayTasks",
-			"UMG",
-			"Slate",
-			"SlateCore",
-			"MotionWarping",
-            "Niagara"
+            "OnlineSubsystem"
         });
 
-		PrivateDependencyModuleNames.AddRange(new string[] {  });
-		
-		PublicIncludePaths.AddRange(new string[] { "TreasureHunter" });
+		PrivateDependencyModuleNames.AddRange(new string[] {
+            "Slate",
+            "SlateCore",
+            "UMG",
+            "AnimGraphRuntime",
+            "MotionWarping",
+            "Niagara",
+            "OnlineSubsystemUtils",
+            "AdvancedSessions",
+            "AdvancedSteamSessions"
+        });
+
+        if (Target.Platform == UnrealTargetPlatform.Win64)
+        {
+            DynamicallyLoadedModuleNames.Add("OnlineSubsystemSteam");
+        }
+
+        PublicIncludePaths.AddRange(new string[] { "TreasureHunter" });
 
 	}
 }

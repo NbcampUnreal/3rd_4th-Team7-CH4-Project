@@ -97,18 +97,16 @@ bool ATHGameStateBase::AreBothReady() const
 bool ATHGameStateBase::TryAssignSlot(int32 SlotIdx, APlayerState* Requestor)
 {
 	if (!HasAuthority() || !Requestor || !SlotOwners.IsValidIndex(SlotIdx) || bSlotsLockedIn)
-	{
 		return false;
-	}
-	if (SlotOwners[SlotIdx] && SlotOwners[SlotIdx] != Requestor)
-	{
-		return false;
-	}
+
+	const bool bRequestorIsHost = (Requestor == HostPS);
+	if ((bRequestorIsHost && SlotIdx != 0) || (!bRequestorIsHost && SlotIdx != 1)) return false;
+	if (SlotOwners[SlotIdx] && SlotOwners[SlotIdx] != Requestor) return false;
 
 	if (SlotOwners[0] == Requestor) SlotOwners[0] = nullptr;
 	if (SlotOwners[1] == Requestor) SlotOwners[1] = nullptr;
-	SlotOwners[SlotIdx] = Requestor;
 
+	SlotOwners[SlotIdx] = Requestor;
 	if (ATHPlayerState* THPS = Cast<ATHPlayerState>(Requestor))
 	{
 		THPS->Server_SetSlotTag(SlotIdx);

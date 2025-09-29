@@ -142,7 +142,6 @@ void ATHPlayerState::CopyProperties(APlayerState* PlayerState)
 
 	if (ATHPlayerState* NewPS = Cast<ATHPlayerState>(PlayerState))
 	{
-		NewPS->PlayerAddress = PlayerAddress;
 		NewPS->PlayerUniqueId = PlayerUniqueId;
 		NewPS->Nickname = Nickname;
 

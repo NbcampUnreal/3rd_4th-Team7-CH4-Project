@@ -8,6 +8,7 @@
 #include "Components/Image.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Player/THTitlePlayerController.h"
+#include "Game/THGameInstance.h"
 
 void UTHMainMenuWidget::NativeConstruct()
 {
@@ -15,6 +16,10 @@ void UTHMainMenuWidget::NativeConstruct()
 	if (GameStartButton)
 	{
 		GameStartButton->OnClicked.AddDynamic(this, &ThisClass::HandleGameStartClicked);
+	}
+	if (JoinGameButton)
+	{
+		JoinGameButton->OnClicked.AddDynamic(this, &ThisClass::HandleJoinGameClicked);
 	}
 	if (QuitButton)
 	{
@@ -33,6 +38,10 @@ void UTHMainMenuWidget::NativeDestruct()
 	{
 		GameStartButton->OnClicked.RemoveAll(this);
 	}
+	if (JoinGameButton)
+	{
+		JoinGameButton->OnClicked.RemoveAll(this);
+	}
 	if (QuitButton)
 	{
 		QuitButton->OnClicked.RemoveAll(this);
@@ -43,15 +52,30 @@ void UTHMainMenuWidget::NativeDestruct()
 void UTHMainMenuWidget::HandleGameStartClicked()
 {
 
-	if (auto* PC = GetOwningPlayer<ATHTitlePlayerController>())
-	{
-		PC->Server_RequestMatchAndSetNickname(TEXT(""));
-	}
+	if (auto* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
+		THGI->HostListen(false);
 
 	if (LoadingIcon)
 	{
 		LoadingIcon->SetVisibility(ESlateVisibility::Visible);
 		PlayAnimation(LoadingAnim, 0.0f, 0, EUMGSequencePlayMode::Forward, 1.0f, false);
+	}
+}
+
+void UTHMainMenuWidget::HandleJoinGameClicked()
+{
+	if (UTHGameInstance* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
+	{
+		THGI->FindAndJoin(false);
+	}
+
+	if (LoadingIcon)
+	{
+		LoadingIcon->SetVisibility(ESlateVisibility::Visible);
+		if (LoadingAnim)
+		{
+			PlayAnimation(LoadingAnim, 0.f, 0, EUMGSequencePlayMode::Forward, 1.f, false);
+		}
 	}
 }
 

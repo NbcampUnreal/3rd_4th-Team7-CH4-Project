@@ -43,10 +43,4 @@ void UTHLoadingWidget::OnStreamableCompleted()
 	{
 		LoadingProgressBar->SetPercent(1.f);
 	}
-
-	ATHTitlePlayerController* PC = GetOwningPlayer<ATHTitlePlayerController>();
-	if (PC)
-	{
-		PC->OpenPlayLevel();
-	}
 }
