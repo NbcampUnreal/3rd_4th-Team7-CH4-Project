@@ -104,6 +104,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Rematch")
 	void ResetRematchState();
 
+	void SetRematchTag(const FGameplayTag& RematchRequest);
+
+	void SetRematchRequester(APlayerState* Requester);
+
+	void SetRematchResponder(APlayerState* Responder);
+
 public:
 	UPROPERTY(BlueprintAssignable)
 	FOnRematchChangedSig OnRematchChanged;

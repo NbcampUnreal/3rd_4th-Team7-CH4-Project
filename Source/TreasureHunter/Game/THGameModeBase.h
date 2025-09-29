@@ -61,6 +61,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Trigger")
 	void PlayerDetected(AActor* Player);
 
+	void SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlayerController* Requester);
+
 private:
 	FGameplayTag GetGameModeFlow() const;
 
@@ -92,8 +94,12 @@ private:
 
 	bool IsInFlatSection(const FVector& PlayerPos) const;
 
+	void ReMatchGame();
+
 private:
 	FGameplayTag GameModeFlow;
+
+	FGameplayTag RequestRematchState;
 
 	int32 ServerEnterPlayerNum;
 
@@ -101,13 +107,15 @@ private:
 
 	int32 MaxMatchPlayerNum;
 
-	int32 ReadyPlayerNum;
+	int32 RequestPlayerNum;
 
 	int32 StartPlayerNum;
 
 	FTimerHandle MatchTimerHandle;
 
 	FTimerHandle AccumulateUpdateTimerHandle;
+
+	FTimerHandle LoadMainTimerHandle;
 
 	float MatchWaitTime;
 
@@ -149,8 +157,6 @@ private:
 
 public:
 	TArray<FPlayerData> LoginPlayerData;
-
-	TArray<FPlayerData> StartPlayerData;
 
 	TArray<APlayerController*> LoginPlayerControllers;
 

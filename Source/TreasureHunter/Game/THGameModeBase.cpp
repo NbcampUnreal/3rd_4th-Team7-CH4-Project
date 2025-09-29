@@ -40,6 +40,12 @@ void ATHGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* 
 		UE_LOG(LogTemp, Error, TEXT("Player NickName %s"), *NewPS->Nickname);
 		GameStartPlayerControllers(MatchPlayerController);
 	}
+
+	ATHTitlePlayerController* TitlePlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
+	if (IsValid(TitlePlayerController) && IsValid(NewPlayer->Player))
+	{
+		EnterTitlePlayerControllers(TitlePlayerController);
+	}
 }
 
 void ATHGameModeBase::Logout(AController* Exiting)
@@ -225,16 +231,22 @@ void ATHGameModeBase::ManipluateController(bool Manipulate)
 
 void ATHGameModeBase::OpenChangeLevel(FGameplayTag NextFlow)
 {
-	++ReadyPlayerNum;
-	TSoftObjectPtr<UWorld> LaodPath;
-	if (ReadyPlayerNum == MaxMatchPlayerNum)
+	++RequestPlayerNum;
+	TSoftObjectPtr<UWorld> LoadPath;
+	if (RequestPlayerNum == MaxMatchPlayerNum)
 	{
-		if (NextFlow == TAG_Game_Phase_Wait) LaodPath = MainLevelPath;
-		if (NextFlow == TAG_Game_Phase_Play) LaodPath = PlayLevelPath;
+		if (NextFlow == TAG_Game_Phase_Play) LoadPath = PlayLevelPath;
+	}
+	else if (RequestRematchState == TAG_Game_Rematch_Declined ||
+		RequestRematchState == TAG_Game_Rematch_OpponentLeft ||
+		RequestRematchState == TAG_Game_Rematch_Timeout)
+	{
+		if (NextFlow == TAG_Game_Phase_Wait) LoadPath = MainLevelPath;
 	}
 	else return;
 
-	StartLevelLoad(LaodPath);
+	RequestPlayerNum = 0;
+	StartLevelLoad(LoadPath);
 }
 
 bool ATHGameModeBase::GetBunnyIsWinning() const
@@ -248,10 +260,76 @@ void ATHGameModeBase::PlayerDetected(AActor* Player)
 	if (IsValid(DetectedPC) && GameModeFlow != TAG_Game_Phase_Finish)
 	{
 		ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState);
-		GS->WinnerTag = DetectedPC->GetPlayerState<ATHPlayerState>()->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First) ? TAG_Player_Character_First : TAG_Player_Character_Second;
-		
+		FGameplayTag WinnerTag = DetectedPC->GetPlayerState<ATHPlayerState>()->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First) ? TAG_Player_Character_First : TAG_Player_Character_Second;
+		GS->SetWinnerTag(WinnerTag);
+
 		SetGameModeFlow(TAG_Game_Phase_Finish);
 	}
+}
+
+void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlayerController* Requester)
+{
+	RequestRematchState = AfterGameOver;
+	ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState);
+	GS->SetRematchTag(RequestRematchState);
+
+	ATHPlayerController* OtherPlayer;
+	for (ATHPlayerController* Other : StartPlayerControllers)
+	{
+		if (Other != Requester)
+		{
+			OtherPlayer = Other;
+			break;
+		}
+	}
+
+	if (RequestRematchState == TAG_Game_Rematch_Pending)
+	{
+		GS->SetRematchRequester(Requester->PlayerState);
+		GS->SetRematchResponder(OtherPlayer->PlayerState);
+		//Reqeust Rematch Game to Other Player
+		GetWorldTimerManager().SetTimer(
+			MatchTimerHandle,
+			[this]()
+			{
+				if (RequestRematchState != TAG_Game_Rematch_AcceptedBoth)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("TimeOut"));
+					SetAfterTheGame(TAG_Game_Rematch_Timeout, nullptr);
+				}
+			},
+			10.0f,
+			false
+		);
+		return;
+	}
+	else if (RequestRematchState == TAG_Game_Rematch_AcceptedBoth)
+	{
+		//Start Rematch Game
+		GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
+		ReMatchGame();
+		RequestRematchState = FGameplayTag();
+	}
+	else if (RequestRematchState == TAG_Game_Rematch_Declined || 
+		RequestRematchState == TAG_Game_Rematch_OpponentLeft || 
+		RequestRematchState == TAG_Game_Rematch_Timeout)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
+		//Go to MainLevel
+		GetWorldTimerManager().SetTimer(
+			LoadMainTimerHandle,
+			[this]()
+			{
+				OpenChangeLevel(TAG_Game_Phase_Wait);
+				SetGameModeFlow(TAG_Game_Phase_Wait);
+				RequestRematchState = FGameplayTag();
+			},
+			5.0f,
+			false
+		);
+	}
+
+	GS->ResetRematchState();
 }
 
 FGameplayTag ATHGameModeBase::GetGameModeFlow() const
@@ -347,13 +425,31 @@ void ATHGameModeBase::GetSeamlessTravelActorList(bool bToTransition, TArray<AAct
 {
 	Super::GetSeamlessTravelActorList(bToTransition, ActorList);
 
-	for (ATHTitlePlayerController* MatchPC : MatchPlayerControllers)
+	if (GameModeFlow == TAG_Game_Phase_Loading)
 	{
-		ATHPlayerState* MatchPS = Cast<ATHPlayerState>(MatchPC->PlayerState);
-		if (MatchPS)
+		UE_LOG(LogTemp, Warning, TEXT("GetSeamlessTravelActorList Loading"));
+		for (ATHTitlePlayerController* MatchPC : MatchPlayerControllers)
 		{
-			EnteredPlayerStates.Add(MatchPS);
-			ActorList.Add(MatchPS);
+			ATHPlayerState* MatchPS = Cast<ATHPlayerState>(MatchPC->PlayerState);
+			if (MatchPS)
+			{
+				EnteredPlayerStates.Add(MatchPS);
+				ActorList.Add(MatchPS);
+			}
+		}
+	}
+
+	if (GameModeFlow == TAG_Game_Phase_Finish)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("GetSeamlessTravelActorList Finish"));
+		for (ATHPlayerController* MainPC : StartPlayerControllers)
+		{
+			ATHPlayerState* MatchPS = Cast<ATHPlayerState>(MainPC->PlayerState);
+			if (MatchPS)
+			{
+				EnteredPlayerStates.Add(MatchPS);
+				ActorList.Add(MatchPS);
+			}
 		}
 	}
 }
@@ -416,6 +512,7 @@ void ATHGameModeBase::StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad)
 
 	if (OpenLevelPath.IsNull()) // 경로 자체가 비어있는 경우만 체크
 	{
+		UE_LOG(LogTemp, Error, TEXT("Not Found Path"));
 		return;
 	}
 
@@ -425,9 +522,11 @@ void ATHGameModeBase::StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad)
 
 		Streamable.RequestAsyncLoad(OpenLevelPath.ToSoftObjectPath(),
 			FStreamableDelegate::CreateUObject(this, &ATHGameModeBase::OnLevelLoadedReady));
+		UE_LOG(LogTemp, Error, TEXT("Load Path"));
 	}
 	else
 	{
+		UE_LOG(LogTemp, Error, TEXT("Load Path"));
 		OnLevelLoadedReady();
 	}
 }
@@ -446,7 +545,6 @@ void ATHGameModeBase::CheckPlayReady()
 	if (GameModeFlow == TAG_Game_Phase_Play) return;
 
 	SetGameModeFlow(TAG_Game_Phase_Play);
-	ReadyPlayerNum = 0;
 }
 
 void ATHGameModeBase::CourseCalculate()
@@ -501,6 +599,14 @@ bool ATHGameModeBase::IsInFlatSection(const FVector& PlayerPos) const
 	float Projection = FVector::DotProduct(StartToPlayer, StartToCheck.GetSafeNormal());
 
 	return Projection < FlatSectionDist;
+}
+
+void ATHGameModeBase::ReMatchGame()
+{
+	bIsPlayer1Ready = false;
+	bIsPlayer2Ready = false;
+
+	StartLevelLoad(PlayLevelPath);
 }
 
 void ATHGameModeBase::AccumulatePlayerDistance()
