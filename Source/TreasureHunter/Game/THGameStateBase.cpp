@@ -165,4 +165,28 @@ void ATHGameStateBase::ResetRematchState() // Initialize when Phase Finish
 	OnRep_RematchTag();
 	ForceNetUpdate();
 }
+void ATHGameStateBase::SetRematchTag(const FGameplayTag& RematchRequest)
+{
+	if (!HasAuthority()) return;
+
+	if (RematchTag != RematchRequest)
+	{
+		RematchTag = RematchRequest;
+
+		OnRep_RematchTag();
+		ForceNetUpdate();
+	}
+}
+void ATHGameStateBase::SetRematchRequester(APlayerState* Requester)
+{
+	if (!HasAuthority()) return;
+
+	RematchRequester = Requester;
+}
+void ATHGameStateBase::SetRematchResponder(APlayerState* Responder)
+{
+	if (!HasAuthority()) return;
+
+	RematchResponder = Responder;
+}
 #pragma endregion

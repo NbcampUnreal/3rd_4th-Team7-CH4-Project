@@ -310,7 +310,8 @@ void ATHPlayerController::Server_RequestRematch_Implementation()
 {
 	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
 	{
-		// Request Rematch 
+		// Request Rematch
+		GM->SetAfterTheGame(TAG_Game_Rematch_Pending, this);
 	}
 }
 
@@ -318,7 +319,15 @@ void ATHPlayerController::Server_RespondRematch_Implementation(bool bAccept)
 {
 	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
 	{
-		// Rematch Response 
+		// Rematch Response
+		if (bAccept)
+		{
+			GM->SetAfterTheGame(TAG_Game_Rematch_AcceptedBoth, this);
+		}
+		else if (!bAccept)
+		{
+			GM->SetAfterTheGame(TAG_Game_Rematch_Declined, this);
+		}
 	}
 }
 
@@ -327,6 +336,7 @@ void ATHPlayerController::Server_LeaveToMainMenu_Implementation()
 	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
 	{
 		// Leave at GameOver
+		GM->SetAfterTheGame(TAG_Game_Rematch_OpponentLeft, this);
 	}
 }
 
