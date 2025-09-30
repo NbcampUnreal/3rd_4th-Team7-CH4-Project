@@ -5,39 +5,70 @@
 #include "Player/THPlayerController.h"
 #include "UI/THLoadingWidget.h"
 #include "Game/GameFlowTags.h"
+#include "Game/THGameInstance.h"
+
+#include "OnlineSubsystem.h"
+#include "Interfaces/OnlineIdentityInterface.h"
 
 #include "Kismet/GameplayStatics.h"
 
 ATHGameModeBase::ATHGameModeBase()
 {
 	bUseSeamlessTravel = true;
-
 	MaxMatchPlayerNum = 2;
-	MatchWaitTime = 5.0f;
-	SetGameModeFlow(TAG_Game_Phase_Wait);
+}
+
+void ATHGameModeBase::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (ATHGameStateBase* GS = GetGameState<ATHGameStateBase>())
+	{
+		const FGameplayTag Cur = GS->GetPhaseTag();
+		if (!Cur.IsValid())
+		{
+			const FString LevelName = UGameplayStatics::GetCurrentLevelName(this, true);
+			if (LevelName.Contains(TEXT("Start")))
+			{
+				SetGameModeFlow(TAG_Game_Phase_Wait);
+			}
+		}
+	}
 }
 
 void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
 
-	ATHTitlePlayerController* TitlePlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
-	ATHPlayerController* MatchPlayerController = Cast<ATHPlayerController>(NewPlayer);
-	if (IsValid(TitlePlayerController) && IsValid(NewPlayer->Player))
+	if (APlayerState* PS = NewPlayer ? NewPlayer->PlayerState : nullptr)
 	{
-		EnterTitlePlayerControllers(TitlePlayerController);
+		if (ATHPlayerState* NewPS = Cast<ATHPlayerState>(PS)) ApplyOnlineNickname(NewPS);
+	}
+
+	ATHGameStateBase* GS = GetGameState<ATHGameStateBase>();
+	UTHGameInstance* GI = GetGameInstance<UTHGameInstance>();
+
+	if (HasAuthority() && GS && GetNumPlayers() == 1)
+	{
+		GS->HostPS = NewPlayer->PlayerState;
+		GS->OnRep_HostPS();
+
+		if (GI && GI->bIsHosting)
+		{
+			SetGameModeFlow(TAG_Game_Phase_Match);
+			GS->TryAssignSlot(0, NewPlayer->PlayerState);
+		}
 	}
 }
+
 
 void ATHGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer)
 {
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
-	ATHPlayerController* MatchPlayerController = Cast<ATHPlayerController>(NewPlayer);
-	if (IsValid(MatchPlayerController) && IsValid(NewPlayer->Player))
+	if (ATHPlayerController* MatchPlayerController = Cast<ATHPlayerController>(NewPlayer))
 	{
-		ATHPlayerState* NewPS = Cast<ATHPlayerState>(MatchPlayerController->PlayerState);
-		UE_LOG(LogTemp, Error, TEXT("Player NickName %s"), *NewPS->Nickname);
+		if (ATHPlayerState* NewPS = Cast<ATHPlayerState>(MatchPlayerController->PlayerState)) ApplyOnlineNickname(NewPS);
 		GameStartPlayerControllers(MatchPlayerController);
 	}
 }
@@ -45,147 +76,31 @@ void ATHGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* 
 void ATHGameModeBase::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);
-	
-	ATHTitlePlayerController* ExitingPC = Cast<ATHTitlePlayerController>(Exiting);
-	ATHPlayerState* ExitingPS = Cast<ATHPlayerState>(Exiting->PlayerState);
-	if (IsValid(ExitingPC) && IsValid(ExitingPS))
-	{
-		--ServerEnterPlayerNum;
-
-		if (GameModeFlow == TAG_Game_Phase_Wait)
-		{
-			if (MatchWaitPlayerControllers.Find(ExitingPC))
-			{
-				MatchWaitPlayerControllers.Remove(ExitingPC);
-				ExitingPC->ClientCancelMatch(false);
-			}
-		}
-		else if (GameModeFlow == TAG_Game_Phase_Match)
-		{
-			if (MatchPlayerControllers.Find(ExitingPC))
-			{
-				MatchPlayerControllers.Remove(ExitingPC);
-				StopMatch(true);
-				UE_LOG(LogTemp, Warning, TEXT("Logout Player"));
-			}
-		}
-	}
 }
 
 void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 {
 	if (HasAuthority())
 	{
+		if (GameModeFlow == NewPhase) return; 
+
 		GameModeFlow = NewPhase;
 		if (ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState))
 		{
 			GS->SetPhase(GameModeFlow);
 		}
 
-		if (GameModeFlow == TAG_Game_Phase_Wait)
-		{
-			WaitGame();
-		}
-		else if (GameModeFlow == TAG_Game_Phase_Match)
-		{
-			
-		}
-		else if (GameModeFlow == TAG_Game_Phase_Play)
+		if (GameModeFlow == TAG_Game_Phase_Play)
 		{
 			GameStart();
 		}
-		else if (GameModeFlow == TAG_Game_Phase_Finish)
-		{
-			FinishGame();
-		}
 	}
-}
-
-void ATHGameModeBase::StartMatchGame(ATHTitlePlayerController* PC)
-{
-	if (IsValid(PC))
-	{
-		UNetConnection* MatchConnection = Cast<UNetConnection>(PC->Player);
-		if (IsValid(MatchConnection))
-		{
-			FString PCAddress = MatchConnection->GetRemoteAddr()->ToString(false);
-			FPlayerData* FoundData = LoginPlayerData.FindByPredicate(
-				[&PCAddress](const FPlayerData& Data)
-				{
-					return Data.PlayerAddress == PCAddress;
-				});
-
-			if (FoundData)
-			{
-				if (GameModeFlow == TAG_Game_Phase_Wait)
-				{
-					ATHPlayerState* MatchPS = Cast<ATHPlayerState>(PC->PlayerState);
-					FoundData->PlayerName = MatchPS->Nickname;
-					MatchPS->OnRep_Nickname();
-
-					++CurMatchWaitPlayerNum;
-					MatchWaitPlayerControllers.Add(PC);
-					if (CheckEnoughPlayer())
-					{
-						MatchGame();
-					}
-					else
-					{
-						StartMatchTimer();
-					}
-				}
-				else
-				{
-					//if players playing Game now
-					UE_LOG(LogTemp, Warning, TEXT("Now Other Users Playing Game. Wait Please"));
-					return;
-				}
-			}
-			else
-			{
-				UE_LOG(LogTemp, Warning, TEXT("Not Found PlayerData"));
-				return;
-			}
-		}
-	}
-	else
-	{
-		return;
-	}
-}
-
-void ATHGameModeBase::DecidePlayCharacter()
-{
-}
-
-void ATHGameModeBase::WaitGame()
-{
-	//Initial Game Data
-}
-
-void ATHGameModeBase::MatchGame()
-{
-	GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
-
-	for (int i = 0; i < MaxMatchPlayerNum; ++i)
-	{
-		ATHTitlePlayerController* MatchPlayer = MatchWaitPlayerControllers[0];
-		MatchPlayerControllers.Add(MatchPlayer);
-		MatchWaitPlayerControllers.Remove(MatchPlayer);
-	}
-
-	for (ATHTitlePlayerController* CancelPlayer : MatchWaitPlayerControllers)
-	{
-		CancelPlayer->ClientCancelMatch(false);
-	}
-
-	CurMatchWaitPlayerNum = 0;
-	SetGameModeFlow(TAG_Game_Phase_Match);
 }
 
 void ATHGameModeBase::LoadGame()
 {
 	SetGameModeFlow(TAG_Game_Phase_Loading);
+	StartLevelLoad(PlayLevelPath);
 }
 
 void ATHGameModeBase::GameStart()
@@ -207,39 +122,9 @@ void ATHGameModeBase::GameStart()
 	);
 }
 
-void ATHGameModeBase::FinishGame()
-{
-}
-
-void ATHGameModeBase::ShowResult()
-{
-}
-
 void ATHGameModeBase::InitialzationGameData()
 {
-}
-
-void ATHGameModeBase::ManipluateController(bool Manipulate)
-{
-}
-
-void ATHGameModeBase::OpenChangeLevel(FGameplayTag NextFlow)
-{
-	++ReadyPlayerNum;
-	TSoftObjectPtr<UWorld> LaodPath;
-	if (ReadyPlayerNum == MaxMatchPlayerNum)
-	{
-		if (NextFlow == TAG_Game_Phase_Wait) LaodPath = MainLevelPath;
-		if (NextFlow == TAG_Game_Phase_Play) LaodPath = PlayLevelPath;
-	}
-	else return;
-
-	StartLevelLoad(LaodPath);
-}
-
-bool ATHGameModeBase::GetBunnyIsWinning() const
-{
-	return bBunnyHasBeenWinning;
+	// 재시작 초기화 
 }
 
 void ATHGameModeBase::PlayerDetected(AActor* Player)
@@ -247,139 +132,110 @@ void ATHGameModeBase::PlayerDetected(AActor* Player)
 	ATHPlayerController* DetectedPC = Cast<ATHPlayerController>(Player->GetInstigatorController());
 	if (IsValid(DetectedPC) && GameModeFlow != TAG_Game_Phase_Finish)
 	{
-		ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState);
-		GS->WinnerTag = DetectedPC->GetPlayerState<ATHPlayerState>()->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First) ? TAG_Player_Character_First : TAG_Player_Character_Second;
-		
+		ATHGameStateBase* GS = GetGameState<ATHGameStateBase>();
+		if (GS)
+		{
+			const bool bFirst = DetectedPC->GetPlayerState<ATHPlayerState>()->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First);
+			const FGameplayTag WinnerTag = bFirst ? TAG_Player_Character_First : TAG_Player_Character_Second;
+			GS->SetWinnerTag(WinnerTag);
+		}
+
 		SetGameModeFlow(TAG_Game_Phase_Finish);
 	}
 }
 
-FGameplayTag ATHGameModeBase::GetGameModeFlow() const
+void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlayerController* Requester)
 {
-	return GameModeFlow;
-}
+	RequestRematchState = AfterGameOver;
 
-void ATHGameModeBase::SetPlayerData(FString& Adrress, FString& UniqueId)
-{
-	FPlayerData NewPD;
-	NewPD.PlayerAddress = Adrress;
-	NewPD.PlayerUniqueId = UniqueId;
+	ATHGameStateBase* GS = Cast<ATHGameStateBase>(GameState);
+	if (!IsValid(GS)) { return; }
 
-	LoginPlayerData.Add(NewPD);
-}
+	GS->SetRematchTag(RequestRematchState);
 
-bool ATHGameModeBase::CheckEnoughPlayer()
-{
-	if (MatchWaitPlayerControllers.Num() >= MaxMatchPlayerNum)
+	ATHPlayerController* OtherPlayer = nullptr;
+	for (ATHPlayerController* Other : StartPlayerControllers)
 	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-}
-
-void ATHGameModeBase::StartMatchTimer()
-{
-	FTimerDelegate TimerDel;
-	TimerDel.BindUObject(this, &ATHGameModeBase::StopMatch, false);
-	GetWorldTimerManager().SetTimer(
-		MatchTimerHandle,
-		TimerDel,
-		MatchWaitTime,
-		false
-	);
-}
-
-void ATHGameModeBase::StopMatch(bool Rematch)
-{
-	//This "Wait" logic is written like this
-	//because we currently don't have the function to cancel matching on self
-	//later. if we make self cancel function, I change this logic.
-	if (GameModeFlow == TAG_Game_Phase_Wait)
-	{
-		for (ATHTitlePlayerController* CancelPlayer : MatchWaitPlayerControllers)
+		if (IsValid(Other) && Other != Requester)
 		{
-			CancelPlayer->ClientCancelMatch(Rematch);
-			--CurMatchWaitPlayerNum;
+			OtherPlayer = Other;
+			break;
+		}
+	}
+
+	if (RequestRematchState == TAG_Game_Rematch_Pending)
+	{
+		if (!IsValid(Requester) || !IsValid(OtherPlayer) || !IsValid(Requester->PlayerState) || !IsValid(OtherPlayer->PlayerState))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Rematch Pending: invalid requester/responder. Treat as OpponentLeft."));
+			SetAfterTheGame(TAG_Game_Rematch_OpponentLeft, nullptr);
+			return;
 		}
 
-		MatchWaitPlayerControllers.Empty();
-	}
-	else if (GameModeFlow == TAG_Game_Phase_Match)
-	{
-		SetGameModeFlow(TAG_Game_Phase_Wait);
-		for (ATHTitlePlayerController* CancelPlayer : MatchPlayerControllers)
-		{
-			ATHPlayerState* CancelPS = Cast<ATHPlayerState>(CancelPlayer->PlayerState);
-			CancelPlayer->Server_RequestMatchAndSetNickname_Implementation(CancelPS->Nickname);;
-		}
-	}	
-}
+		GS->SetRematchRequester(Requester->PlayerState);
+		GS->SetRematchResponder(OtherPlayer->PlayerState);
 
-void ATHGameModeBase::EnterTitlePlayerControllers(ATHTitlePlayerController* NewPlayer)
-{
-	++ServerEnterPlayerNum;
-	LoginPlayerControllers.Add(NewPlayer);
+		TWeakObjectPtr<ATHGameModeBase> WeakThis(this);
+		FTimerDelegate TimerDel = FTimerDelegate::CreateLambda([WeakThis]()
+			{
+				if (!WeakThis.IsValid()) return;
+				if (WeakThis->RequestRematchState != TAG_Game_Rematch_AcceptedBoth)
+				{
+					UE_LOG(LogTemp, Warning, TEXT("Rematch timeout"));
+					WeakThis->SetAfterTheGame(TAG_Game_Rematch_Timeout, nullptr);
+				}
+			});
 
-	UNetConnection* NewConnection = Cast<UNetConnection>(NewPlayer->Player);
-	FString Address;
-	if (IsValid(NewConnection))
-	{
-		Address = NewConnection->GetRemoteAddr()->ToString(false);
+		GetWorldTimerManager().SetTimer(MatchTimerHandle, TimerDel, 10.0f, false);
+		return;
 	}
-	else
+	else if (RequestRematchState == TAG_Game_Rematch_AcceptedBoth)
 	{
-		Logout(NewPlayer);
+		GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
+		ReMatchGame();
+		RequestRematchState = FGameplayTag();
+		GS->ResetRematchState();
+		return;
+	}
+	else if (RequestRematchState == TAG_Game_Rematch_Declined ||
+		RequestRematchState == TAG_Game_Rematch_OpponentLeft ||
+		RequestRematchState == TAG_Game_Rematch_Timeout)
+	{
+		GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
+
+		TWeakObjectPtr<ATHGameModeBase> WeakThis(this);
+		FTimerDelegate LoadMainDel = FTimerDelegate::CreateLambda([WeakThis]()
+			{
+				if (!WeakThis.IsValid()) return;
+				WeakThis->SetGameModeFlow(TAG_Game_Phase_Wait);
+				WeakThis->StartLevelLoad(WeakThis->MainLevelPath);
+				WeakThis->RequestRematchState = FGameplayTag();
+				if (ATHGameStateBase* LGS = Cast<ATHGameStateBase>(WeakThis->GameState))
+				{
+					LGS->ResetRematchState();
+				}
+			});
+
+		GetWorldTimerManager().SetTimer(LoadMainTimerHandle, LoadMainDel, 5.0f, false);
 		return;
 	}
 
-	FString GuidStr = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);;
-	ATHPlayerState* NewPS = Cast<ATHPlayerState>(NewPlayer->PlayerState);
-	NewPS->PlayerAddress = Address;
-	NewPS->PlayerUniqueId = GuidStr;
-
-	SetPlayerData(Address, GuidStr);
+	GS->ResetRematchState();
 }
 
 void ATHGameModeBase::GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList)
 {
 	Super::GetSeamlessTravelActorList(bToTransition, ActorList);
+	EnteredPlayerStates.Empty();
 
-	for (ATHTitlePlayerController* MatchPC : MatchPlayerControllers)
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		ATHPlayerState* MatchPS = Cast<ATHPlayerState>(MatchPC->PlayerState);
-		if (MatchPS)
+		if (APlayerController* PC = It->Get())
 		{
-			EnteredPlayerStates.Add(MatchPS);
-			ActorList.Add(MatchPS);
-		}
-	}
-}
-
-void ATHGameModeBase::HandleSeamlessTravelPlayer(AController*& C)
-{
-	Super::HandleSeamlessTravelPlayer(C);
-	
-	if (ATHPlayerController* PlayerPC = Cast<ATHPlayerController>(C))
-	{		
-		if (!PlayerPC->PlayerState)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("PlayerState is Null"));
-			for (ATHPlayerState* OldPS : EnteredPlayerStates)
+			if (APlayerState* PS = PC->PlayerState)
 			{
-				if (OldPS && OldPS->GetUniqueID() == PlayerPC->PlayerState->GetUniqueID())
-				{
-					PlayerPC->PlayerState = OldPS;
-					UE_LOG(LogTemp, Warning, TEXT("PlayerState Change!"));
-					break;
-				}
+				ActorList.Add(PS);
 			}
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("PlayerState is Not Null"));
 		}
 	}
 }
@@ -394,16 +250,14 @@ void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
 
 	Player->DisableInput(Player);
 
-	for (ATHPlayerController* Player : StartPlayerControllers)
+	for (ATHPlayerController* PC : StartPlayerControllers)
 	{
-		ATHPlayerState* NewPlayerState = Cast<ATHPlayerState>(Player->PlayerState);
-		if (NewPlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First))
+		if (ATHPlayerState* PS = Cast<ATHPlayerState>(PC->PlayerState))
 		{
-			bIsPlayer1Ready = true;
-		}
-		else if (NewPlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_Second))
-		{
-			bIsPlayer2Ready = true;
+			if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First))
+				bIsPlayer1Ready = true;
+			else if (PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_Second))
+				bIsPlayer2Ready = true;
 		}
 	}
 
@@ -414,8 +268,9 @@ void ATHGameModeBase::StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad)
 {
 	OpenLevelPath = LevelToLoad;
 
-	if (OpenLevelPath.IsNull()) // 경로 자체가 비어있는 경우만 체크
+	if (OpenLevelPath.IsNull())
 	{
+		UE_LOG(LogTemp, Error, TEXT("Not Found Path"));
 		return;
 	}
 
@@ -434,8 +289,7 @@ void ATHGameModeBase::StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad)
 
 void ATHGameModeBase::OnLevelLoadedReady()
 {
-	UWorld* LoadedWorld = OpenLevelPath.Get();
-	if (LoadedWorld)
+	if (UWorld* LoadedWorld = OpenLevelPath.Get())
 	{
 		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true);
 	}
@@ -446,7 +300,6 @@ void ATHGameModeBase::CheckPlayReady()
 	if (GameModeFlow == TAG_Game_Phase_Play) return;
 
 	SetGameModeFlow(TAG_Game_Phase_Play);
-	ReadyPlayerNum = 0;
 }
 
 void ATHGameModeBase::CourseCalculate()
@@ -501,6 +354,40 @@ bool ATHGameModeBase::IsInFlatSection(const FVector& PlayerPos) const
 	float Projection = FVector::DotProduct(StartToPlayer, StartToCheck.GetSafeNormal());
 
 	return Projection < FlatSectionDist;
+}
+
+void ATHGameModeBase::ReMatchGame()
+{
+	bIsPlayer1Ready = false;
+	bIsPlayer2Ready = false;
+
+	StartLevelLoad(PlayLevelPath);
+}
+
+void ATHGameModeBase::ApplyOnlineNickname(ATHPlayerState* PlayerState)
+{
+	if (!PlayerState) return;
+
+	FString Nick = PlayerState->GetPlayerName();
+	if (IOnlineSubsystem* OSS = IOnlineSubsystem::Get())
+	{
+		if (IOnlineIdentityPtr Identity = OSS->GetIdentityInterface())
+		{
+#if ENGINE_MAJOR_VERSION >= 5
+			const FUniqueNetIdRepl& IdRepl = PlayerState->GetUniqueId();
+			if (IdRepl.IsValid())
+			{
+				Nick = Identity->GetPlayerNickname(*IdRepl.GetUniqueNetId());
+			}
+#endif
+		}
+	}
+
+	if (ATHPlayerState* THPS = Cast<ATHPlayerState>(PlayerState))
+	{
+		THPS->Nickname = Nick;
+		THPS->ForceNetUpdate();
+	}
 }
 
 void ATHGameModeBase::AccumulatePlayerDistance()

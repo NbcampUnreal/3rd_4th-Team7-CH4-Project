@@ -87,12 +87,20 @@ void UTHMatchmakingWidget::RefreshUI()
 	UpdateNicknameText(SecondPNickname, Owner1, MyPS);
 
 	const bool bLocked = GS->AreSlotsLockedIn();
+	const bool bIAmHost = GS->IsHost(MyPS);
 
-	if (FirstPButton) FirstPButton->SetIsEnabled(!bLocked && (Owner0 == nullptr));
-	if (SecondPButton) SecondPButton->SetIsEnabled(!bLocked && (Owner1 == nullptr));
+	if (FirstPButton)  FirstPButton->SetIsEnabled(!bLocked && bIAmHost && (Owner0 == nullptr || Owner0 == MyPS));
+	if (SecondPButton) SecondPButton->SetIsEnabled(!bLocked && !bIAmHost && (Owner1 == nullptr || Owner1 == MyPS));
 
-	if (UnlockImage) UnlockImage->SetVisibility(bLocked ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-	if (LockImage)   LockImage->SetVisibility(bLocked ? ESlateVisibility::Hidden : ESlateVisibility::Visible);
+	if (ATHPlayerState* THPS = MyPS ? Cast<ATHPlayerState>(MyPS) : nullptr)
+	{
+		const bool bReady = THPS->HasReadyTag();
+		if (bIAmHost && FirstPButton)   FirstPButton->SetIsEnabled(!bReady && FirstPButton->GetIsEnabled());
+		if (!bIAmHost && SecondPButton) SecondPButton->SetIsEnabled(!bReady && SecondPButton->GetIsEnabled());
+	}
+
+	if (UnlockImage)      UnlockImage->SetVisibility(bLocked ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
+	if (LockImage)        LockImage->SetVisibility(bLocked ? ESlateVisibility::Hidden : ESlateVisibility::Visible);
 	if (MatchStartButton) MatchStartButton->SetIsEnabled(bLocked);
 }
 

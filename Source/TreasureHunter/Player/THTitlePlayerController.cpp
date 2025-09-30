@@ -16,6 +16,7 @@ void ATHTitlePlayerController::BeginPlay()
 	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 	{
 		GS->OnPhaseChanged.AddDynamic(this, &ATHTitlePlayerController::HandlePhaseChange);
+		HandlePhaseChange(GS->GetPhaseTag());
 	}
 }
 
@@ -38,19 +39,6 @@ void ATHTitlePlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 }
 
 #pragma region Phase
-void ATHTitlePlayerController::Server_RequestMatchAndSetNickname_Implementation(const FString& InNickname)
-{
-	if (auto* PS = GetPlayerState<ATHPlayerState>())
-	{
-		PS->Nickname = InNickname;
-		PS->ForceNetUpdate();
-	}
-
-	if (auto* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
-	{
-		GM->StartMatchGame(this);
-	}
-}
 
 void ATHTitlePlayerController::HandlePhaseChange(FGameplayTag NewPhase)
 {
@@ -67,7 +55,6 @@ void ATHTitlePlayerController::HandlePhaseChange(FGameplayTag NewPhase)
 	else if (NewPhase.MatchesTagExact(TAG_Game_Phase_Loading))
 	{
 		ShowLoadingWidget();
-		OpenPlayLevel();
 	}
 }
 
@@ -134,19 +121,6 @@ void ATHTitlePlayerController::ShowLoadingWidget()
 	if (LoadingWidget)
 	{
 		LoadingWidget->LoadProgressState();
-	}
-}
-
-void ATHTitlePlayerController::OpenPlayLevel()
-{
-	Server_RequestLoadData(TAG_Game_Phase_Play);
-}
-void ATHTitlePlayerController::Server_RequestLoadData_Implementation(const FGameplayTag& NewPhase)
-{
-	LevelFlow = NewPhase;
-	if (auto* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
-	{
-		GM->OpenChangeLevel(LevelFlow);
 	}
 }
 #pragma endregion

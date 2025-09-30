@@ -8,6 +8,7 @@
 #include "Components/Image.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Player/THTitlePlayerController.h"
+#include "Game/THGameInstance.h"
 
 void UTHMainMenuWidget::NativeConstruct()
 {
@@ -16,14 +17,15 @@ void UTHMainMenuWidget::NativeConstruct()
 	{
 		GameStartButton->OnClicked.AddDynamic(this, &ThisClass::HandleGameStartClicked);
 	}
+	if (JoinGameButton)
+	{
+		JoinGameButton->OnClicked.AddDynamic(this, &ThisClass::HandleJoinGameClicked);
+	}
 	if (QuitButton)
 	{
 		QuitButton->OnClicked.AddDynamic(this, &ThisClass::HandleQuitClicked);
 	}
-	if (EditableTextBox_Nickname)
-	{
-		EditableTextBox_Nickname->OnTextCommitted.AddDynamic(this, &ThisClass::OnNickNameCommitted);
-	}
+
 	if (LoadingIcon)
 	{
 		LoadingIcon->SetVisibility(ESlateVisibility::Hidden);
@@ -36,6 +38,10 @@ void UTHMainMenuWidget::NativeDestruct()
 	{
 		GameStartButton->OnClicked.RemoveAll(this);
 	}
+	if (JoinGameButton)
+	{
+		JoinGameButton->OnClicked.RemoveAll(this);
+	}
 	if (QuitButton)
 	{
 		QuitButton->OnClicked.RemoveAll(this);
@@ -45,44 +51,9 @@ void UTHMainMenuWidget::NativeDestruct()
 
 void UTHMainMenuWidget::HandleGameStartClicked()
 {
-	FString Trimmed = Nickname.TrimStartAndEnd();
 
-	if (Trimmed.IsEmpty())
-	{
-		if (NicknameWarningText)
-		{
-			NicknameWarningText->SetText(FText::FromString(TEXT("Please Enter Your NICKNAME")));
-		}
-		return;
-	}
-
-	if (Trimmed.Len() < MinNicknameLength)
-	{
-		if (NicknameWarningText)
-		{
-			NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("Nickname must be at least %d characters long."), MinNicknameLength)));
-		}
-		return;
-	}
-
-	if (Trimmed.Len() > MaxNicknameLength)
-	{
-		if (NicknameWarningText)
-		{
-			NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("Nickname cannot exceed %d characters."), MaxNicknameLength)));
-		}
-		return;
-	}
-
-	if (NicknameWarningText)
-	{
-		NicknameWarningText->SetText(FText::GetEmpty());
-	}
-
-	if (auto* PC = GetOwningPlayer<ATHTitlePlayerController>())
-	{
-		PC->Server_RequestMatchAndSetNickname(Nickname);
-	}
+	if (auto* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
+		THGI->HostListen(false);
 
 	if (LoadingIcon)
 	{
@@ -91,23 +62,26 @@ void UTHMainMenuWidget::HandleGameStartClicked()
 	}
 }
 
-void UTHMainMenuWidget::HandleQuitClicked()
+void UTHMainMenuWidget::HandleJoinGameClicked()
 {
-	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
-}
-
-void UTHMainMenuWidget::OnNickNameCommitted(const FText& Text, ETextCommit::Type CommitMethod)
-{
-	if (CommitMethod == ETextCommit::OnEnter || CommitMethod == ETextCommit::OnUserMovedFocus)
+	if (UTHGameInstance* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
 	{
-		Nickname = Text.ToString();
+		THGI->FindAndJoin(false);
+	}
+
+	if (LoadingIcon)
+	{
+		LoadingIcon->SetVisibility(ESlateVisibility::Visible);
+		if (LoadingAnim)
+		{
+			PlayAnimation(LoadingAnim, 0.f, 0, EUMGSequencePlayMode::Forward, 1.f, false);
+		}
 	}
 }
 
-
-FString UTHMainMenuWidget::GetNickName() const
+void UTHMainMenuWidget::HandleQuitClicked()
 {
-	return Nickname;
+	UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
 }
 
 void UTHMainMenuWidget::StopLoading()
@@ -118,8 +92,8 @@ void UTHMainMenuWidget::StopLoading()
 		LoadingIcon->SetVisibility(ESlateVisibility::Hidden);
 	}
 
-	if (NicknameWarningText)
+	if (WarningText)
 	{
-		NicknameWarningText->SetText(FText::FromString(FString::Printf(TEXT("Failed to match."), MaxNicknameLength)));
+		WarningText->SetText(FText::FromString(FString::Printf(TEXT("Failed to match."))));
 	}
 }

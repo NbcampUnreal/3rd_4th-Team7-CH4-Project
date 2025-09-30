@@ -54,6 +54,8 @@ public:
 	UFUNCTION()
 	void OnRep_SlotsLockedIn();
 
+	FGameplayTag GetPhaseTag() const { return PhaseTag; }
+
 public:
 	UPROPERTY(ReplicatedUsing = OnRep_SlotOwners, BlueprintReadOnly, Category = "Matchmaking")
 	TArray<TObjectPtr<APlayerState>> SlotOwners;
@@ -104,6 +106,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Rematch")
 	void ResetRematchState();
 
+	void SetRematchTag(const FGameplayTag& RematchRequest);
+
+	void SetRematchRequester(APlayerState* Requester);
+
+	void SetRematchResponder(APlayerState* Responder);
+
 public:
 	UPROPERTY(BlueprintAssignable)
 	FOnRematchChangedSig OnRematchChanged;
@@ -124,5 +132,16 @@ private:
 
 	UPROPERTY(Replicated)
 	float RematchExpireAt = 0.f;
+#pragma endregion
+
+#pragma region Hosting
+public:
+	UPROPERTY(ReplicatedUsing = OnRep_HostPS)
+	APlayerState* HostPS = nullptr;
+
+	UFUNCTION() void OnRep_HostPS() {}
+
+	bool IsHost(const APlayerState* PS) const { return PS && PS == HostPS; }
+
 #pragma endregion
 };
