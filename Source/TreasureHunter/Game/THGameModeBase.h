@@ -26,99 +26,44 @@ class TREASUREHUNTER_API ATHGameModeBase : public AGameModeBase
 public:
 	ATHGameModeBase();
 
-	virtual void PostLogin(APlayerController* NewPlayer) override;
+#pragma region PlayerController Management
+private:
+	int32 ServerEnterPlayerNum;
 
-	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
+	TArray<FPlayerData> LoginPlayerData;
+
+	TArray<ATHPlayerState*> EnteredPlayerStates;
+
+	TArray<APlayerController*> LoginPlayerControllers;
+
+	TArray<ATHTitlePlayerController*> MatchWaitPlayerControllers;
+
+	TArray<ATHTitlePlayerController*> MatchPlayerControllers;
+
+	TArray<ATHPlayerController*> StartPlayerControllers;
+
+protected:
+	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	virtual void Logout(AController* Exiting) override;
 
-	void SetGameModeFlow(const FGameplayTag& NewPhase);
-
-	void StartMatchGame(ATHTitlePlayerController* PC);
-
-	void DecidePlayCharacter();
-
-	void WaitGame();
-
-	void MatchGame();
-
-	void LoadGame();
-
-	void GameStart();
-
-	void FinishGame();
-
-	void ShowResult();
-
-	void InitialzationGameData();
-
-	void ManipluateController(bool Manipulate);
-
-	void OpenChangeLevel(FGameplayTag NextFlow);
-
-	bool GetBunnyIsWinning() const;
-
-	UFUNCTION(BlueprintCallable, Category = "Trigger")
-	void PlayerDetected(AActor* Player);
-
-	void SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlayerController* Requester);
+	virtual void HandleStartingNewPlayer_Implementation(APlayerController* NewPlayer) override;
 
 private:
-	FGameplayTag GetGameModeFlow() const;
-
 	void SetPlayerData(FString& Adrress, FString& UniqueId);
 
-	bool CheckEnoughPlayer();
-
-	void StartMatchTimer();
-
-	void StopMatch(bool Rematch);
+	void ManipluateController(ATHPlayerController* Controller, bool Manipulate);
 
 	void EnterTitlePlayerControllers(ATHTitlePlayerController* NewPlayer);
 
-	void GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList) override;
-
-	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
-
 	void GameStartPlayerControllers(ATHPlayerController* NewPlayer);
 
-	void StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad);
+	void ReconnectPlayer(ATHPlayerController* RePlayer);
 
-	void OnLevelLoadedReady();
+#pragma endregion
 
-	void CheckPlayReady();
-
-	void AccumulatePlayerDistance();
-
-	void CourseCalculate();
-
-	bool IsInFlatSection(const FVector& PlayerPos) const;
-
-	void ReMatchGame();
-
+#pragma region Server Travel
 private:
-	FGameplayTag GameModeFlow;
-
-	FGameplayTag RequestRematchState;
-
-	int32 ServerEnterPlayerNum;
-
-	int32 CurMatchWaitPlayerNum;	
-
-	int32 MaxMatchPlayerNum;
-
-	int32 RequestPlayerNum;
-
-	int32 StartPlayerNum;
-
-	FTimerHandle MatchTimerHandle;
-
-	FTimerHandle AccumulateUpdateTimerHandle;
-
-	FTimerHandle LoadMainTimerHandle;
-
-	float MatchWaitTime;
-
 	TSoftObjectPtr<UWorld> OpenLevelPath;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "LevelPath", Meta = (AllowPrivateAccess))
@@ -127,16 +72,88 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "LevelPath", Meta = (AllowPrivateAccess))
 	TSoftObjectPtr<UWorld> PlayLevelPath;
 
+public:
+	void OpenChangeLevel(FGameplayTag NextFlow);
+
+protected:
+	void GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList) override;
+
+	virtual void HandleSeamlessTravelPlayer(AController*& C) override;
+
+private:
+	void OnLevelLoadedReady();
+
+	void StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad);
+#pragma endregion
+
+#pragma region GameMode Phase
+private:
+	FGameplayTag GameModeFlow;
+
+public:
+	FGameplayTag GetGameModeFlow() const;
+
+private:
+	void SetGameModeFlow(const FGameplayTag& NewPhase);
+#pragma endregion
+
+#pragma region Phase Wait
+private:
+	int32 MaxMatchPlayerNum;
+
+public:
+	void StartMatchGame(ATHTitlePlayerController* PC);
+
+private:
+	void StartMatchWaitTimer();
+
+	void StopMatch(bool Rematch);
+
+	bool CheckEnoughPlayer();
+#pragma endregion
+
+#pragma region Match Phase
+private:
+	float MatchWaitTime;
+
+	FTimerHandle MatchTimerHandle;
+
+public:
+	void MatchGame();
+
+private:
+#pragma endregion
+
+#pragma region Load Phase
+private:
 	bool bIsPlayer1Ready;
+	
 	bool bIsPlayer2Ready;
+
+public:
+	void LoadGame();
+
+private:
+	void CheckPlayReady();
+
+#pragma endregion
+
+#pragma region Play Phase
+private:
+	
+	TArray<FName> PosActorTags = { FName("Start"), FName("Check"), FName("Finish") };
+
+	float ACRevisionValueZ;
 
 	UPROPERTY()
 	AActor* StartActor;
+
 	UPROPERTY()
 	AActor* CheckActor;
+	
 	UPROPERTY()
 	AActor* FinishActor;
-	
+
 	FVector StartPos;
 
 	FVector CheckPos;
@@ -155,16 +172,36 @@ private:
 
 	bool bBunnyHasBeenWinning;
 
+	FTimerHandle AccumulateUpdateTimerHandle;
+
 public:
-	TArray<FPlayerData> LoginPlayerData;
+	bool GetBunnyIsWinning() const;
 
-	TArray<APlayerController*> LoginPlayerControllers;
+	UFUNCTION(BlueprintCallable, Category = "Trigger")
+	void PlayerDetected(AActor* Player);
 
-	TArray<ATHPlayerState*> EnteredPlayerStates;
+private:
+	void GameStart();
 
-	TArray<ATHTitlePlayerController*> MatchWaitPlayerControllers;
+	void CourseCalculate();
 
-	TArray<ATHTitlePlayerController*> MatchPlayerControllers;
+	void AccumulatePlayerDistance();
 
-	TArray<ATHPlayerController*> StartPlayerControllers;
+	bool IsInFlatSection(const FVector& PlayerPos) const;
+#pragma endregion
+
+#pragma region Finish Phase
+private:
+	int32 RequestPlayerNum;
+
+	FGameplayTag RequestRematchState;
+
+	FTimerHandle LoadMainTimerHandle;
+
+public:
+	void SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlayerController* Requester);
+
+private:
+	void ReMatchGame();
+#pragma endregion
 };
