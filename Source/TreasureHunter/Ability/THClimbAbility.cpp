@@ -6,6 +6,7 @@
 #include "MotionWarpingComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Player/THPlayerState.h"
+#include "MotionWarpingComponent.h"
 #include "Game/GameFlowTags.h"
 
 UTHClimbAbility::UTHClimbAbility()
@@ -66,7 +67,7 @@ void UTHClimbAbility::SetupMotionWarping(const FClimbTraceResult& InClimbTraceRe
 		
 		const FVector HorizontalOffset = InClimbTraceResult.WallNormal * (CurrentCapsuleRadius - WallInset);
 		const FVector VerticalOffset = FVector(0.f, 0.f, LedgeGrabVerticalOffset);
-		const FVector FinalLedgeLocation = TargetPointOnWall + HorizontalOffset - VerticalOffset;
+		const FVector FinalLedgeLocation = TargetPointOnWall + HorizontalOffset + VerticalOffset;
 
 		FMotionWarpingTarget WarpTargetParams;
 		WarpTargetParams.Name = FName("LedgeGrab");
@@ -145,6 +146,11 @@ void UTHClimbAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const 
 
 	if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get()))
 	{
+		if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->GetMotionWarpingComponent())
+		{
+			MotionWarpingComp->RemoveWarpTarget(FName("LedgeGrab"));
+		}
+		
 		PlayerCharacter->ClearClimbStaminaEffects();
 		
 		if (ATHPlayerState* PS = PlayerCharacter->GetPlayerState<ATHPlayerState>())

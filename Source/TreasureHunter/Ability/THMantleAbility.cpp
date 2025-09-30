@@ -132,6 +132,12 @@ void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 	{
 		if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(LocalActorInfo->AvatarActor.Get()))
 		{
+			if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->GetMotionWarpingComponent())
+			{
+				MotionWarpingComp->RemoveWarpTarget(FName("MantleUp"));
+				MotionWarpingComp->RemoveWarpTarget(FName("MantleForward"));
+			}
+			
 			PlayerCharacter->OnMantleEnd();
 		}
 	}
