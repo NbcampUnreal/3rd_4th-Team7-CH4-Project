@@ -6,6 +6,7 @@
 #include "MotionWarpingComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Player/THPlayerState.h"
+#include "MotionWarpingComponent.h"
 #include "Game/GameFlowTags.h"
 
 UTHClimbAbility::UTHClimbAbility()
@@ -145,6 +146,11 @@ void UTHClimbAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const 
 
 	if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get()))
 	{
+		if (UMotionWarpingComponent* MotionWarpingComp = PlayerCharacter->GetMotionWarpingComponent())
+		{
+			MotionWarpingComp->RemoveWarpTarget(FName("LedgeGrab"));
+		}
+		
 		PlayerCharacter->ClearClimbStaminaEffects();
 		
 		if (ATHPlayerState* PS = PlayerCharacter->GetPlayerState<ATHPlayerState>())
