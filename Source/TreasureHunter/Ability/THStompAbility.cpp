@@ -90,7 +90,7 @@ void UTHStompAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 					FGameplayCueParameters CueParams;
 					CueParams.Instigator = PlayerCharacter;
 					CueParams.Location = HitResult->ImpactPoint;
-					TargetASC->ExecuteGameplayCue(TAG_GamePlayCue_StompStun, CueParams);
+					TargetASC->ExecuteGameplayCue(TAG_GameplayCue_StompStun, CueParams);
 					
 					
 					if (StunEffectClass)

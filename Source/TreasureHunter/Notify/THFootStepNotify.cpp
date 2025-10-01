@@ -25,7 +25,7 @@ void UTHFootStepNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBa
 			FGameplayCueParameters CueParams;
 			CueParams.Location = Location;
 
-			ASC->ExecuteGameplayCue(TAG_GamePlayCue_FootStep, CueParams);
+			ASC->ExecuteGameplayCue(TAG_GameplayCue_FootStep, CueParams);
 			
 		}
 	}
