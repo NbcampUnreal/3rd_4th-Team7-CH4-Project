@@ -28,11 +28,13 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
 	TSubclassOf<UUserWidget> LoadingWidgetClass;
 
+	UFUNCTION(BlueprintCallable)
+	void ShowMainMenu();
+
 private:
 	UPROPERTY()
 	UUserWidget* ActiveWidget = nullptr;
 
-	void ShowMainMenu();
 	void ShowMatchmakingMenu();
 	void ShowLoadingWidget();
 	
