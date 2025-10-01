@@ -16,8 +16,6 @@ void UTHStompStunCue::HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Typ
 	Super::HandleGameplayCue(MyTarget, EventType, Parameters);
 
 	if (!ShakeClass) return;
-
-	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(MyTarget);
 	
 	if (APlayerController* PC = Cast<APlayerController>(Parameters.Instigator->GetInstigatorController()))
 	{
@@ -26,14 +24,19 @@ void UTHStompStunCue::HandleGameplayCue(AActor* MyTarget, EGameplayCueEvent::Typ
 	}
 	
 	
-	UGameplayStatics::PlaySoundAtLocation(
+	if (StompSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(
 		GetWorld(),            
 		StompSound,      
 		Parameters.Location,    
 		FRotator::ZeroRotator
 		);
+	}
 
-	PlayerCharacter->PlayAnimMontage(StunAnimation, 1.0f);
-	
+	if (ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(MyTarget))
+	{
+		PlayerCharacter->PlayAnimMontage(StunAnimation, 1.0f);
+	}
 }
 
