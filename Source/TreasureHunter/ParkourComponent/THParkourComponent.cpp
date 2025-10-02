@@ -115,28 +115,6 @@ bool UTHParkourComponent::IsLandingSpaceClear(const FVector& LandingLocation, co
 	return !bIsSpaceBlocked;
 }
 
-void UTHParkourComponent::CalculateWarpTargets(const FHitResult& FrontHit, const FHitResult& SurfaceHit, FMantleInfo& OutMantleInfo) const
-{
-	const float CapsuleRadius = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius();
-	const FVector LedgeTopLocation = SurfaceHit.ImpactPoint;
-	const FVector WallNormal = FrontHit.ImpactNormal;
-	
-	FVector InwardDirection = -WallNormal;
-	InwardDirection.Z = 0.f;
-	InwardDirection.Normalize();
-	
-	const FRotator TargetRotation = UKismetMathLibrary::MakeRotFromX(InwardDirection);
-
-	const FVector HandPlacementPoint = LedgeTopLocation + (InwardDirection * MantleHandPlacementOffset);
-	FVector UpTargetLocation = HandPlacementPoint + (WallNormal * CapsuleRadius);
-	UpTargetLocation.Z = LedgeTopLocation.Z + MantleUpZOffset;
-	OutMantleInfo.UpWarpTarget = FTransform(TargetRotation, UpTargetLocation);
-
-	FVector ForwardTargetLocation = LedgeTopLocation + (InwardDirection * (CapsuleRadius + MantleForwardOffset));
-	ForwardTargetLocation.Z += FinalLandingHeightOffset;
-	OutMantleInfo.ForwardWarpTarget = FTransform(TargetRotation, ForwardTargetLocation);
-}
-
 bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
 {
 	if (!IsValid(OwnerCharacter) || !IsValid(OwnerMovementComponent))
@@ -149,31 +127,27 @@ bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
 	{
 		return false;
 	}
-
-	FVector InwardDirection = -FrontHit.ImpactNormal;
-	InwardDirection.Z = 0.f;
-	InwardDirection.Normalize();
-	const FRotator TargetRotation = InwardDirection.Rotation();
+	
+	FVector MantleDirection = OwnerCharacter->GetActorForwardVector();
+	MantleDirection.Z = 0.f;
+	MantleDirection.Normalize();
+	
+	const FRotator TargetRotation = MantleDirection.Rotation();
 
 	const float CapsuleHalfHeight = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	const float CapsuleRadius = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius();
 
-	// --- 최종 수정: 실제 착지 위치와 동일한 로직으로 검사 위치 계산 ---
-	// CalculateWarpTargets 함수가 계산할 최종 위치를 여기서 미리 계산합니다.
 	const FVector LedgeTopLocation = SurfaceHit.ImpactPoint;
-
-	// 이것이 맨틀 후 캐릭터의 발(루트)이 위치할 최종 지점입니다.
-	FVector FinalLandingRootLocation = LedgeTopLocation + (InwardDirection * (CapsuleRadius + MantleForwardOffset));
+	
+	FVector FinalLandingRootLocation = LedgeTopLocation + (MantleDirection * (CapsuleRadius + MantleForwardOffset));
 	FinalLandingRootLocation.Z += FinalLandingHeightOffset;
 
-	// BoxTrace는 캡슐의 '중심'을 기준으로 해야 하므로, 루트 위치에서 캡슐의 절반 높이만큼 올려줍니다.
 	const FVector LandingCapsuleCenter = FinalLandingRootLocation + FVector(0, 0, CapsuleHalfHeight);
 
 	if (!IsLandingSpaceClear(LandingCapsuleCenter, TargetRotation))
 	{
 		return false;
 	}
-	// --- 수정 완료 ---
 
 	CalculateWarpTargets(FrontHit, SurfaceHit, OutMantleInfo);
 	
@@ -188,4 +162,24 @@ bool UTHParkourComponent::CheckMantle(FMantleInfo& OutMantleInfo) const
 	}
 	
 	return true;
+}
+
+void UTHParkourComponent::CalculateWarpTargets(const FHitResult& FrontHit, const FHitResult& SurfaceHit, FMantleInfo& OutMantleInfo) const
+{
+	const float CapsuleRadius = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	const FVector LedgeTopLocation = SurfaceHit.ImpactPoint;
+	
+	FVector MantleDirection = OwnerCharacter->GetActorForwardVector();
+	MantleDirection.Z = 0.f;
+	MantleDirection.Normalize();
+	const FRotator TargetRotation = MantleDirection.Rotation();
+
+	const FVector HandPlacementPoint = LedgeTopLocation + (MantleDirection * MantleHandPlacementOffset);
+	FVector UpTargetLocation = HandPlacementPoint - (FrontHit.ImpactNormal * (MantleHandPlacementOffset / 2.f));
+	UpTargetLocation.Z = LedgeTopLocation.Z + MantleUpZOffset;
+	OutMantleInfo.UpWarpTarget = FTransform(TargetRotation, UpTargetLocation);
+
+	FVector ForwardTargetLocation = LedgeTopLocation + (MantleDirection * (CapsuleRadius + MantleForwardOffset));
+	ForwardTargetLocation.Z += FinalLandingHeightOffset;
+	OutMantleInfo.ForwardWarpTarget = FTransform(TargetRotation, ForwardTargetLocation);
 }
