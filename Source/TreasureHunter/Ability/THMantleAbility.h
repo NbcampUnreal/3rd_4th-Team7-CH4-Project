@@ -33,4 +33,7 @@ private:
 
 	UFUNCTION()
 	void OnMontageInterrupted();
+
+	UPROPERTY(Transient)
+	FMantleInfo CachedMantleInfo;
 };

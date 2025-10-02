@@ -54,12 +54,17 @@ bool UTHClimbComponent::TraceForWall(FHitResult& OutHit) const
 		true
 	);
 	
-	if (!bFrontHit || OutHit.Distance < MinClimbStartDistance || OutHit.Distance > MaxClimbStartDistance)
+	if (!bFrontHit)
 	{
 		return false;
 	}
+	
+	UPrimitiveComponent* HitComponent = OutHit.GetComponent();
+	const bool bHasClimbableTag = HitComponent && HitComponent->ComponentHasTag(FName("Climbable"));
+	
+	const bool bIsInDistanceRange = (OutHit.Distance >= MinClimbStartDistance && OutHit.Distance <= MaxClimbStartDistance);
 
-	return true;
+	return bHasClimbableTag && bIsInDistanceRange;
 }
 
 bool UTHClimbComponent::TraceForLedge(const FHitResult& WallHit, FHitResult& OutLedgeHit) const
@@ -83,11 +88,6 @@ bool UTHClimbComponent::CheckClimbableSurface(FClimbTraceResult& OutResult) cons
 {
 	FHitResult WallHit;
 	if (!TraceForWall(WallHit))
-	{
-		return false;
-	}
-
-	if (!IsOnValidClimbSurface(WallHit.ImpactPoint, WallHit.ImpactNormal))
 	{
 		return false;
 	}
@@ -163,14 +163,18 @@ bool UTHClimbComponent::FindClimbableSurface(const FVector& DesiredDirection, FC
 		true
 	);
 	
-	if (!bHitWall || !IsOnValidClimbSurface(WallHit.ImpactPoint, WallHit.ImpactNormal))
+	if (bHitWall)
 	{
-		return false;
+		UPrimitiveComponent* HitComponent = WallHit.GetComponent();
+		if (HitComponent && HitComponent->ComponentHasTag(FName("Climbable")))
+		{
+			OutResult.bCanClimb = true;
+			OutResult.LedgeLocation = WallHit.ImpactPoint; 
+			OutResult.WallLocation = WallHit.ImpactPoint;
+			OutResult.WallNormal = WallHit.ImpactNormal;
+			return true;
+		}
 	}
 	
-	OutResult.bCanClimb = true;
-	OutResult.LedgeLocation = WallHit.ImpactPoint; 
-	OutResult.WallLocation = WallHit.ImpactPoint;
-	OutResult.WallNormal = WallHit.ImpactNormal;
-	return true;
+	return false;
 }
