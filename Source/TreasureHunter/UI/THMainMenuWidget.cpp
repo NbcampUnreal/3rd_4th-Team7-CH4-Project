@@ -30,10 +30,20 @@ void UTHMainMenuWidget::NativeConstruct()
 	{
 		LoadingIcon->SetVisibility(ESlateVisibility::Hidden);
 	}
+
+	if (auto* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
+	{
+		THGI->OnMatchmakingJoinTimeout.AddDynamic(this, &ThisClass::HandleMMJoinTimeout);
+	}
 }
 
 void UTHMainMenuWidget::NativeDestruct()
 {
+	if (auto* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
+	{
+		THGI->OnMatchmakingJoinTimeout.RemoveDynamic(this, &ThisClass::HandleMMJoinTimeout);
+	}
+
 	if (GameStartButton)
 	{
 		GameStartButton->OnClicked.RemoveAll(this);
@@ -64,6 +74,11 @@ void UTHMainMenuWidget::HandleGameStartClicked()
 
 void UTHMainMenuWidget::HandleJoinGameClicked()
 {
+	/* FOR TESTING !! */
+	UGameInstance* GIraw = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	UE_LOG(LogTemp, Warning, TEXT("[JoinClick] GI=%s"), GIraw ? *GIraw->GetClass()->GetName() : TEXT("nullptr"));
+	/*******************/
+
 	if (UTHGameInstance* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
 	{
 		THGI->FindAndJoin(false);
@@ -95,5 +110,15 @@ void UTHMainMenuWidget::StopLoading()
 	if (WarningText)
 	{
 		WarningText->SetText(FText::FromString(FString::Printf(TEXT("Failed to match."))));
+	}
+}
+
+void UTHMainMenuWidget::HandleMMJoinTimeout()
+{
+	StopLoading();
+
+	if (WarningText)
+	{
+		WarningText->SetText(FText::FromString(FString::Printf(TEXT("Matchmaking timed out. Please try again."))));
 	}
 }

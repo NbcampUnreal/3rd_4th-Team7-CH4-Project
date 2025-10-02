@@ -47,8 +47,11 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 
 	ATHGameStateBase* GS = GetGameState<ATHGameStateBase>();
 	UTHGameInstance* GI = GetGameInstance<UTHGameInstance>();
+	if (!HasAuthority() || !GS) return;
 
-	if (HasAuthority() && GS && GetNumPlayers() == 1)
+	const int32 NumNow = GetNumPlayers();
+
+	if (NumNow == 1)
 	{
 		GS->HostPS = NewPlayer->PlayerState;
 		GS->OnRep_HostPS();
@@ -57,6 +60,13 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 		{
 			SetGameModeFlow(TAG_Game_Phase_Match);
 			GS->TryAssignSlot(0, NewPlayer->PlayerState);
+		}
+	}
+	else
+	{
+		if (GS->GetPhaseTag().MatchesTagExact(TAG_Game_Phase_Match))
+		{
+			GS->TryAssignSlot(1, NewPlayer->PlayerState);
 		}
 	}
 }

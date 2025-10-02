@@ -47,4 +47,7 @@ protected:
 	UPROPERTY(Transient, meta = (BindWidgetAnim))
 	UWidgetAnimation* LoadingAnim;
 
+private:
+	UFUNCTION()
+	void HandleMMJoinTimeout();
 };

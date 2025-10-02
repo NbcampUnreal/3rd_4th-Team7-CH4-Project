@@ -187,4 +187,9 @@ void ATHGameStateBase::SetRematchResponder(APlayerState* Responder)
 
 	RematchResponder = Responder;
 }
+
+void ATHGameStateBase::OnRep_HostPS()
+{
+	OnSlotsUpdated.Broadcast();
+}
 #pragma endregion

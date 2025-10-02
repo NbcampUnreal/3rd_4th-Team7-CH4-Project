@@ -18,6 +18,8 @@ void UTHGameInstance::Init()
 	OSS = IOnlineSubsystem::Get();
 	if (!OSS) { UE_LOG(LogTemp, Error, TEXT("OSS not found")); return; }
 
+	UE_LOG(LogTemp, Log, TEXT("Found OSS: %s"), *OSS->GetSubsystemName().ToString());
+
 	SessionInterface = OSS->GetSessionInterface();
 	Identity = OSS->GetIdentityInterface();
 	ExternalUI = OSS->GetExternalUIInterface();
@@ -61,15 +63,17 @@ void UTHGameInstance::HostListen(bool bIsLAN)
 	}
 
 	FOnlineSessionSettings Settings;
-	Settings.bIsLANMatch = bIsLAN;
+	Settings.bIsLANMatch = false;
 	Settings.bUsesPresence = true;
 	Settings.bUseLobbiesIfAvailable = true;
 	Settings.NumPublicConnections = 2;
 	Settings.bAllowJoinInProgress = true;
 	Settings.bShouldAdvertise = true;
 	Settings.bAllowJoinViaPresence = true;
+	Settings.Set(SEARCH_KEYWORDS, FString(TEXT("TH-480")), EOnlineDataAdvertisementType::ViaOnlineService);
 
 	bIsHosting = true;
+	bJoinedViaSession = false;
 
 	if (CreateSessionHandle.IsValid())
 	{
@@ -110,12 +114,19 @@ void UTHGameInstance::TravelListen(const FString& MapName)
 
 void UTHGameInstance::FindAndJoin(bool bIsLAN)
 {
+	if (!Identity.IsValid() || Identity->GetLoginStatus(0) != ELoginStatus::LoggedIn)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Find blocked: not logged in yet"));
+		return;
+	}
 	if (!SessionInterface.IsValid()) return;
 
 	SessionSearch = MakeShared<FOnlineSessionSearch>();
-	SessionSearch->bIsLanQuery = bIsLAN;
+	SessionSearch->bIsLanQuery = false;
 	SessionSearch->MaxSearchResults = 50;
 	SessionSearch->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
+
+	SessionSearch->QuerySettings.Set(SEARCH_KEYWORDS, FString(TEXT("TH-480")), EOnlineComparisonOp::Equals);
 
 	if (FindSessionsHandle.IsValid())
 	{
@@ -151,9 +162,8 @@ void UTHGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 		return;
 	}
 
-	const int32 Count = SessionSearch->SearchResults.Num();
-	const int32 Pick = FMath::RandRange(0, Count - 1);
-	const FOnlineSessionSearchResult& Chosen = SessionSearch->SearchResults[Pick];
+	const int32 Pick = FMath::RandRange(0, SessionSearch->SearchResults.Num() - 1);
+	const auto& Chosen = SessionSearch->SearchResults[Pick];
 
 	if (JoinSessionHandle.IsValid())
 	{
@@ -166,12 +176,17 @@ void UTHGameInstance::OnFindSessionsComplete(bool bWasSuccessful)
 
 void UTHGameInstance::OnJoinSessionComplete(FName, EOnJoinSessionCompleteResult::Type Result)
 {
+	GetWorld()->GetTimerManager().ClearTimer(JoinTimeoutHandle);
+
 	if (Result != EOnJoinSessionCompleteResult::Success)
 	{
 		UE_LOG(LogTemp, Error, TEXT("JoinSession failed: %d"), (int32)Result);
 		OnMatchmakingProgress.Broadcast(false);
 		return;
 	}
+
+	bIsHosting = false;
+	bJoinedViaSession = true;
 
 	TravelClientToSession();
 	OnMatchmakingProgress.Broadcast(false);
@@ -185,6 +200,9 @@ void UTHGameInstance::OnSessionUserInviteAccepted(bool bWasSuccessful, int32, TS
 	{
 		SessionInterface->ClearOnJoinSessionCompleteDelegate_Handle(JoinSessionHandle);
 	}
+
+	bIsHosting = false;
+	bJoinedViaSession = true;
 
 	JoinSessionHandle = SessionInterface->AddOnJoinSessionCompleteDelegate_Handle(FOnJoinSessionCompleteDelegate::CreateUObject(this, &UTHGameInstance::OnJoinSessionComplete));
 	SessionInterface->JoinSession(0, kSessionName, InviteResult);
@@ -200,4 +218,13 @@ void UTHGameInstance::TravelClientToSession()
 			PC->ClientTravel(ConnectString, ETravelType::TRAVEL_Absolute);
 		}
 	}
+}
+
+void UTHGameInstance::HandleJoinTimeout()
+{
+	GetWorld()->GetTimerManager().ClearTimer(JoinTimeoutHandle);
+
+	UE_LOG(LogTemp, Warning, TEXT("Join session timeout"));
+	OnMatchmakingJoinTimeout.Broadcast();
+	OnMatchmakingProgress.Broadcast(false);
 }

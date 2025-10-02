@@ -16,7 +16,16 @@ void ATHTitlePlayerController::BeginPlay()
 	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 	{
 		GS->OnPhaseChanged.AddDynamic(this, &ATHTitlePlayerController::HandlePhaseChange);
-		HandlePhaseChange(GS->GetPhaseTag());
+
+		const FGameplayTag CurPhase = GS->GetPhaseTag();
+		if (!CurPhase.IsValid() || CurPhase.MatchesTagExact(TAG_Game_Phase_Wait))
+		{
+			ShowMainMenu();
+		}
+		else
+		{
+			HandlePhaseChange(CurPhase);
+		}
 	}
 }
 

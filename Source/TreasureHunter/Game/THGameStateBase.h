@@ -139,7 +139,7 @@ public:
 	UPROPERTY(ReplicatedUsing = OnRep_HostPS)
 	APlayerState* HostPS = nullptr;
 
-	UFUNCTION() void OnRep_HostPS() {}
+	UFUNCTION() void OnRep_HostPS();
 
 	bool IsHost(const APlayerState* PS) const { return PS && PS == HostPS; }
 

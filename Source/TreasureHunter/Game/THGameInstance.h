@@ -14,6 +14,7 @@
 class IOnlineSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnMatchmakingProgress, bool, bInProgress);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMatchmakingJoinTimeout);
 
 UCLASS()
 class UTHGameInstance : public UAdvancedFriendsGameInstance
@@ -34,8 +35,14 @@ public:
     UPROPERTY(BlueprintAssignable) 
     FOnMatchmakingProgress OnMatchmakingProgress;
 
+    UPROPERTY(BlueprintAssignable)
+    FOnMatchmakingJoinTimeout OnMatchmakingJoinTimeout;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     bool bIsHosting = false;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    bool bJoinedViaSession = false;
+
     static const FName kSessionName;
 
 
@@ -53,6 +60,9 @@ private:
 
     void TravelClientToSession();
 
+    UFUNCTION()
+    void HandleJoinTimeout();
+
 private:
     IOnlineSubsystem* OSS = nullptr;
     IOnlineSessionPtr SessionInterface;
@@ -66,4 +76,6 @@ private:
     FDelegateHandle JoinSessionHandle;
     FDelegateHandle CreateSessionHandle;
     FDelegateHandle StartSessionHandle;
+
+    FTimerHandle JoinTimeoutHandle;
 };

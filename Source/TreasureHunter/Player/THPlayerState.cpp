@@ -6,6 +6,7 @@
 #include "Abilities/GameplayAbility.h"
 #include "Net/UnrealNetwork.h"
 #include "Game/GameFlowTags.h"
+#include "Game/THGameStateBase.h"
 
 ATHPlayerState::ATHPlayerState()
 	: bStartupAbilitiesGiven(false)
@@ -132,6 +133,11 @@ bool ATHPlayerState::HasReadyTag() const
 void ATHPlayerState::OnRep_Nickname()
 {
 	OnNicknameUpdated.Broadcast(Nickname);
+
+	if (ATHGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
+	{
+		GS->OnSlotsUpdated.Broadcast();
+	}
 }
 #pragma endregion
 
