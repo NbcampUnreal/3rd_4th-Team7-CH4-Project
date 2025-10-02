@@ -32,8 +32,7 @@ bool UTHMantleAbility::CanActivateAbility(const FGameplayAbilitySpecHandle Handl
 	const UTHParkourComponent* ParkourComponent = Character->GetParkourComponent();
 	if (ParkourComponent)
 	{
-		FMantleInfo DummyInfo;
-		return ParkourComponent->CheckMantle(DummyInfo);
+		return ParkourComponent->CheckMantle(const_cast<FMantleInfo&>(CachedMantleInfo));
 	}
 
 	return false;
@@ -112,19 +111,10 @@ void UTHMantleAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		(void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, MakeOutgoingGameplayEffectSpec(StaminaCostEffect, GetAbilityLevel()));
 	}
 	
-	UTHParkourComponent* ParkourComponent = PlayerCharacter->GetParkourComponent();
-	FMantleInfo MantleInfo;
-	if (!ParkourComponent || !ParkourComponent->CheckMantle(MantleInfo))
-	{
-		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
-		return;
-	}
-	
 	PlayerCharacter->OnMantleStart();
-	SetupMotionWarping(MantleInfo);
+	SetupMotionWarping(CachedMantleInfo);
 	PlayMantleMontage();
 }
-
 
 void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled)
 {
