@@ -68,7 +68,7 @@ protected:
 private:
 	bool TraceForWall(FHitResult& OutFrontHit) const;
 	bool TraceForLedge(const FHitResult& FrontHit, FHitResult& OutSurfaceHit) const;
-	bool IsLandingSpaceClear(const FHitResult& SurfaceHit) const;
+	bool IsLandingSpaceClear(const FVector& LandingLocation, const FRotator& TargetRotation) const;
 	void CalculateWarpTargets(const FHitResult& FrontHit, const FHitResult& SurfaceHit, FMantleInfo& OutMantleInfo) const;
 	
 	UPROPERTY(Transient)
