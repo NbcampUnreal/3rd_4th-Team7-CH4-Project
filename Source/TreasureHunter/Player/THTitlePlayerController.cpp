@@ -13,6 +13,11 @@ void ATHTitlePlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (IsLocalController())
+	{
+		ConnectToServer();
+	}
+
 	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
 	{
 		GS->OnPhaseChanged.AddDynamic(this, &ATHTitlePlayerController::HandlePhaseChange);
@@ -35,6 +40,12 @@ void ATHTitlePlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		GS->OnPhaseChanged.RemoveDynamic(this, &ATHTitlePlayerController::HandlePhaseChange);
 	}
 	Super::EndPlay(EndPlayReason);
+}
+
+void ATHTitlePlayerController::ConnectToServer()
+{
+	FString ServerAddress = TEXT("3.38.244.81:7777");
+	ClientTravel(ServerAddress, ETravelType::TRAVEL_Absolute);
 }
 
 #pragma region Phase

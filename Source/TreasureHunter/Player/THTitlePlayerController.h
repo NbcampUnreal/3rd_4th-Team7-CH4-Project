@@ -16,6 +16,7 @@ public:
 	virtual void OnPossess(APawn* aPawn) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
+	void ConnectToServer();
 #pragma region Phase
 	UFUNCTION(Server, Reliable)
 	void Server_RequestMatchAndSetNickname(const FString& InNickname);
