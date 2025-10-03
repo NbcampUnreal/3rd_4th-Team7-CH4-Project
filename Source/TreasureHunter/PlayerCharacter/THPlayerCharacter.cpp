@@ -19,7 +19,11 @@
 #include "GameplayEffect.h"
 #include "NiagaraComponent.h"
 
-ATHPlayerCharacter::ATHPlayerCharacter()
+DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
+
+#pragma region Climb&Mantle
+ATHPlayerCharacter::ATHPlayerCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UTHCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -39,7 +43,7 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
-	
+
 	GetCharacterMovement()->MaxWalkSpeed = 200.f;
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
@@ -56,29 +60,150 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 
 	ParkourComponent = CreateDefaultSubobject<UTHParkourComponent>(TEXT("ParkourComponent"));
 	ClimbComponent = CreateDefaultSubobject<UTHClimbComponent>(TEXT("ClimbComponent"));
-	
+
 	if (GetCharacterMovement())
 	{
-	   DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
+		DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
 	}
+
+	AbilitySystem = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
+	AbilitySystem->SetIsReplicated(true);
+	AbilitySystem->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 }
 
 void ATHPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (IsLocallyControlled() == true)
 	{
-	   APlayerController* PC = Cast<APlayerController>(GetController());
-	   checkf(IsValid(PC) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		checkf(IsValid(PC) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
 
-	   UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(
-		 PC->GetLocalPlayer());
-	   checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
+			UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(
+				PC->GetLocalPlayer());
+		checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
 
-	   EILPS->AddMappingContext(InputMappingContext, 0);
+			EILPS->AddMappingContext(InputMappingContext, 0);
+	}
+
+	if (HasAuthority() && AbilitySystem)
+	{
+		if (ClimbAbilityClass)
+		{
+			AbilitySystem->GiveAbility(FGameplayAbilitySpec(ClimbAbilityClass, 1, INDEX_NONE, this));
+		}
+		if (MantleAbilityClass)
+		{
+			AbilitySystem->GiveAbility(FGameplayAbilitySpec(MantleAbilityClass, 1, INDEX_NONE, this));
+		}
 	}
 }
+
+void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveTriggered);
+	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::HandleMoveCompleted);
+	EIC->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ThisClass::HandleMoveCompleted);
+	EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
+
+	//EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::HandleClimbInput);
+	//EIC->BindAction(ClimbAction, ETriggerEvent::Completed, this, &ThisClass::HandleClimbInputReleased);
+	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::Jump);
+	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	//EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
+	EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::OnClimbActionStarted);
+	EIC->BindAction(MantleAction, ETriggerEvent::Started, this, &ThisClass::OnParkourActionStarted);
+
+
+
+	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
+	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputReleased);
+	EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::OnSprintPressed);
+	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::OnSprintReleased);
+	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
+	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
+	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
+	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
+}
+
+void ATHPlayerCharacter::OnClimbActionStarted(const FInputActionValue& Value)
+{
+	FGameplayEventData Payload;
+	Payload.EventTag = ClimbTags::Event_Input_Climb;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, ClimbTags::Event_Input_Climb, Payload);
+}
+
+void ATHPlayerCharacter::OnParkourActionStarted(const FInputActionValue& Value)
+{
+	FGameplayEventData Payload;
+	Payload.EventTag = ClimbTags::Event_Input_Parkour;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, ClimbTags::Event_Input_Parkour, Payload);
+}
+
+void ATHPlayerCharacter::OnPlayerEnterClimbState()
+{
+}
+
+void ATHPlayerCharacter::OnPlayerExitClimbState()
+{
+}
+
+#pragma endregion
+
+
+//ATHPlayerCharacter::ATHPlayerCharacter()
+//{
+//	PrimaryActorTick.bCanEverTick = false;
+//
+//	bUseControllerRotationPitch = false;
+//	bUseControllerRotationYaw = false;
+//	bUseControllerRotationRoll = false;
+//
+//	GetCharacterMovement()->bUseControllerDesiredRotation = false;
+//	GetCharacterMovement()->bOrientRotationToMovement = true;
+//	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
+//
+//	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+//	SpringArm->SetupAttachment(GetRootComponent());
+//	SpringArm->TargetArmLength = 400.f;
+//	SpringArm->bUsePawnControlRotation = true;
+//
+//	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+//	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+//	Camera->bUsePawnControlRotation = false;
+//	
+//	GetCharacterMovement()->MaxWalkSpeed = 200.f;
+//	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+//	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
+//
+//	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
+//
+//	StunEffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("StunEffectComponent"));
+//	StunEffectComponent->SetupAttachment(GetMesh(), TEXT("StunEffectSocket"));
+//	StunEffectComponent->bAutoActivate = false;
+//
+//	FootStepComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FootStepComponent"));
+//	FootStepComponent->SetupAttachment(GetMesh(), TEXT("FootStep"));
+//	FootStepComponent->bAutoActivate = false;
+//
+//	ParkourComponent = CreateDefaultSubobject<UTHParkourComponent>(TEXT("ParkourComponent"));
+//	ClimbComponent = CreateDefaultSubobject<UTHClimbComponent>(TEXT("ClimbComponent"));
+//	
+//	if (GetCharacterMovement())
+//	{
+//	   DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
+//	}
+//}
+//
+//
+
+
+
+
 
 void ATHPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -212,30 +337,6 @@ void ATHPlayerCharacter::SetClimbingWallNormal(const FVector& InWallNormal)
 	{
 	   Server_SetClimbingWallNormal(InWallNormal);
 	}
-}
-
-void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveTriggered);
-	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::HandleMoveCompleted);
-	EIC->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ThisClass::HandleMoveCompleted);
-	EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
-	EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::HandleClimbInput);
-	EIC->BindAction(ClimbAction, ETriggerEvent::Completed, this, &ThisClass::HandleClimbInputReleased);
-	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::Jump);
-	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-	EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
-	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
-	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputReleased);
-	EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::OnSprintPressed);
-	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::OnSprintReleased);
-	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
-	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
-	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
-	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
 }
 
 void ATHPlayerCharacter::HandleMoveTriggered(const FInputActionValue& InValue)

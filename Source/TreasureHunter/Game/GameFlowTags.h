@@ -68,3 +68,19 @@ UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Item_Ink_Active);
 
 // ----- Item Cue -----
 UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Cue_ImmunePotion);
+
+
+namespace ClimbTags
+{
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Climb);       // Input.Climb
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Input_Parkour);     // Input.Parkour
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Climb);     // Ability.Climb
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Ability_Mantle);    // Ability.Mantle
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Climbing);    // State.Climbing
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(State_Mantling);    // State.Mantling
+
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Input_Climb);   // Event.Input.Climb
+	UE_DECLARE_GAMEPLAY_TAG_EXTERN(Event_Input_Parkour); // Event.Input.Parkour
+}
