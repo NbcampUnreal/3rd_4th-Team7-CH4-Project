@@ -19,7 +19,7 @@
 #include "GameplayEffect.h"
 #include "NiagaraComponent.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
+//DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
 
 #pragma region Climb&Mantle
 ATHPlayerCharacter::ATHPlayerCharacter(const FObjectInitializer& ObjectInitializer)
@@ -129,19 +129,56 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
 	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
 }
-
 void ATHPlayerCharacter::OnClimbActionStarted(const FInputActionValue& Value)
 {
-	FGameplayEventData Payload;
-	Payload.EventTag = ClimbTags::Event_Input_Climb;
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, ClimbTags::Event_Input_Climb, Payload);
+	// DEBUG: 입력 감지
+	UE_LOG(LogTemp, Warning, TEXT("[Input][%s] IA_Climb pressed"),
+		HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		const bool bIsClimbingNow = ASC->HasMatchingGameplayTag(ClimbTags::State_Climbing);
+		UE_LOG(LogTemp, Warning, TEXT("[Climb] ASC valid, State_Climbing=%d"), bIsClimbingNow ? 1 : 0);
+
+		if (bIsClimbingNow)
+		{
+			FGameplayTagContainer CancelClimbTags; CancelClimbTags.AddTag(ClimbTags::Ability_Climb);
+			ASC->CancelAbilities(&CancelClimbTags);
+			UE_LOG(LogTemp, Warning, TEXT("[Climb] CancelAbilities(Ability.Climb) sent"));
+		}
+		else
+		{
+			FGameplayTagContainer ActivateClimbTags; ActivateClimbTags.AddTag(ClimbTags::Ability_Climb);
+			const bool bActivated = ASC->TryActivateAbilitiesByTag(ActivateClimbTags);
+			UE_LOG(LogTemp, Warning, TEXT("[Climb] TryActivate(Ability.Climb) -> %d"), bActivated ? 1 : 0);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Climb] ASC is NULL"));
+	}
 }
 
 void ATHPlayerCharacter::OnParkourActionStarted(const FInputActionValue& Value)
 {
-	FGameplayEventData Payload;
-	Payload.EventTag = ClimbTags::Event_Input_Parkour;
-	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, ClimbTags::Event_Input_Parkour, Payload);
+	// DEBUG: 입력 감지
+	UE_LOG(LogTemp, Warning, TEXT("[Input][%s] IA_Parkour pressed"),
+		HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		FGameplayTagContainer MantleTags; MantleTags.AddTag(ClimbTags::Ability_Mantle);
+		const bool bActivated = ASC->TryActivateAbilitiesByTag(MantleTags);
+		UE_LOG(LogTemp, Warning, TEXT("[Mantle] TryActivate(Ability.Mantle) -> %d"), bActivated ? 1 : 0);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Mantle] ASC is NULL"));
+	}
+
+	// 이벤트 방식
+	// FGameplayEventData Payload; Payload.EventTag = ClimbTags::Event_Input_Parkour;
+	// UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, ClimbTags::Event_Input_Parkour, Payload);
 }
 
 void ATHPlayerCharacter::OnPlayerEnterClimbState()

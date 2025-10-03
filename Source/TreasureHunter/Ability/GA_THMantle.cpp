@@ -8,7 +8,7 @@
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 #include "MotionWarpingComponent.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
+//DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
 
 UGA_THMantle::UGA_THMantle()
 {

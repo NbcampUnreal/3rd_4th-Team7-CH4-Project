@@ -8,7 +8,7 @@
 #include "MotionWarpingComponent.h"
 #include "Components/CapsuleComponent.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
+//DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
 
 void UTHCharacterMovementComponent::BeginPlay()
 {

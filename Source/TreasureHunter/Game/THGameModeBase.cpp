@@ -532,7 +532,7 @@ void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
 		}
 	}
 
-	ManipluateController(Player, true);
+	//ManipluateController(Player, true);
 	CheckPlayReady();
 }
 

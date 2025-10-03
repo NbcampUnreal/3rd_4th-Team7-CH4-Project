@@ -9,7 +9,7 @@
 #include "AbilitySystemComponent.h"
 #include "Abilities/Tasks/AbilityTask_PlayMontageAndWait.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
+//DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
 
 UGA_THClimb::UGA_THClimb()
 {
