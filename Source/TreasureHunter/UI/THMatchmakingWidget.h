@@ -38,6 +38,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* SecondPNickname;
 
+	UPROPERTY(meta = (BindWidget))
+	UButton* InviteFriendButton;
+
 private:
 	TWeakObjectPtr<ATHGameStateBase> CachedGS;
 	TWeakObjectPtr<ATHTitlePlayerController> CachedPC;

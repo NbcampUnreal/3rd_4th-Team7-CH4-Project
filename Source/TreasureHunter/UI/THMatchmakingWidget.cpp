@@ -80,7 +80,6 @@ void UTHMatchmakingWidget::RefreshUI()
 
 	APlayerState* Owner0 = GS->GetSlotOwner(0);
 	APlayerState* Owner1 = GS->GetSlotOwner(1);
-
 	APlayerState* MyPS = CachedPC.IsValid() ? CachedPC->GetPlayerState<APlayerState>() : nullptr;
 
 	UpdateNicknameText(FirstPNickname, Owner0, MyPS);
@@ -89,14 +88,53 @@ void UTHMatchmakingWidget::RefreshUI()
 	const bool bLocked = GS->AreSlotsLockedIn();
 	const bool bIAmHost = GS->IsHost(MyPS);
 
-	if (FirstPButton)  FirstPButton->SetIsEnabled(!bLocked && bIAmHost && (Owner0 == nullptr || Owner0 == MyPS));
-	if (SecondPButton) SecondPButton->SetIsEnabled(!bLocked && !bIAmHost && (Owner1 == nullptr || Owner1 == MyPS));
-
-	if (ATHPlayerState* THPS = MyPS ? Cast<ATHPlayerState>(MyPS) : nullptr)
+	const bool bSomeoneElseJoined = ((Owner0 && Owner0 != MyPS) || (Owner1 && Owner1 != MyPS));
+	if (InviteFriendButton)
 	{
-		const bool bReady = THPS->HasReadyTag();
-		if (bIAmHost && FirstPButton)   FirstPButton->SetIsEnabled(!bReady && FirstPButton->GetIsEnabled());
-		if (!bIAmHost && SecondPButton) SecondPButton->SetIsEnabled(!bReady && SecondPButton->GetIsEnabled());
+		InviteFriendButton->SetIsEnabled(!bSomeoneElseJoined);
+	}
+
+	const ATHPlayerState* MyTHPS = MyPS ? Cast<ATHPlayerState>(MyPS) : nullptr;
+	const bool bIAmReady = (MyTHPS && MyTHPS->HasReadyTag());
+
+	if (FirstPButton)  FirstPButton->SetIsEnabled(false);
+	if (SecondPButton) SecondPButton->SetIsEnabled(false);
+
+	if (!bLocked && !bIAmReady)
+	{
+		if (bIAmHost)
+		{
+			const bool bCanPressFirst = (Owner0 == nullptr || Owner0 == MyPS);
+			if (FirstPButton) FirstPButton->SetIsEnabled(bCanPressFirst);
+		}
+		else
+		{
+			const bool bCanPressSecond = (Owner1 == nullptr || Owner1 == MyPS);
+			if (SecondPButton) SecondPButton->SetIsEnabled(bCanPressSecond);
+		}
+	}
+
+	if (bIAmHost)
+	{
+		if (FirstPButton)
+		{
+			FirstPButton->SetVisibility(bIAmReady ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		}
+		if (SecondPButton)
+		{
+			SecondPButton->SetVisibility(ESlateVisibility::Visible);
+		}
+	}
+	else
+	{
+		if (SecondPButton)
+		{
+			SecondPButton->SetVisibility(bIAmReady ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		}
+		if (FirstPButton)
+		{
+			FirstPButton->SetVisibility(ESlateVisibility::Visible);
+		}
 	}
 
 	if (UnlockImage)      UnlockImage->SetVisibility(bLocked ? ESlateVisibility::Visible : ESlateVisibility::Hidden);

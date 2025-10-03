@@ -123,6 +123,10 @@ void ATHPlayerController::CreateGameOverWidget()
 	if (GameOverWidget)
 	{
 		GameOverWidget->AddToViewport();
+		FInputModeGameAndUI InputMode;
+		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+		SetInputMode(InputMode);
+		bShowMouseCursor = true;
 	}
 }
 
