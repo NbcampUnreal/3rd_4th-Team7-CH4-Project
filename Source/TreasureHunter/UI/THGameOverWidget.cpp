@@ -44,10 +44,13 @@ void UTHGameOverWidget::HandleRestartClicked()
 
 void UTHGameOverWidget::HandleMainMenuClicked()
 {
+	if (bButtonClicked) return;
 	if (auto* PC = GetOwningPlayer<ATHPlayerController>())
 	{
 		PC->Server_LeaveToMainMenu();
 	}
+
+	bButtonClicked = true;
 }
 
 void UTHGameOverWidget::HandleAcceptClicked()

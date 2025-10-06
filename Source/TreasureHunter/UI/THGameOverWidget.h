@@ -61,4 +61,6 @@ protected:
 
 	UPROPERTY(meta = (BindWidget))
 	UTextBlock* DeclineText;
+private:
+	bool bButtonClicked = false;
 };
