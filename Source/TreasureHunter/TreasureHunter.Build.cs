@@ -22,7 +22,9 @@ public class TreasureHunter : ModuleRules
 			"Slate",
 			"SlateCore",
 			"MotionWarping",
-            "Niagara"
+            "Niagara",
+            "OnlineSubsystem", 
+			"OnlineSubsystemUtils",
         });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
