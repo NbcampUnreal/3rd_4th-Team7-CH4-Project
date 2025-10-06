@@ -26,6 +26,8 @@ class TREASUREHUNTER_API ATHGameModeBase : public AGameModeBase
 public:
 	ATHGameModeBase();
 
+	virtual void BeginPlay() override;
+
 #pragma region PlayerController Management
 private:
 	int32 ServerEnterPlayerNum;
@@ -43,6 +45,23 @@ private:
 	TArray<ATHPlayerController*> StartPlayerControllers;
 
 protected:
+	virtual void PreLogin(const FString& Options, 
+		const FString& Address, 
+		const FUniqueNetIdRepl& UniqueId, 
+		FString& ErrorMessage) override;
+
+	virtual APlayerController* Login(UPlayer* NewPlayer,
+		ENetRole InRemoteRole,
+		const FString& Portal,
+		const FString& Options,
+		const FUniqueNetIdRepl& UniqueId,
+		FString& ErrorMessage) override;
+
+	virtual void ApproveLogin(const FString& Options,
+		const FString& Address,
+		const FUniqueNetIdRepl& UniqueId,
+		FString& ErrorMessage);
+
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	virtual void Logout(AController* Exiting) override;
@@ -84,6 +103,7 @@ private:
 	void OnLevelLoadedReady();
 
 	void StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad);
+
 #pragma endregion
 
 #pragma region GameMode Phase

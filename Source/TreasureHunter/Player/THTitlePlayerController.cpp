@@ -8,6 +8,7 @@
 #include "THPlayerState.h"
 #include "Game/THGameModeBase.h"
 #include "Game/GameFlowTags.h"
+#include "Game/THGameInstance.h"
 
 void ATHTitlePlayerController::BeginPlay()
 {
@@ -15,7 +16,16 @@ void ATHTitlePlayerController::BeginPlay()
 
 	if (IsLocalController())
 	{
-		ConnectToServer();
+		UTHGameInstance* GI = Cast<UTHGameInstance>(UGameplayStatics::GetGameInstance(this));
+		if (GI)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Travel ½ÃÀÛ: %s"), *GetName());
+			FString ServerAddress = TEXT("3.38.244.81");
+			GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda([this, ServerAddress]() {
+				UTHGameInstance* GI = Cast<UTHGameInstance>(UGameplayStatics::GetGameInstance(this));
+				if (GI) GI->JoinServer(ServerAddress);
+				}));
+		}
 	}
 
 	if (auto* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
@@ -40,12 +50,7 @@ void ATHTitlePlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		GS->OnPhaseChanged.RemoveDynamic(this, &ATHTitlePlayerController::HandlePhaseChange);
 	}
 	Super::EndPlay(EndPlayReason);
-}
-
-void ATHTitlePlayerController::ConnectToServer()
-{
-	FString ServerAddress = TEXT("3.38.244.81:7777");
-	ClientTravel(ServerAddress, ETravelType::TRAVEL_Absolute);
+	UE_LOG(LogTemp, Warning, TEXT("PlayerController EndPlay: %s, Reason: %s"), *GetName(), *UEnum::GetValueAsString(EndPlayReason));
 }
 
 #pragma region Phase
