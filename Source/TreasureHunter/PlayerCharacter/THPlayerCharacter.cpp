@@ -19,7 +19,11 @@
 #include "GameplayEffect.h"
 #include "NiagaraComponent.h"
 
-ATHPlayerCharacter::ATHPlayerCharacter()
+//DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
+
+#pragma region Climb&Mantle
+ATHPlayerCharacter::ATHPlayerCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UTHCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -39,7 +43,7 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
-	
+
 	GetCharacterMovement()->MaxWalkSpeed = 200.f;
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
@@ -56,29 +60,188 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 
 	ParkourComponent = CreateDefaultSubobject<UTHParkourComponent>(TEXT("ParkourComponent"));
 	ClimbComponent = CreateDefaultSubobject<UTHClimbComponent>(TEXT("ClimbComponent"));
-	
+
 	if (GetCharacterMovement())
 	{
-	   DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
+		DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
 	}
+
+	AbilitySystem = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
+	AbilitySystem->SetIsReplicated(true);
+	AbilitySystem->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 }
+
 
 void ATHPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	if (IsLocallyControlled() == true)
 	{
-	   APlayerController* PC = Cast<APlayerController>(GetController());
-	   checkf(IsValid(PC) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
+		APlayerController* PC = Cast<APlayerController>(GetController());
+		checkf(IsValid(PC) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
 
-	   UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(
-		 PC->GetLocalPlayer());
-	   checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
+			UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(
+				PC->GetLocalPlayer());
+		checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
 
-	   EILPS->AddMappingContext(InputMappingContext, 0);
+			EILPS->AddMappingContext(InputMappingContext, 0);
+	}
+
+	if (HasAuthority() && AbilitySystem)
+	{
+		if (ClimbAbilityClass)
+		{
+			AbilitySystem->GiveAbility(FGameplayAbilitySpec(ClimbAbilityClass, 1, INDEX_NONE, this));
+		}
+		if (MantleAbilityClass)
+		{
+			AbilitySystem->GiveAbility(FGameplayAbilitySpec(MantleAbilityClass, 1, INDEX_NONE, this));
+		}
 	}
 }
+
+void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveTriggered);
+	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::HandleMoveCompleted);
+	EIC->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ThisClass::HandleMoveCompleted);
+	EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
+
+	//EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::HandleClimbInput);
+	//EIC->BindAction(ClimbAction, ETriggerEvent::Completed, this, &ThisClass::HandleClimbInputReleased);
+	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::Jump);
+	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	//EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
+	EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::OnClimbActionStarted);
+	EIC->BindAction(MantleAction, ETriggerEvent::Started, this, &ThisClass::OnParkourActionStarted);
+
+
+
+	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
+	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputReleased);
+	EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::OnSprintPressed);
+	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::OnSprintReleased);
+	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
+	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
+	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
+	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
+}
+void ATHPlayerCharacter::OnClimbActionStarted(const FInputActionValue& Value)
+{
+	// DEBUG: 입력 감지
+	UE_LOG(LogTemp, Warning, TEXT("[Input][%s] IA_Climb pressed"),
+		HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		const bool bIsClimbingNow = ASC->HasMatchingGameplayTag(ClimbTags::State_Climbing);
+		UE_LOG(LogTemp, Warning, TEXT("[Climb] ASC valid, State_Climbing=%d"), bIsClimbingNow ? 1 : 0);
+
+		if (bIsClimbingNow)
+		{
+			FGameplayTagContainer CancelClimbTags; CancelClimbTags.AddTag(ClimbTags::Ability_Climb);
+			ASC->CancelAbilities(&CancelClimbTags);
+			UE_LOG(LogTemp, Warning, TEXT("[Climb] CancelAbilities(Ability.Climb) sent"));
+		}
+		else
+		{
+			FGameplayTagContainer ActivateClimbTags; ActivateClimbTags.AddTag(ClimbTags::Ability_Climb);
+			const bool bActivated = ASC->TryActivateAbilitiesByTag(ActivateClimbTags);
+			UE_LOG(LogTemp, Warning, TEXT("[Climb] TryActivate(Ability.Climb) -> %d"), bActivated ? 1 : 0);
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Climb] ASC is NULL"));
+	}
+}
+
+void ATHPlayerCharacter::OnParkourActionStarted(const FInputActionValue& Value)
+{
+	// DEBUG: 입력 감지
+	UE_LOG(LogTemp, Warning, TEXT("[Input][%s] IA_Parkour pressed"),
+		HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
+
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		FGameplayTagContainer MantleTags; MantleTags.AddTag(ClimbTags::Ability_Mantle);
+		const bool bActivated = ASC->TryActivateAbilitiesByTag(MantleTags);
+		UE_LOG(LogTemp, Warning, TEXT("[Mantle] TryActivate(Ability.Mantle) -> %d"), bActivated ? 1 : 0);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Mantle] ASC is NULL"));
+	}
+
+	// 이벤트 방식
+	// FGameplayEventData Payload; Payload.EventTag = ClimbTags::Event_Input_Parkour;
+	// UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, ClimbTags::Event_Input_Parkour, Payload);
+}
+
+void ATHPlayerCharacter::OnPlayerEnterClimbState()
+{
+}
+
+void ATHPlayerCharacter::OnPlayerExitClimbState()
+{
+}
+
+#pragma endregion
+
+
+//ATHPlayerCharacter::ATHPlayerCharacter()
+//{
+//	PrimaryActorTick.bCanEverTick = false;
+//
+//	bUseControllerRotationPitch = false;
+//	bUseControllerRotationYaw = false;
+//	bUseControllerRotationRoll = false;
+//
+//	GetCharacterMovement()->bUseControllerDesiredRotation = false;
+//	GetCharacterMovement()->bOrientRotationToMovement = true;
+//	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
+//
+//	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
+//	SpringArm->SetupAttachment(GetRootComponent());
+//	SpringArm->TargetArmLength = 400.f;
+//	SpringArm->bUsePawnControlRotation = true;
+//
+//	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
+//	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+//	Camera->bUsePawnControlRotation = false;
+//	
+//	GetCharacterMovement()->MaxWalkSpeed = 200.f;
+//	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+//	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
+//
+//	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
+//
+//	StunEffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("StunEffectComponent"));
+//	StunEffectComponent->SetupAttachment(GetMesh(), TEXT("StunEffectSocket"));
+//	StunEffectComponent->bAutoActivate = false;
+//
+//	FootStepComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FootStepComponent"));
+//	FootStepComponent->SetupAttachment(GetMesh(), TEXT("FootStep"));
+//	FootStepComponent->bAutoActivate = false;
+//
+//	ParkourComponent = CreateDefaultSubobject<UTHParkourComponent>(TEXT("ParkourComponent"));
+//	ClimbComponent = CreateDefaultSubobject<UTHClimbComponent>(TEXT("ClimbComponent"));
+//	
+//	if (GetCharacterMovement())
+//	{
+//	   DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
+//	}
+//}
+//
+//
+
+
+
+
 
 void ATHPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
@@ -214,30 +377,6 @@ void ATHPlayerCharacter::SetClimbingWallNormal(const FVector& InWallNormal)
 	}
 }
 
-void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveTriggered);
-	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::HandleMoveCompleted);
-	EIC->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ThisClass::HandleMoveCompleted);
-	EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
-	EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::HandleClimbInput);
-	EIC->BindAction(ClimbAction, ETriggerEvent::Completed, this, &ThisClass::HandleClimbInputReleased);
-	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::Jump);
-	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-	EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
-	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
-	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputReleased);
-	EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::OnSprintPressed);
-	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::OnSprintReleased);
-	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
-	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
-	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
-	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
-}
-
 void ATHPlayerCharacter::HandleMoveTriggered(const FInputActionValue& InValue)
 {
 	const FVector2D InMovementVector = InValue.Get<FVector2D>();
@@ -292,29 +431,65 @@ void ATHPlayerCharacter::UpdateClimbMovementState(const FVector2D& InMovementVec
 void ATHPlayerCharacter::AdjustToClimbSurface()
 {
 	const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
-	FHitResult FrontHit;
-	const FVector TraceStart = GetActorLocation() - GetActorForwardVector() * 10.f;
-	const FVector TraceEnd = TraceStart + GetActorForwardVector() * (CapsuleRadius + 30.f);
+	const FVector ActorLocation = GetActorLocation();
+	const FVector Forward = GetActorForwardVector();
+	const FVector Up = GetActorUpVector();
+	const TArray<AActor*> ActorsToIgnore = { this };
 
-	bool bWallFoundInFront = UKismetSystemLibrary::SphereTraceSingle(
-	   GetWorld(), TraceStart, TraceEnd, 5.f,
-	   UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic),
-	   false, { this }, EDrawDebugTrace::None, FrontHit, true);
+	const float TraceRadius = 15.f;
+	const float TraceDistance = CapsuleRadius + 40.f;
 
-	if (bWallFoundInFront)
+	FHitResult UpperHit, LowerHit, CenterHit;
+
+	const FVector UpperTraceStart = ActorLocation + Up * 60.f;
+	const FVector LowerTraceStart = ActorLocation - Up * 60.f;
+
+	const bool bUpperHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), UpperTraceStart, UpperTraceStart + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, UpperHit, true);
+	const bool bLowerHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), LowerTraceStart, LowerTraceStart + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, LowerHit, true);
+
+	int HitCount = 0;
+	FVector CombinedImpactPoint = FVector::ZeroVector;
+	FVector CombinedNormal = FVector::ZeroVector;
+
+	if (bUpperHit)
 	{
-	   const bool bIsValidWall = FMath::Abs(FrontHit.ImpactNormal.Z) < 0.1f;
-	   const float NormalDotProduct = FVector::DotProduct(ClimbingWallNormal, FrontHit.ImpactNormal);
-	   const bool bIsSimilarDirection = NormalDotProduct > 0.9f;
-
-	   if (bIsValidWall && (ClimbingWallNormal.IsZero() || bIsSimilarDirection))
-	   {
-		  GetCharacterMovement()->SetPlaneConstraintNormal(FrontHit.ImpactNormal);
-		  SetClimbingWallNormal(FrontHit.ImpactNormal);
-		  const FVector TargetLocation = FrontHit.ImpactPoint + FrontHit.ImpactNormal * CapsuleRadius;
-		  SetActorLocation(FVector(TargetLocation.X, TargetLocation.Y, GetActorLocation().Z));
-	   }
+		CombinedImpactPoint += UpperHit.ImpactPoint;
+		CombinedNormal += UpperHit.ImpactNormal;
+		HitCount++;
 	}
+	if (bLowerHit)
+	{
+		CombinedImpactPoint += LowerHit.ImpactPoint;
+		CombinedNormal += LowerHit.ImpactNormal;
+		HitCount++;
+	}
+
+	if (HitCount == 0)
+	{
+		const bool bCenterHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), ActorLocation, ActorLocation + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, CenterHit, true);
+		if (!bCenterHit)
+		{
+			return;
+		}
+		CombinedImpactPoint = CenterHit.ImpactPoint;
+		CombinedNormal = CenterHit.ImpactNormal;
+		HitCount = 1;
+	}
+
+	const FVector AverageImpactPoint = CombinedImpactPoint / HitCount;
+	const FVector AverageNormal = (CombinedNormal / HitCount).GetSafeNormal();
+
+	SetClimbingWallNormal(AverageNormal);
+
+	const float SlopeDotProduct = FVector::DotProduct(AverageNormal, FVector::UpVector);
+	const float DynamicOffset = FMath::Clamp(-SlopeDotProduct, 0.f, 1.f) * ClimbingSlopeOffsetMultiplier;
+	
+	const float DesiredDistance = CapsuleRadius + ClimbingWallOffset + DynamicOffset;
+	
+	const FVector ProjectedLocationOnWall = FVector::PointPlaneProject(ActorLocation, AverageImpactPoint, AverageNormal);
+	const FVector TargetLocation = ProjectedLocationOnWall + AverageNormal * DesiredDistance;
+
+	SetActorLocation(TargetLocation, true);
 }
 
 void ATHPlayerCharacter::ApplyClimbMovementInput(const FVector2D& InMovementVector)
@@ -640,8 +815,6 @@ void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount
 	}
 }
 
-//임시추가	
-
 void ATHPlayerCharacter::SetInteractableActor(ATHItemBox* NewItemBox)
 {
 	InteractableItemBox = NewItemBox;
@@ -669,12 +842,10 @@ void ATHPlayerCharacter::OnInteract()
 	{
 		if (HasAuthority())
 		{
-			// 서버에서 직접 처리
 			HandleBaseItemInteract();
 		}
 		else
 		{
-			// 클라에서 서버에 요청
 			Server_HandleBaseItemInteract(InteractableBaseItem);
 		}
 	}

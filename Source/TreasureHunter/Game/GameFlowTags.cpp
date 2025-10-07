@@ -67,3 +67,18 @@ UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Item_Ink_Active, "Item.Ink.Active", "Ink effe
 
 // ----- Item Cue -----
 UE_DEFINE_GAMEPLAY_TAG_COMMENT(TAG_Cue_ImmunePotion, "GameplayCue.Buff.ImmunePotion", "Cue for immune potion effect");
+
+namespace ClimbTags
+{
+	UE_DEFINE_GAMEPLAY_TAG(Input_Climb, "Input.Climb");
+	UE_DEFINE_GAMEPLAY_TAG(Input_Parkour, "Input.Parkour");
+
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Climb, "Ability.Climb");
+	UE_DEFINE_GAMEPLAY_TAG(Ability_Mantle, "Ability.Mantle");
+
+	UE_DEFINE_GAMEPLAY_TAG(State_Climbing, "State.Climbing");
+	UE_DEFINE_GAMEPLAY_TAG(State_Mantling, "State.Mantling");
+
+	UE_DEFINE_GAMEPLAY_TAG(Event_Input_Climb, "Event.Input.Climb");
+	UE_DEFINE_GAMEPLAY_TAG(Event_Input_Parkour, "Event.Input.Parkour");
+}

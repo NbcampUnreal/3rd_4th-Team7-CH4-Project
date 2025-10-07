@@ -33,33 +33,51 @@ bool UTHClimbComponent::TraceForWall(FHitResult& OutHit) const
 	const bool bDrawDebug = CVarDebugClimb.GetValueOnGameThread() > 0;
 	const EDrawDebugTrace::Type DrawDebugType = bDrawDebug ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None;
 	
-	const FVector Forward = OwnerCharacter->GetActorForwardVector();
-	const float CapsuleRadius = OwnerCharacter->GetCapsuleComponent()->GetScaledCapsuleRadius();
+	const FVector Start = OwnerCharacter->GetActorLocation();
+	const FVector End = Start + OwnerCharacter->GetActorForwardVector();
 	
-	const FVector Start = OwnerCharacter->GetActorLocation() - (Forward * 5.f);
-	const FVector FrontTraceEnd = Start + Forward * (ForwardTraceDistance + 5.f);
-
 	TArray<AActor*> ActorsToIgnore = {OwnerCharacter};
-	
-	bool bFrontHit = UKismetSystemLibrary::SphereTraceSingle( 
+
+	TArray<FHitResult> OutHits;
+	UKismetSystemLibrary::CapsuleTraceMultiForObjects(
 		GetWorld(),
 		Start,
-		FrontTraceEnd,
-		CapsuleRadius,
-		UEngineTypes::ConvertToTraceType(ClimbableTraceChannel),
+		End,
+		ClimbCapsuleTraceRadius,
+		ClimbCapsuleTraceHalfHeight,
+		{ UEngineTypes::ConvertToObjectType(ClimbableTraceChannel) },
 		false,
 		ActorsToIgnore,
 		DrawDebugType,
-		OutHit,
+		OutHits,
 		true
 	);
-	
-	if (!bFrontHit || OutHit.Distance < MinClimbStartDistance || OutHit.Distance > MaxClimbStartDistance)
+
+	if (OutHits.IsEmpty())
 	{
 		return false;
 	}
 
-	return true;
+	float MinDistance = FLT_MAX;
+	for (const FHitResult& Hit : OutHits)
+	{
+		if (Hit.bBlockingHit && Hit.Distance < MinDistance)
+		{
+			UPrimitiveComponent* HitComponent = Hit.GetComponent();
+			const bool bHasClimbableTag = HitComponent && HitComponent->ComponentHasTag(FName("Climbable"));
+			if (bHasClimbableTag)
+			{
+				const bool bIsWall = FMath::Abs(FVector::DotProduct(Hit.ImpactNormal, FVector::UpVector)) < 0.3f;
+				if (bIsWall)
+				{
+					MinDistance = Hit.Distance;
+					OutHit = Hit;
+				}
+			}
+		}
+	}
+
+	return OutHit.bBlockingHit;
 }
 
 bool UTHClimbComponent::TraceForLedge(const FHitResult& WallHit, FHitResult& OutLedgeHit) const
@@ -83,11 +101,6 @@ bool UTHClimbComponent::CheckClimbableSurface(FClimbTraceResult& OutResult) cons
 {
 	FHitResult WallHit;
 	if (!TraceForWall(WallHit))
-	{
-		return false;
-	}
-
-	if (!IsOnValidClimbSurface(WallHit.ImpactPoint, WallHit.ImpactNormal))
 	{
 		return false;
 	}
@@ -163,14 +176,18 @@ bool UTHClimbComponent::FindClimbableSurface(const FVector& DesiredDirection, FC
 		true
 	);
 	
-	if (!bHitWall || !IsOnValidClimbSurface(WallHit.ImpactPoint, WallHit.ImpactNormal))
+	if (bHitWall)
 	{
-		return false;
+		UPrimitiveComponent* HitComponent = WallHit.GetComponent();
+		if (HitComponent && HitComponent->ComponentHasTag(FName("Climbable")))
+		{
+			OutResult.bCanClimb = true;
+			OutResult.LedgeLocation = WallHit.ImpactPoint; 
+			OutResult.WallLocation = WallHit.ImpactPoint;
+			OutResult.WallNormal = WallHit.ImpactNormal;
+			return true;
+		}
 	}
 	
-	OutResult.bCanClimb = true;
-	OutResult.LedgeLocation = WallHit.ImpactPoint; 
-	OutResult.WallLocation = WallHit.ImpactPoint;
-	OutResult.WallNormal = WallHit.ImpactNormal;
-	return true;
+	return false;
 }

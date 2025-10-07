@@ -8,6 +8,7 @@
 #include "GameplayEffectTypes.h"
 #include "Item/THItemBox.h"
 #include "Item/THBaseItem.h"
+#include "PakourComponent/THCharacterMovementComponent.h"
 
 #include "THPlayerCharacter.generated.h"
 
@@ -30,12 +31,49 @@ class TREASUREHUNTER_API ATHPlayerCharacter : public ACharacter, public IAbility
 {
 	GENERATED_BODY()
 
+#pragma region Climb&Mantle
 public:
-	ATHPlayerCharacter();
+	//ATHPlayerCharacter();
+
+	ATHPlayerCharacter(const FObjectInitializer& ObjectInitializer);
+	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	TObjectPtr<UAbilitySystemComponent> AbilitySystem;
+
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayAbility> ClimbAbilityClass;
+	
+	UPROPERTY(EditDefaultsOnly)
+	TSubclassOf<UGameplayAbility> MantleAbilityClass;
+
+	virtual void BeginPlay() override;
+	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> MantleAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> ClimbAction;
+
+	FORCEINLINE class UTHCharacterMovementComponent* GetTHMovement() const
+	{
+		return Cast<UTHCharacterMovementComponent>(GetCharacterMovement());
+	}
+
+	void OnClimbActionStarted(const FInputActionValue& Value);
+	void OnParkourActionStarted(const FInputActionValue& Value);
+
+public:
+	void OnPlayerEnterClimbState();
+	void OnPlayerExitClimbState();
+
+#pragma endregion
+
 	
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
-	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; }
 	FORCEINLINE UCameraComponent* GetCamera() const { return Camera; }
@@ -58,9 +96,7 @@ public:
 	void ClearClimbStaminaEffects();
 
 protected:
-	virtual void BeginPlay() override;
 	virtual void Jump() override;
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	UFUNCTION(Server, Reliable)
@@ -142,12 +178,6 @@ protected:
 	TObjectPtr<UInputAction> PushAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> MantleAction;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> ClimbAction;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> InteractAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
@@ -158,6 +188,12 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Climb")
 	float MaxClimbSpeed = 150.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Climb")
+	float ClimbingWallOffset = 5.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Climb")
+	float ClimbingSlopeOffsetMultiplier = 15.f;
 
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
@@ -225,4 +261,6 @@ protected:
 	
 	TSubclassOf<UGameplayEffect> ClimbStaminaDrainEffectClass;
 	TSubclassOf<UGameplayEffect> ClimbStaminaRegenEffectClass;
+
+
 };
