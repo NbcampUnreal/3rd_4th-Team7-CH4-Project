@@ -45,7 +45,7 @@ APlayerController* ATHGameModeBase::Login(UPlayer* NewPlayer, ENetRole InRemoteR
 		ATHPlayerState* PS = Cast<ATHPlayerState>(PC->PlayerState);
 		if (PS)
 		{
-			PS->PlayerSessionId = PlayerSessionId;
+			//PS->PlayerSessionId = PlayerSessionId;
 		}
 	}
 	return PC;
@@ -84,6 +84,11 @@ void ATHGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* 
 	ATHPlayerController* MatchPlayerController = Cast<ATHPlayerController>(NewPlayer);
 	if (IsValid(MatchPlayerController))
 	{
+		if (!StartPlayerControllers.Contains(MatchPlayerController))
+		{
+			StartPlayerControllers.Add(MatchPlayerController);
+		}
+
 		ACRevisionValueZ = MatchPlayerController->GetTargetLocation().Z;
 		GameStartPlayerControllers(MatchPlayerController);
 	}
@@ -108,6 +113,14 @@ void ATHGameModeBase::BeginPlay()
 		{
 			FString ServerAddress = TEXT("3.38.244.81");
 			GI->HostSession(FName("StartSession"), 2, ServerAddress, 7777);
+		}
+	}
+
+	if (GameModeFlow == TAG_Game_Phase_Play)
+	{
+		for (AController* PlayPC : StartPlayerControllers)
+		{
+			RestartPlayer(PlayPC);
 		}
 	}
 }
@@ -659,7 +672,39 @@ void ATHGameModeBase::OnLevelLoadedReady()
 		CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
 		GetWorldTimerManager().ClearAllTimersForObject(this);
 
+		if (OpenLevelPath == PlayLevelPath)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Level Loaded. Start ServerTravel"));
+			FTimerHandle TimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+				{
+					const FPlatformMemoryStats MemStats = FPlatformMemory::GetStats();
+					UE_LOG(LogTemp, Error, TEXT("UsedVirtual: %lld MB"), MemStats.UsedVirtual / (1024 * 1024));
+				}, 1.f, false);
+		}
 		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true, false);
+
+		if (OpenLevelPath == PlayLevelPath)
+		{
+			FTimerHandle TimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+				{
+					const FPlatformMemoryStats MemStats = FPlatformMemory::GetStats();
+					UE_LOG(LogTemp, Error, TEXT("UsedVirtual: %lld MB"), MemStats.UsedVirtual / (1024 * 1024));
+				}, 1.f, false);
+
+			GetWorldTimerManager().SetTimerForNextTick([this]()
+				{
+					// 2초 후 실행
+					FTimerHandle CheckPlayerStatesHandle;
+					GetWorldTimerManager().SetTimer(CheckPlayerStatesHandle, [this]()
+						{
+							TArray<AActor*> AllStates;
+							UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATHPlayerState::StaticClass(), AllStates);
+							UE_LOG(LogTemp, Error, TEXT("PlayerStates in world after travel: %d"), AllStates.Num());
+						}, 10.0f, false);
+				});
+		}
 	}
 }
 
