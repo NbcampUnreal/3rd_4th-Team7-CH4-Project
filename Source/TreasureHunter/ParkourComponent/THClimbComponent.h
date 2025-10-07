@@ -42,6 +42,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Trace")
 	float ForwardTraceDistance = 50.f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Trace", meta = (DisplayName = "Climb Detection Capsule Radius"))
+	float ClimbCapsuleTraceRadius = 40.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Trace", meta = (DisplayName = "Climb Detection Capsule Half Height"))
+	float ClimbCapsuleTraceHalfHeight = 70.f;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Trace")
 	float LedgeTraceStartHeight = 150.f;
 

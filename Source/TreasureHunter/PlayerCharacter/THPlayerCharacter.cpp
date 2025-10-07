@@ -59,9 +59,10 @@ ATHPlayerCharacter::ATHPlayerCharacter()
 	
 	if (GetCharacterMovement())
 	{
-	   DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
+		DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
 	}
 }
+
 
 void ATHPlayerCharacter::BeginPlay()
 {
@@ -292,29 +293,65 @@ void ATHPlayerCharacter::UpdateClimbMovementState(const FVector2D& InMovementVec
 void ATHPlayerCharacter::AdjustToClimbSurface()
 {
 	const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
-	FHitResult FrontHit;
-	const FVector TraceStart = GetActorLocation() - GetActorForwardVector() * 10.f;
-	const FVector TraceEnd = TraceStart + GetActorForwardVector() * (CapsuleRadius + 30.f);
+	const FVector ActorLocation = GetActorLocation();
+	const FVector Forward = GetActorForwardVector();
+	const FVector Up = GetActorUpVector();
+	const TArray<AActor*> ActorsToIgnore = { this };
 
-	bool bWallFoundInFront = UKismetSystemLibrary::SphereTraceSingle(
-	   GetWorld(), TraceStart, TraceEnd, 5.f,
-	   UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic),
-	   false, { this }, EDrawDebugTrace::None, FrontHit, true);
+	const float TraceRadius = 15.f;
+	const float TraceDistance = CapsuleRadius + 40.f;
 
-	if (bWallFoundInFront)
+	FHitResult UpperHit, LowerHit, CenterHit;
+
+	const FVector UpperTraceStart = ActorLocation + Up * 60.f;
+	const FVector LowerTraceStart = ActorLocation - Up * 60.f;
+
+	const bool bUpperHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), UpperTraceStart, UpperTraceStart + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, UpperHit, true);
+	const bool bLowerHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), LowerTraceStart, LowerTraceStart + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, LowerHit, true);
+
+	int HitCount = 0;
+	FVector CombinedImpactPoint = FVector::ZeroVector;
+	FVector CombinedNormal = FVector::ZeroVector;
+
+	if (bUpperHit)
 	{
-	   const bool bIsValidWall = FMath::Abs(FrontHit.ImpactNormal.Z) < 0.1f;
-	   const float NormalDotProduct = FVector::DotProduct(ClimbingWallNormal, FrontHit.ImpactNormal);
-	   const bool bIsSimilarDirection = NormalDotProduct > 0.9f;
-
-	   if (bIsValidWall && (ClimbingWallNormal.IsZero() || bIsSimilarDirection))
-	   {
-		  GetCharacterMovement()->SetPlaneConstraintNormal(FrontHit.ImpactNormal);
-		  SetClimbingWallNormal(FrontHit.ImpactNormal);
-		  const FVector TargetLocation = FrontHit.ImpactPoint + FrontHit.ImpactNormal * CapsuleRadius;
-		  SetActorLocation(FVector(TargetLocation.X, TargetLocation.Y, GetActorLocation().Z));
-	   }
+		CombinedImpactPoint += UpperHit.ImpactPoint;
+		CombinedNormal += UpperHit.ImpactNormal;
+		HitCount++;
 	}
+	if (bLowerHit)
+	{
+		CombinedImpactPoint += LowerHit.ImpactPoint;
+		CombinedNormal += LowerHit.ImpactNormal;
+		HitCount++;
+	}
+
+	if (HitCount == 0)
+	{
+		const bool bCenterHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), ActorLocation, ActorLocation + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, CenterHit, true);
+		if (!bCenterHit)
+		{
+			return;
+		}
+		CombinedImpactPoint = CenterHit.ImpactPoint;
+		CombinedNormal = CenterHit.ImpactNormal;
+		HitCount = 1;
+	}
+
+	const FVector AverageImpactPoint = CombinedImpactPoint / HitCount;
+	const FVector AverageNormal = (CombinedNormal / HitCount).GetSafeNormal();
+
+	SetClimbingWallNormal(AverageNormal);
+
+	const float SlopeDotProduct = FVector::DotProduct(AverageNormal, FVector::UpVector);
+	const float DynamicOffset = FMath::Clamp(-SlopeDotProduct, 0.f, 1.f) * ClimbingSlopeOffsetMultiplier;
+	
+	const float DesiredDistance = CapsuleRadius + ClimbingWallOffset + DynamicOffset;
+	
+	const FVector ProjectedLocationOnWall = FVector::PointPlaneProject(ActorLocation, AverageImpactPoint, AverageNormal);
+	const FVector TargetLocation = ProjectedLocationOnWall + AverageNormal * DesiredDistance;
+
+	SetActorLocation(TargetLocation, true);
 }
 
 void ATHPlayerCharacter::ApplyClimbMovementInput(const FVector2D& InMovementVector)
@@ -640,8 +677,6 @@ void ATHPlayerCharacter::OnStunTagChanged(const FGameplayTag Tag, int32 NewCount
 	}
 }
 
-//임시추가	
-
 void ATHPlayerCharacter::SetInteractableActor(ATHItemBox* NewItemBox)
 {
 	InteractableItemBox = NewItemBox;
@@ -669,12 +704,10 @@ void ATHPlayerCharacter::OnInteract()
 	{
 		if (HasAuthority())
 		{
-			// 서버에서 직접 처리
 			HandleBaseItemInteract();
 		}
 		else
 		{
-			// 클라에서 서버에 요청
 			Server_HandleBaseItemInteract(InteractableBaseItem);
 		}
 	}
