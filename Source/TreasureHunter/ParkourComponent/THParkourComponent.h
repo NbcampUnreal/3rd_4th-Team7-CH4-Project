@@ -54,7 +54,7 @@ protected:
 	float MaxMantleHeight = 200.f;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle Settings")
-	float MantleForwardOffset = 10.f;
+	float MantleForwardOffset = 25.f;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mantle Settings")
 	float MantleUpZOffset = 3.f;
@@ -68,8 +68,8 @@ protected:
 private:
 	bool TraceForWall(FHitResult& OutFrontHit) const;
 	bool TraceForLedge(const FHitResult& FrontHit, FHitResult& OutSurfaceHit) const;
-	bool IsLandingSpaceClear(const FVector& LandingLocation, const FRotator& TargetRotation) const;
-	void CalculateWarpTargets(const FHitResult& FrontHit, const FHitResult& SurfaceHit, FMantleInfo& OutMantleInfo) const;
+	bool IsLandingSpaceClear(const FVector& LandingCapsuleCenter) const;
+	void CalculateWarpTargets(const FHitResult& FrontHit, const FHitResult& SurfaceHit, const FVector& FinalLandingLocation, FMantleInfo& OutMantleInfo) const;
 	
 	UPROPERTY(Transient)
 	TObjectPtr<ACharacter> OwnerCharacter;
