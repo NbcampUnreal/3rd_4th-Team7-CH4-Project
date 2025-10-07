@@ -171,21 +171,18 @@ float ATHItemDataManager::GetItemDurationByRow(FName RowName)
 
 bool ATHItemDataManager::WhoWinner(ATHPlayerController* PC)
 {
-	UE_LOG(LogTemp, Warning, TEXT("WhoWinner Called"));	
     if (!PC) return false;
-    
-	UE_LOG(LogTemp, Warning, TEXT("PC is Valid"));
+ 
 	ATHPlayerState* PS = Cast<ATHPlayerState>(PC->PlayerState);
 	if (!PS) return false;
 
-	UE_LOG(LogTemp, Warning, TEXT("PS is Valid"));
     bool bIsBunny = PS->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First);
-	UE_LOG(LogTemp, Warning, TEXT("bIsBunny: %d"), bIsBunny);
+
 
     ATHGameModeBase* GameModeA = Cast<ATHGameModeBase>(UGameplayStatics::GetGameMode(GetWorld()));
     
     bool BunnyWinner = GameModeA->GetBunnyIsWinning();
-	UE_LOG(LogTemp, Warning, TEXT("BunnyWinner: %d"), BunnyWinner);
+
     if (bIsBunny == BunnyWinner)
     {
 		return true;
