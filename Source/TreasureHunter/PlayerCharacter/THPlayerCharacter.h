@@ -189,6 +189,12 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Climb")
 	float MaxClimbSpeed = 150.f;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Climb")
+	float ClimbingWallOffset = 5.f;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Climb")
+	float ClimbingSlopeOffsetMultiplier = 15.f;
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TObjectPtr<USpringArmComponent> SpringArm;
