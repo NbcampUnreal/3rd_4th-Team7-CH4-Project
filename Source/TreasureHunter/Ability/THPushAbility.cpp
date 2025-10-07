@@ -86,8 +86,9 @@ void UTHPushAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 					{
 						if (Target == PlayerCharacter) continue;
 
-						const FVector Dir = (Target->GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
-						Target->LaunchCharacter((Dir * PushForce) + FVector(0,0, 100.0f), true, true);
+						FVector Dir = (Target->GetActorLocation() - PlayerCharacter->GetActorLocation());
+						Dir.Z = 0.0f;
+						Target->LaunchCharacter((Dir.GetSafeNormal() * PushForce) + FVector(0,0, 100.0f), true, true);
 		
 					}
 
