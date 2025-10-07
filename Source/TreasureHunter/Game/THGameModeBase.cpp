@@ -5,10 +5,14 @@
 #include "Player/THPlayerController.h"
 #include "UI/THLoadingWidget.h"
 #include "Game/GameFlowTags.h"
+#include "Game/THGameInstance.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "OnlineSubsystemTypes.h"
+#include "OnlineSubsystemUtils.h"
+#include "Engine/World.h"
 
 ATHGameModeBase::ATHGameModeBase()
 {
@@ -19,18 +23,55 @@ ATHGameModeBase::ATHGameModeBase()
 	SetGameModeFlow(TAG_Game_Phase_Wait);
 }
 
+void ATHGameModeBase::PreLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	UE_LOG(LogTemp, Warning, TEXT("PreLogin called. Options=%s Address=%s"), *Options, *Address);
+	ErrorMessage.Empty();
+
+	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
+
+	FString NewSessionId = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);
+	const_cast<FString&>(Options).Append(FString::Printf(TEXT("?PlayerSessionId=%s"), *NewSessionId));
+}
+
+APlayerController* ATHGameModeBase::Login(UPlayer* NewPlayer, ENetRole InRemoteRole, const FString& Portal, const FString& Options, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	FString PlayerSessionId = UGameplayStatics::ParseOption(Options, TEXT("PlayerSessionId"));
+	UE_LOG(LogTemp, Warning, TEXT("Login called. Portal=%s Options=%s"), *Portal, *Options);
+	APlayerController* PC = Super::Login(NewPlayer, InRemoteRole, Portal, Options, UniqueId, ErrorMessage);
+	UE_LOG(LogTemp, Warning, TEXT("Login returned PC=%s Error=%s"), PC ? *PC->GetName() : TEXT("NULL"), *ErrorMessage);
+	if (PC && PC->PlayerState)
+	{
+		ATHPlayerState* PS = Cast<ATHPlayerState>(PC->PlayerState);
+		if (PS)
+		{
+			//PS->PlayerSessionId = PlayerSessionId;
+		}
+	}
+	return PC;
+}
+
+void ATHGameModeBase::ApproveLogin(const FString& Options, const FString& Address, const FUniqueNetIdRepl& UniqueId, FString& ErrorMessage)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Start ApproveLogin"));
+	ErrorMessage.Empty();
+}
+
 void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
+	UE_LOG(LogTemp, Warning, TEXT("PostLogin called. Player=%s"), NewPlayer ? *NewPlayer->GetName() : TEXT("NULL"));
+
 	Super::PostLogin(NewPlayer);
 
 	ATHTitlePlayerController* TitlePlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
-	if (IsValid(TitlePlayerController) && IsValid(NewPlayer->Player))
+	if (IsValid(TitlePlayerController))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("PostLogin 호출: %s"), *NewPlayer->GetName());
 		EnterTitlePlayerControllers(TitlePlayerController);
 	}
 
 	ATHPlayerController* PlayerController = Cast<ATHPlayerController>(NewPlayer);
-	if (GameModeFlow == TAG_Game_Phase_Play && IsValid(PlayerController) && IsValid(NewPlayer->Player))
+	if (GameModeFlow == TAG_Game_Phase_Play && IsValid(PlayerController))
 	{
 		ReconnectPlayer(PlayerController);
 	}
@@ -41,16 +82,46 @@ void ATHGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* 
 	Super::HandleStartingNewPlayer_Implementation(NewPlayer);
 
 	ATHPlayerController* MatchPlayerController = Cast<ATHPlayerController>(NewPlayer);
-	if (IsValid(MatchPlayerController) && IsValid(NewPlayer->Player))
+	if (IsValid(MatchPlayerController))
 	{
+		if (!StartPlayerControllers.Contains(MatchPlayerController))
+		{
+			StartPlayerControllers.Add(MatchPlayerController);
+		}
+
 		ACRevisionValueZ = MatchPlayerController->GetTargetLocation().Z;
 		GameStartPlayerControllers(MatchPlayerController);
 	}
 
 	ATHTitlePlayerController* TitlePlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
-	if (IsValid(TitlePlayerController) && IsValid(NewPlayer->Player))
+	if (IsValid(TitlePlayerController))
 	{
+		UE_LOG(LogTemp, Warning, TEXT("HandleStartingNewPlayer_Implementation call Enter"));
 		EnterTitlePlayerControllers(TitlePlayerController);
+	}
+}
+
+void ATHGameModeBase::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UE_LOG(LogTemp, Warning, TEXT("Start BeingPlay"));
+	if (IsRunningDedicatedServer() && GameModeFlow == TAG_Game_Phase_Wait)
+	{
+		UTHGameInstance* GI = Cast<UTHGameInstance>(GetGameInstance());
+		if (GI)
+		{
+			FString ServerAddress = TEXT("3.38.244.81");
+			GI->HostSession(FName("StartSession"), 2, ServerAddress, 7777);
+		}
+	}
+
+	if (GameModeFlow == TAG_Game_Phase_Play)
+	{
+		for (AController* PlayPC : StartPlayerControllers)
+		{
+			RestartPlayer(PlayPC);
+		}
 	}
 }
 
@@ -65,7 +136,7 @@ void ATHGameModeBase::Logout(AController* Exiting)
 	{
 		ATHTitlePlayerController* ExitingWaitPC = Cast<ATHTitlePlayerController>(Exiting);
 		if (!IsValid(ExitingWaitPC)) return;
-		
+		UE_LOG(LogTemp, Warning, TEXT("Logout 호출: %s"), *ExitingWaitPC->GetName());
 		--ServerEnterPlayerNum;
 
 		if (GameModeFlow == TAG_Game_Phase_Wait)
@@ -109,6 +180,10 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 	{
 		GameStart();
 	}
+	else if (GameModeFlow == TAG_Game_Phase_Finish)
+	{
+		OpenLevelPath = nullptr;
+	}
 }
 
 void ATHGameModeBase::StartMatchGame(ATHTitlePlayerController* PC)
@@ -121,6 +196,8 @@ void ATHGameModeBase::StartMatchGame(ATHTitlePlayerController* PC)
 	ATHPlayerState* MatchPS = Cast<ATHPlayerState>(PC->PlayerState);
 	if (!IsValid(MatchPS)) return;
 	
+	if (MatchWaitPlayerControllers.Contains(PC)) return;
+
 	FString PCAddress = MatchConnection->GetRemoteAddr()->ToString(false);
 	FPlayerData* FoundData = LoginPlayerData.FindByPredicate(
 		[&PCAddress](const FPlayerData& Data)
@@ -174,11 +251,13 @@ void ATHGameModeBase::MatchGame()
 		UKismetSystemLibrary::QuitGame(this, CancelPlayer, EQuitPreference::Quit, false);
 	}
 
+	GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
 	SetGameModeFlow(TAG_Game_Phase_Match);
 }
 
 void ATHGameModeBase::LoadGame()
 {
+	UE_LOG(LogTemp, Error, TEXT("LoadGame"));
 	SetGameModeFlow(TAG_Game_Phase_Loading);
 }
 
@@ -188,6 +267,7 @@ void ATHGameModeBase::GameStart()
 
 	for (ATHPlayerController* Player : StartPlayerControllers)
 	{
+		ACRevisionValueZ = Player->GetTargetLocation().Z;
 		ManipluateController(Player, false);
 	}
 
@@ -240,6 +320,8 @@ void ATHGameModeBase::OpenChangeLevel(FGameplayTag NextFlow)
 		if (NextFlow == TAG_Game_Phase_Wait) LoadPath = MainLevelPath;
 	}
 	else return;
+
+	if (OpenLevelPath == LoadPath) return;
 
 	RequestPlayerNum = 0;
 	StartLevelLoad(LoadPath);
@@ -401,6 +483,8 @@ void ATHGameModeBase::StopMatch(bool Rematch)
 	//This "Wait" logic is written like this
 	//because we currently don't have the function to cancel matching on self
 	//later. if we make self cancel function, I change this logic.
+	GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
+
 	if (GameModeFlow == TAG_Game_Phase_Wait)
 	{
 		for (ATHTitlePlayerController* CancelPlayer : MatchWaitPlayerControllers)
@@ -421,8 +505,6 @@ void ATHGameModeBase::StopMatch(bool Rematch)
 			CancelPlayer->Server_RequestMatchAndSetNickname(CancelPS->Nickname);;
 		}
 	}
-
-	GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
 }
 
 void ATHGameModeBase::EnterTitlePlayerControllers(ATHTitlePlayerController* NewPlayer)
@@ -430,7 +512,7 @@ void ATHGameModeBase::EnterTitlePlayerControllers(ATHTitlePlayerController* NewP
 	++ServerEnterPlayerNum;
 	LoginPlayerControllers.Add(NewPlayer);
 
-	UNetConnection* NewConnection = Cast<UNetConnection>(NewPlayer->Player);
+	UNetConnection* NewConnection = NewPlayer->GetNetConnection();
 	FString Address;
 	if (IsValid(NewConnection))
 	{
@@ -438,16 +520,25 @@ void ATHGameModeBase::EnterTitlePlayerControllers(ATHTitlePlayerController* NewP
 	}
 	else
 	{
-		Logout(NewPlayer);
-		return;
+		UE_LOG(LogTemp, Warning, TEXT("NewConnection is Null. Logging out."));
+		//Logout(NewPlayer);
+		//return;
 	}
 
 	FString GuidStr = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);;
 	ATHPlayerState* NewPS = Cast<ATHPlayerState>(NewPlayer->PlayerState);
-	NewPS->PlayerAddress = Address;
-	NewPS->PlayerUniqueId = GuidStr;
+	if (NewPS)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Set NewPS."));
+		NewPS->PlayerAddress = Address;
+		NewPS->PlayerUniqueId = GuidStr;
 
-	SetPlayerData(Address, GuidStr);
+		SetPlayerData(Address, GuidStr);
+	}
+	else if (!NewPS)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("NewPS is Null."));
+	}
 }
 
 void ATHGameModeBase::GetSeamlessTravelActorList(bool bToTransition, TArray<AActor*>& ActorList)
@@ -546,6 +637,20 @@ void ATHGameModeBase::StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad)
 
 	if (OpenLevelPath.IsNull()) return;
 
+	UWorld* CurrentWorld = GetWorld();
+	FString CurrentMapPath = CurrentWorld->GetOutermost()->GetName();
+	FString TravelMapPath = OpenLevelPath.ToSoftObjectPath().ToString();
+
+	if (CurrentMapPath.Equals(TravelMapPath, ESearchCase::IgnoreCase))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Equal Level"));
+		return;
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Different Level Start Travel"));
+	}
+
 	if (!OpenLevelPath.IsValid())
 	{
 		FStreamableManager& Streamable = UAssetManager::GetStreamableManager();
@@ -564,7 +669,42 @@ void ATHGameModeBase::OnLevelLoadedReady()
 	UWorld* LoadedWorld = OpenLevelPath.Get();
 	if (LoadedWorld)
 	{
-		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true);
+		CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
+		GetWorldTimerManager().ClearAllTimersForObject(this);
+
+		if (OpenLevelPath == PlayLevelPath)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Level Loaded. Start ServerTravel"));
+			FTimerHandle TimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+				{
+					const FPlatformMemoryStats MemStats = FPlatformMemory::GetStats();
+					UE_LOG(LogTemp, Error, TEXT("UsedVirtual: %lld MB"), MemStats.UsedVirtual / (1024 * 1024));
+				}, 1.f, false);
+		}
+		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true, false);
+
+		if (OpenLevelPath == PlayLevelPath)
+		{
+			FTimerHandle TimerHandle;
+			GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
+				{
+					const FPlatformMemoryStats MemStats = FPlatformMemory::GetStats();
+					UE_LOG(LogTemp, Error, TEXT("UsedVirtual: %lld MB"), MemStats.UsedVirtual / (1024 * 1024));
+				}, 1.f, false);
+
+			GetWorldTimerManager().SetTimerForNextTick([this]()
+				{
+					// 2초 후 실행
+					FTimerHandle CheckPlayerStatesHandle;
+					GetWorldTimerManager().SetTimer(CheckPlayerStatesHandle, [this]()
+						{
+							TArray<AActor*> AllStates;
+							UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATHPlayerState::StaticClass(), AllStates);
+							UE_LOG(LogTemp, Error, TEXT("PlayerStates in world after travel: %d"), AllStates.Num());
+						}, 10.0f, false);
+				});
+		}
 	}
 }
 
