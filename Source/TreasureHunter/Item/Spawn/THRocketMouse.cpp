@@ -79,7 +79,6 @@ void ATHRocketMouse::OnPlacerActorReady()
         ACharacter* CharacterA = Cast<ACharacter>(ActorA);
         if (CharacterA != PlacerActor && CharacterA->IsPlayerControlled())
         {
-			UE_LOG(LogTemp, Warning, TEXT("Target found: %s"), *GetNameSafe(CharacterA));
             TargetActorA = CharacterA;
             break;
         }
