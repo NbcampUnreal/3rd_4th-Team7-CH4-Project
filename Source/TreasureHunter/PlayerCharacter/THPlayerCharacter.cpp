@@ -1,7 +1,5 @@
 ﻿#include "PlayerCharacter/THPlayerCharacter.h"
 #include "Player/THPlayerState.h"
-#include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/SpringArmComponent.h"
 #include "Game/GameFlowTags.h"
 #include "AttributeSet/THAttributeSet.h"
 #include "AbilitySystemComponent.h"
@@ -9,21 +7,17 @@
 #include "Item/THItemInventory.h"
 #include "Net/UnrealNetwork.h"
 #include "Camera/CameraComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "ParkourComponent/THClimbComponent.h"
-#include "ParkourComponent/THParkourComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "MotionWarpingComponent.h"
-#include "GameplayEffect.h"
 #include "NiagaraComponent.h"
+#include "ParkourComponent/THParkourComponent.h"
+#include "ParkourComponent/THMovementComponent.h"
 
-//DEFINE_LOG_CATEGORY_STATIC(LogTH, Log, All);
-
-#pragma region Climb&Mantle
 ATHPlayerCharacter::ATHPlayerCharacter(const FObjectInitializer& ObjectInitializer)
-	: Super(ObjectInitializer.SetDefaultSubobjectClass<UTHCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<UTHMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	PrimaryActorTick.bCanEverTick = false;
 
@@ -31,10 +25,17 @@ ATHPlayerCharacter::ATHPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationRoll = false;
 
-	GetCharacterMovement()->bUseControllerDesiredRotation = false;
-	GetCharacterMovement()->bOrientRotationToMovement = true;
-	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
-
+	THMovementComponent = Cast<UTHMovementComponent>(GetCharacterMovement());
+	
+	if (THMovementComponent)
+	{
+		THMovementComponent->bOrientRotationToMovement = true;
+		THMovementComponent->RotationRate = FRotator(0.f, 540.f, 0.f);
+		THMovementComponent->bUseControllerDesiredRotation = false;
+		THMovementComponent->MaxWalkSpeed = 200.f;
+		THMovementComponent->NavAgentProps.bCanCrouch = true;
+	}
+	
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
 	SpringArm->SetupAttachment(GetRootComponent());
 	SpringArm->TargetArmLength = 400.f;
@@ -43,9 +44,7 @@ ATHPlayerCharacter::ATHPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
-
-	GetCharacterMovement()->MaxWalkSpeed = 200.f;
-	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+	
 	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
 
 	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
@@ -59,227 +58,11 @@ ATHPlayerCharacter::ATHPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	FootStepComponent->bAutoActivate = false;
 
 	ParkourComponent = CreateDefaultSubobject<UTHParkourComponent>(TEXT("ParkourComponent"));
-	ClimbComponent = CreateDefaultSubobject<UTHClimbComponent>(TEXT("ClimbComponent"));
-
-	if (GetCharacterMovement())
-	{
-		DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
-	}
-
-	AbilitySystem = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("ASC"));
-	AbilitySystem->SetIsReplicated(true);
-	AbilitySystem->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 }
-
 
 void ATHPlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-
-	if (IsLocallyControlled() == true)
-	{
-		APlayerController* PC = Cast<APlayerController>(GetController());
-		checkf(IsValid(PC) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
-
-			UEnhancedInputLocalPlayerSubsystem* EILPS = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(
-				PC->GetLocalPlayer());
-		checkf(IsValid(EILPS) == true, TEXT("EnhancedInputLocalPlayerSubsystem is invalid."))
-
-			EILPS->AddMappingContext(InputMappingContext, 0);
-	}
-
-	if (HasAuthority() && AbilitySystem)
-	{
-		if (ClimbAbilityClass)
-		{
-			AbilitySystem->GiveAbility(FGameplayAbilitySpec(ClimbAbilityClass, 1, INDEX_NONE, this));
-		}
-		if (MantleAbilityClass)
-		{
-			AbilitySystem->GiveAbility(FGameplayAbilitySpec(MantleAbilityClass, 1, INDEX_NONE, this));
-		}
-	}
-}
-
-void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveTriggered);
-	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::HandleMoveCompleted);
-	EIC->BindAction(MoveAction, ETriggerEvent::Canceled, this, &ThisClass::HandleMoveCompleted);
-	EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
-
-	//EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::HandleClimbInput);
-	//EIC->BindAction(ClimbAction, ETriggerEvent::Completed, this, &ThisClass::HandleClimbInputReleased);
-	EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::Jump);
-	EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
-	//EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
-	EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::OnClimbActionStarted);
-	EIC->BindAction(MantleAction, ETriggerEvent::Started, this, &ThisClass::OnParkourActionStarted);
-
-
-
-	EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
-	EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputReleased);
-	EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::OnSprintPressed);
-	EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::OnSprintReleased);
-	EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
-	EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
-	EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
-	EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
-}
-void ATHPlayerCharacter::OnClimbActionStarted(const FInputActionValue& Value)
-{
-	// DEBUG: 입력 감지
-	UE_LOG(LogTemp, Warning, TEXT("[Input][%s] IA_Climb pressed"),
-		HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
-	{
-		const bool bIsClimbingNow = ASC->HasMatchingGameplayTag(ClimbTags::State_Climbing);
-		UE_LOG(LogTemp, Warning, TEXT("[Climb] ASC valid, State_Climbing=%d"), bIsClimbingNow ? 1 : 0);
-
-		if (bIsClimbingNow)
-		{
-			FGameplayTagContainer CancelClimbTags; CancelClimbTags.AddTag(ClimbTags::Ability_Climb);
-			ASC->CancelAbilities(&CancelClimbTags);
-			UE_LOG(LogTemp, Warning, TEXT("[Climb] CancelAbilities(Ability.Climb) sent"));
-		}
-		else
-		{
-			FGameplayTagContainer ActivateClimbTags; ActivateClimbTags.AddTag(ClimbTags::Ability_Climb);
-			const bool bActivated = ASC->TryActivateAbilitiesByTag(ActivateClimbTags);
-			UE_LOG(LogTemp, Warning, TEXT("[Climb] TryActivate(Ability.Climb) -> %d"), bActivated ? 1 : 0);
-		}
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Climb] ASC is NULL"));
-	}
-}
-
-void ATHPlayerCharacter::OnParkourActionStarted(const FInputActionValue& Value)
-{
-	// DEBUG: 입력 감지
-	UE_LOG(LogTemp, Warning, TEXT("[Input][%s] IA_Parkour pressed"),
-		HasAuthority() ? TEXT("SERVER") : TEXT("CLIENT"));
-
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
-	{
-		FGameplayTagContainer MantleTags; MantleTags.AddTag(ClimbTags::Ability_Mantle);
-		const bool bActivated = ASC->TryActivateAbilitiesByTag(MantleTags);
-		UE_LOG(LogTemp, Warning, TEXT("[Mantle] TryActivate(Ability.Mantle) -> %d"), bActivated ? 1 : 0);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[Mantle] ASC is NULL"));
-	}
-
-	// 이벤트 방식
-	// FGameplayEventData Payload; Payload.EventTag = ClimbTags::Event_Input_Parkour;
-	// UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, ClimbTags::Event_Input_Parkour, Payload);
-}
-
-void ATHPlayerCharacter::OnPlayerEnterClimbState()
-{
-}
-
-void ATHPlayerCharacter::OnPlayerExitClimbState()
-{
-}
-
-#pragma endregion
-
-
-//ATHPlayerCharacter::ATHPlayerCharacter()
-//{
-//	PrimaryActorTick.bCanEverTick = false;
-//
-//	bUseControllerRotationPitch = false;
-//	bUseControllerRotationYaw = false;
-//	bUseControllerRotationRoll = false;
-//
-//	GetCharacterMovement()->bUseControllerDesiredRotation = false;
-//	GetCharacterMovement()->bOrientRotationToMovement = true;
-//	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f);
-//
-//	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
-//	SpringArm->SetupAttachment(GetRootComponent());
-//	SpringArm->TargetArmLength = 400.f;
-//	SpringArm->bUsePawnControlRotation = true;
-//
-//	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
-//	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
-//	Camera->bUsePawnControlRotation = false;
-//	
-//	GetCharacterMovement()->MaxWalkSpeed = 200.f;
-//	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
-//	GetCapsuleComponent()->OnComponentHit.AddDynamic(this, &ATHPlayerCharacter::OnCapsuleHit);
-//
-//	MotionWarpingComponent = CreateDefaultSubobject<UMotionWarpingComponent>(TEXT("MotionWarpingComponent"));
-//
-//	StunEffectComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("StunEffectComponent"));
-//	StunEffectComponent->SetupAttachment(GetMesh(), TEXT("StunEffectSocket"));
-//	StunEffectComponent->bAutoActivate = false;
-//
-//	FootStepComponent = CreateDefaultSubobject<UNiagaraComponent>(TEXT("FootStepComponent"));
-//	FootStepComponent->SetupAttachment(GetMesh(), TEXT("FootStep"));
-//	FootStepComponent->bAutoActivate = false;
-//
-//	ParkourComponent = CreateDefaultSubobject<UTHParkourComponent>(TEXT("ParkourComponent"));
-//	ClimbComponent = CreateDefaultSubobject<UTHClimbComponent>(TEXT("ClimbComponent"));
-//	
-//	if (GetCharacterMovement())
-//	{
-//	   DefaultMaxFlySpeed = GetCharacterMovement()->MaxFlySpeed;
-//	}
-//}
-//
-//
-
-
-
-
-
-void ATHPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
-{
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	DOREPLIFETIME(ATHPlayerCharacter, ClimbingWallNormal);
-	DOREPLIFETIME(ATHPlayerCharacter, ClimbMovementDirection);
-}
-
-void ATHPlayerCharacter::OnMantleStart()
-{
-	if (GetCapsuleComponent())
-	{
-	   GetCapsuleComponent()->SetCollisionProfileName(FName("Mantling"));
-	}
-	if (GetSpringArm())
-	{
-	   GetSpringArm()->bDoCollisionTest = false;
-	}
-	if (GetCharacterMovement())
-	{
-	   GetCharacterMovement()->SetMovementMode(MOVE_Flying);
-	}
-}
-
-void ATHPlayerCharacter::OnMantleEnd()
-{
-	if (GetSpringArm())
-	{
-	   GetSpringArm()->bDoCollisionTest = true;
-	}
-	if (GetCapsuleComponent())
-	{
-	   GetCapsuleComponent()->SetCollisionProfileName(FName("Pawn"));
-	}
-	if (GetCharacterMovement())
-	{
-	   GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-	}
 }
 
 void ATHPlayerCharacter::PossessedBy(AController* NewController)
@@ -292,6 +75,19 @@ void ATHPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	InitializeAbilitySystem();
+}
+
+void ATHPlayerCharacter::NotifyControllerChanged()
+{
+	Super::NotifyControllerChanged();
+
+	AddInputMappingContext(DefaultMappingContext, 0);
+
+	if (THMovementComponent)
+	{
+		THMovementComponent->OnEnterClimbStateDelegate.BindUObject(this, &ThisClass::OnPlayerEnterClimbState);
+		THMovementComponent->OnExitClimbStateDelegate.BindUObject(this, &ThisClass::OnPlayerExitClimbState);
+	}
 }
 
 void ATHPlayerCharacter::InitializeAbilitySystem()
@@ -319,219 +115,61 @@ void ATHPlayerCharacter::InitializeAbilitySystemCallbacks()
 	
 	ASC->RegisterGameplayTagEvent(TAG_State_Movement_Sprinting, EGameplayTagEventType::NewOrRemoved)
 	   .AddUObject(this, &ATHPlayerCharacter::OnSprintingStateChanged);
-	
-	ASC->RegisterGameplayTagEvent(TAG_State_Movement_Climbing, EGameplayTagEventType::NewOrRemoved)
-	   .AddUObject(this, &ATHPlayerCharacter::OnClimbingStateChanged);
 }
 
-
-void ATHPlayerCharacter::EnterClimbState(const FVector& InWallNormal)
+void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	UCharacterMovementComponent* CMC = GetCharacterMovement();
-	if (!CMC) return;
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	CMC->SetMovementMode(MOVE_Flying);
-	CMC->bOrientRotationToMovement = false;
-	CMC->Velocity = FVector::ZeroVector;
-	CMC->BrakingDecelerationFlying = 1000.f;
-	CMC->MaxFlySpeed = MaxClimbSpeed;
-	
-	CMC->SetPlaneConstraintEnabled(true);
-	CMC->SetPlaneConstraintNormal(InWallNormal);
-
-	SetClimbingWallNormal(InWallNormal);
-
-	bIsClimbing = true;
-}
-
-void ATHPlayerCharacter::LeaveClimbState()
-{
-	UCharacterMovementComponent* CMC = GetCharacterMovement();
-	if (!CMC) return;
-	
-	const FVector DetachOffset = ClimbingWallNormal * 15.f;
-	AddActorWorldOffset(DetachOffset);
-
-	CMC->Velocity = FVector::ZeroVector;
-	CMC->SetMovementMode(MOVE_Falling);
-	CMC->bOrientRotationToMovement = true;
-	CMC->bUseControllerDesiredRotation = false;
-	CMC->MaxFlySpeed = DefaultMaxFlySpeed;
-	CMC->BrakingDecelerationFlying = 0.f;
-	CMC->SetPlaneConstraintEnabled(false);
-
-	bIsClimbing = false;
-	ClimbMovementDirection = FVector2D::ZeroVector;
-}
-
-void ATHPlayerCharacter::SetClimbingWallNormal(const FVector& InWallNormal)
-{
-	if (HasAuthority())
+	UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	if (EIC)
 	{
-	   ClimbingWallNormal = InWallNormal;
-	   OnRep_ClimbingWallNormal();
-	}
-	else
-	{
-	   Server_SetClimbingWallNormal(InWallNormal);
+		EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveInput);
+		EIC->BindAction(ClimbMoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleClimbMoveInput);
+		EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
+		EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::Jump);
+		EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+		EIC->BindAction(MantleAction, ETriggerEvent::Triggered, this, &ThisClass::RequestMantle);
+		EIC->BindAction(PushAction, ETriggerEvent::Triggered, this, &ThisClass::RequestPush);
+		EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputReleased);
+		EIC->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::OnSprintPressed);
+		EIC->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::OnSprintReleased);
+		EIC->BindAction(InteractAction, ETriggerEvent::Triggered, this, &ThisClass::OnInteract);
+		EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
+		EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
+		EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
+
+		EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::OnClimbActionStarted);
+		EIC->BindAction(ClimbHopAction, ETriggerEvent::Started, this, &ThisClass::OnClimbHopActionStarted);
 	}
 }
 
-void ATHPlayerCharacter::HandleMoveTriggered(const FInputActionValue& InValue)
-{
-	const FVector2D InMovementVector = InValue.Get<FVector2D>();
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-
-	if (ASC && ASC->HasMatchingGameplayTag(TAG_State_Movement_Climbing))
-	{
-	   HandleClimbMovement(InMovementVector);
-	}
-	else
-	{
-	   HandleGroundMovement(InMovementVector);
-	}
-}
-
-void ATHPlayerCharacter::HandleGroundMovement(const FVector2D& InMovementVector)
+void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
 {
 	if (IsValid(Controller))
 	{
-	   const FRotator ControlRotation = Controller->GetControlRotation();
-	   const FRotator ControlYawRotation(0.0f, ControlRotation.Yaw, 0.0f);
-	   const FVector ForwardDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::X);
-	   const FVector RightDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::Y);
+		const FVector2D InMovementVector = InValue.Get<FVector2D>();
+		const FRotator ControlRotation = Controller->GetControlRotation();
+		const FRotator ControlYawRotation(0.0f, ControlRotation.Yaw, 0.0f);
+		const FVector ForwardDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::X);
+		const FVector RightDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::Y);
 
-	   AddMovementInput(ForwardDirection, InMovementVector.X);
-	   AddMovementInput(RightDirection, InMovementVector.Y);
+		AddMovementInput(ForwardDirection, InMovementVector.X);
+		AddMovementInput(RightDirection, InMovementVector.Y);
 	}
 }
 
-void ATHPlayerCharacter::HandleClimbMovement(const FVector2D& InMovementVector)
+void ATHPlayerCharacter::HandleClimbMoveInput(const FInputActionValue& InValue)
 {
-	if (!ClimbComponent) return;
+	if (!THMovementComponent || !THMovementComponent->IsClimbing()) return;
 
-	UpdateClimbMovementState(InMovementVector);
-	AdjustToClimbSurface();
-	ApplyClimbMovementInput(InMovementVector);
-}
+	const FVector2D MovementVector = InValue.Get<FVector2D>();
+	const FVector WallNormal = THMovementComponent->GetClimbableSurfaceNormal();
+	const FVector RightDirection = FVector::CrossProduct(WallNormal, FVector::UpVector).GetSafeNormal();
+	const FVector UpDirection = FVector::CrossProduct(RightDirection, WallNormal).GetSafeNormal();
 
-void ATHPlayerCharacter::UpdateClimbMovementState(const FVector2D& InMovementVector)
-{
-	ClimbMovementDirection = InMovementVector;
-
-	const bool bIsNowMoving = !InMovementVector.IsNearlyZero();
-	
-	if (bIsNowMoving != bIsClimbingAndMoving)
-	{
-		bIsClimbingAndMoving = bIsNowMoving;
-		Server_UpdateClimbingMovementState(bIsClimbingAndMoving);
-	}
-}
-
-void ATHPlayerCharacter::AdjustToClimbSurface()
-{
-	const float CapsuleRadius = GetCapsuleComponent()->GetScaledCapsuleRadius();
-	const FVector ActorLocation = GetActorLocation();
-	const FVector Forward = GetActorForwardVector();
-	const FVector Up = GetActorUpVector();
-	const TArray<AActor*> ActorsToIgnore = { this };
-
-	const float TraceRadius = 15.f;
-	const float TraceDistance = CapsuleRadius + 40.f;
-
-	FHitResult UpperHit, LowerHit, CenterHit;
-
-	const FVector UpperTraceStart = ActorLocation + Up * 60.f;
-	const FVector LowerTraceStart = ActorLocation - Up * 60.f;
-
-	const bool bUpperHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), UpperTraceStart, UpperTraceStart + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, UpperHit, true);
-	const bool bLowerHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), LowerTraceStart, LowerTraceStart + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, LowerHit, true);
-
-	int HitCount = 0;
-	FVector CombinedImpactPoint = FVector::ZeroVector;
-	FVector CombinedNormal = FVector::ZeroVector;
-
-	if (bUpperHit)
-	{
-		CombinedImpactPoint += UpperHit.ImpactPoint;
-		CombinedNormal += UpperHit.ImpactNormal;
-		HitCount++;
-	}
-	if (bLowerHit)
-	{
-		CombinedImpactPoint += LowerHit.ImpactPoint;
-		CombinedNormal += LowerHit.ImpactNormal;
-		HitCount++;
-	}
-
-	if (HitCount == 0)
-	{
-		const bool bCenterHit = UKismetSystemLibrary::SphereTraceSingle(GetWorld(), ActorLocation, ActorLocation + Forward * TraceDistance, TraceRadius, UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic), false, ActorsToIgnore, EDrawDebugTrace::None, CenterHit, true);
-		if (!bCenterHit)
-		{
-			return;
-		}
-		CombinedImpactPoint = CenterHit.ImpactPoint;
-		CombinedNormal = CenterHit.ImpactNormal;
-		HitCount = 1;
-	}
-
-	const FVector AverageImpactPoint = CombinedImpactPoint / HitCount;
-	const FVector AverageNormal = (CombinedNormal / HitCount).GetSafeNormal();
-
-	SetClimbingWallNormal(AverageNormal);
-
-	const float SlopeDotProduct = FVector::DotProduct(AverageNormal, FVector::UpVector);
-	const float DynamicOffset = FMath::Clamp(-SlopeDotProduct, 0.f, 1.f) * ClimbingSlopeOffsetMultiplier;
-	
-	const float DesiredDistance = CapsuleRadius + ClimbingWallOffset + DynamicOffset;
-	
-	const FVector ProjectedLocationOnWall = FVector::PointPlaneProject(ActorLocation, AverageImpactPoint, AverageNormal);
-	const FVector TargetLocation = ProjectedLocationOnWall + AverageNormal * DesiredDistance;
-
-	SetActorLocation(TargetLocation, true);
-}
-
-void ATHPlayerCharacter::ApplyClimbMovementInput(const FVector2D& InMovementVector)
-{
-	const FVector UpDownDirection = FVector::CrossProduct(GetActorRightVector(), ClimbingWallNormal);
-	const FVector LeftRightDirection = GetActorRightVector();
-	
-	if (!FMath::IsNearlyZero(InMovementVector.Y))
-	{
-	   const FVector DesiredSidewaysDir = LeftRightDirection * FMath::Sign(InMovementVector.Y);
-	   FClimbTraceResult SidewaysHitResult;
-
-	   if (ClimbComponent && ClimbComponent->FindClimbableSurface(DesiredSidewaysDir, SidewaysHitResult))
-	   {
-		  SetClimbingWallNormal(SidewaysHitResult.WallNormal);
-		  AddMovementInput(LeftRightDirection, InMovementVector.Y);
-	   }
-	}
-	
-	if (!FMath::IsNearlyZero(InMovementVector.X))
-	{
-	   if (InMovementVector.X > 0.f)
-	   {
-		  const FVector Start = GetActorLocation() + FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-		  const FVector End = Start + GetActorForwardVector() * 100.f;
-		  FHitResult UpwardHit;
-
-		  bool bWallAbove = UKismetSystemLibrary::SphereTraceSingle(
-			 GetWorld(), Start, End, 5.f,
-			 UEngineTypes::ConvertToTraceType(ECollisionChannel::ECC_WorldStatic),
-			 false, { this }, EDrawDebugTrace::None, UpwardHit, true);
-	   	
-		  if (bWallAbove)
-		  {
-			 AddMovementInput(UpDownDirection, InMovementVector.X);
-		  }
-	   }
-	   else
-	   {
-		  AddMovementInput(UpDownDirection, InMovementVector.X);
-	   }
-	}
+	AddMovementInput(UpDirection, MovementVector.Y);
+	AddMovementInput(RightDirection, MovementVector.X);
 }
 
 void ATHPlayerCharacter::OnMoveInputReleased(const FInputActionValue& InValue)
@@ -551,38 +189,84 @@ void ATHPlayerCharacter::HandleLookInput(const FInputActionValue& InValue)
 	if (ensure(IsValid(Controller)))
 	{
 	   const FVector2D InLookVector = InValue.Get<FVector2D>();
-
 	   AddControllerYawInput(InLookVector.X);
 	   AddControllerPitchInput(InLookVector.Y);
 	}
 }
 
-void ATHPlayerCharacter::HandleClimbInput(const FInputActionValue& InValue)
+void ATHPlayerCharacter::OnClimbActionStarted(const FInputActionValue& Value)
 {
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (!ASC) return;
+	if (!THMovementComponent) return;
 
-	if (ASC->HasMatchingGameplayTag(TAG_State_Movement_Climbing))
+	if (HasAuthority())
 	{
-	   FGameplayTagContainer TagsToCancel(TAG_Ability_Climb);
-	   ASC->CancelAbilities(&TagsToCancel);
+		THMovementComponent->ToggleClimbing(!THMovementComponent->IsClimbing());
 	}
 	else
 	{
-	   FGameplayTagContainer TagsToActivate(TAG_Ability_Climb);
-	   ASC->TryActivateAbilitiesByTag(TagsToActivate);
+		Server_ToggleClimbing();
 	}
 }
 
-void ATHPlayerCharacter::HandleClimbInputReleased(const FInputActionValue& InValue)
+void ATHPlayerCharacter::OnClimbHopActionStarted(const FInputActionValue& Value)
 {
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	if (!THMovementComponent) return;
+	
+	if (HasAuthority())
 	{
-	   if (ASC->HasMatchingGameplayTag(TAG_State_Movement_Climbing))
-	   {
-		 FGameplayTagContainer TagsToCancel(TAG_Ability_Climb);
-		 ASC->CancelAbilities(&TagsToCancel);
-	   }
+		THMovementComponent->RequestHopping();
+	}
+	else
+	{
+		Server_RequestHopping();
+	}
+}
+
+void ATHPlayerCharacter::Server_ToggleClimbing_Implementation()
+{
+	if (THMovementComponent)
+	{
+		THMovementComponent->ToggleClimbing(!THMovementComponent->IsClimbing());
+	}
+}
+
+void ATHPlayerCharacter::Server_RequestHopping_Implementation()
+{
+	if (THMovementComponent)
+	{
+		THMovementComponent->RequestHopping();
+	}
+}
+
+void ATHPlayerCharacter::OnPlayerEnterClimbState()
+{
+	AddInputMappingContext(ClimbMappingContext, 1);
+}
+
+void ATHPlayerCharacter::OnPlayerExitClimbState()
+{
+	RemoveInputMappingContext(ClimbMappingContext);
+}
+
+void ATHPlayerCharacter::AddInputMappingContext(const UInputMappingContext* ContextToAdd, const int32 InPriority) const
+{
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			Subsystem->AddMappingContext(ContextToAdd, InPriority);
+		}
+	}
+}
+
+void ATHPlayerCharacter::RemoveInputMappingContext(const UInputMappingContext* ContextRemove) const
+{
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+		{
+			Subsystem->RemoveMappingContext(ContextRemove);
+		}
 	}
 }
 
@@ -605,19 +289,6 @@ void ATHPlayerCharacter::HandleBaseItemInteract()
 	   {
 		 InteractableBaseItem = nullptr;
 	   }
-	}
-}
-
-void ATHPlayerCharacter::HandleMoveCompleted(const FInputActionValue& InValue)
-{
-	if (bIsClimbing)
-	{
-		ClimbMovementDirection = FVector2D::ZeroVector;
-		if (bIsClimbingAndMoving)
-		{
-			bIsClimbingAndMoving = false;
-			Server_UpdateClimbingMovementState(false);
-		}
 	}
 }
 
@@ -666,15 +337,6 @@ void ATHPlayerCharacter::ToggleCrouch()
 	}
 }
 
-void ATHPlayerCharacter::OnRep_ClimbingWallNormal()
-{
-	if (GetAbilitySystemComponent() && GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_State_Movement_Climbing))
-	{
-	   const FRotator TargetRotation = FRotationMatrix::MakeFromX(-ClimbingWallNormal).Rotator();
-	   SetActorRotation(TargetRotation);
-	}
-}
-
 void ATHPlayerCharacter::OnSprintPressed(const FInputActionValue&)
 {
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
@@ -712,25 +374,6 @@ void ATHPlayerCharacter::RequestMantle(const FInputActionValue& InValue)
 	}
 }
 
-void ATHPlayerCharacter::RequestClimb(const FInputActionValue& InValue)
-{
-	UE_LOG(LogTemp, Warning, TEXT("RequestClimb function was called!"));
-
-	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
-	{
-	   if (ASC->HasMatchingGameplayTag(TAG_State_Movement_Climbing))
-	   {
-		 FGameplayTagContainer TagsToCancel(TAG_Ability_Climb);
-		 ASC->CancelAbilities(&TagsToCancel);
-	   }
-	   
-	   else
-	   {
-		 ASC->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_Climb));
-	   }
-	}
-}
-
 void ATHPlayerCharacter::BindToAttributeChanges()
 {
 	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
@@ -751,47 +394,39 @@ void ATHPlayerCharacter::OnStaminaChanged(const FOnAttributeChangeData& Data)
 {
 }
 
-void ATHPlayerCharacter::OnClimbingStateChanged(const FGameplayTag Tag, int32 NewCount)
-{
-	if (NewCount > 0)
-	{
-	}
-	else
-	{
-	   LeaveClimbState();
-	}
-}
-
 void ATHPlayerCharacter::OnSprintingStateChanged(const FGameplayTag Tag, int32 NewCount)
 {
 	const UTHAttributeSet* AS = Cast<UTHAttributeSet>(GetAbilitySystemComponent()->GetAttributeSet(UTHAttributeSet::StaticClass()));
 	if (!AS) return;
 	
 	bIsSprinting = NewCount > 0;
-	GetCharacterMovement()->MaxWalkSpeed = bIsSprinting ? AS->GetSprintSpeed() : AS->GetWalkSpeed();
+	if (THMovementComponent)
+	{
+		THMovementComponent->MaxWalkSpeed = bIsSprinting ? AS->GetSprintSpeed() : AS->GetWalkSpeed();
+	}
 }
 
 void ATHPlayerCharacter::OnWalkSpeedChanged(const FOnAttributeChangeData& Data)
 {
-	if (!bIsSprinting)
+	if (!bIsSprinting && THMovementComponent)
 	{
-	   GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
+	   THMovementComponent->MaxWalkSpeed = Data.NewValue;
 	}
 }
 
 void ATHPlayerCharacter::OnSprintSpeedChanged(const FOnAttributeChangeData& Data)
 {
-	if (bIsSprinting)
+	if (bIsSprinting && THMovementComponent)
 	{
-	   GetCharacterMovement()->MaxWalkSpeed = Data.NewValue;
+	   THMovementComponent->MaxWalkSpeed = Data.NewValue;
 	}
 }
 
 void ATHPlayerCharacter::OnJumpPowerChanged(const FOnAttributeChangeData& Data)
 {
-	if (GetCharacterMovement())
+	if (THMovementComponent)
 	{
-	   GetCharacterMovement()->JumpZVelocity = Data.NewValue;
+	   THMovementComponent->JumpZVelocity = Data.NewValue;
 	}
 }
 
@@ -900,63 +535,12 @@ void ATHPlayerCharacter::Jump()
 	   }
 	}
 
-	GetCharacterMovement()->JumpZVelocity = CurrentJumpPower;
+	if (THMovementComponent)
+	{
+		THMovementComponent->JumpZVelocity = CurrentJumpPower;
+	}
 
 	Super::Jump();
-}
-
-void ATHPlayerCharacter::CacheClimbStaminaEffects(const TSubclassOf<UGameplayEffect>& InDrainEffect, const TSubclassOf<UGameplayEffect>& InRegenEffect)
-{
-	ClimbStaminaDrainEffectClass = InDrainEffect;
-	ClimbStaminaRegenEffectClass = InRegenEffect;
-}
-
-void ATHPlayerCharacter::SwitchClimbStaminaEffect(bool bShouldRegen)
-{
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (!ASC) return;
-
-	if (CurrentClimbStaminaEffectHandle.IsValid())
-	{
-		ASC->RemoveActiveGameplayEffect(CurrentClimbStaminaEffectHandle);
-	}
-	
-	TSubclassOf<UGameplayEffect> EffectToApply = bShouldRegen ? ClimbStaminaRegenEffectClass : ClimbStaminaDrainEffectClass;
-
-	if (EffectToApply)
-	{
-		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
-		EffectContext.AddSourceObject(this);
-		FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(EffectToApply, 1, EffectContext);
-		if (SpecHandle.IsValid())
-		{
-			CurrentClimbStaminaEffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-		}
-	}
-}
-
-void ATHPlayerCharacter::ClearClimbStaminaEffects()
-{
-	UAbilitySystemComponent* ASC = GetAbilitySystemComponent();
-	if (ASC && CurrentClimbStaminaEffectHandle.IsValid())
-	{
-		ASC->RemoveActiveGameplayEffect(CurrentClimbStaminaEffectHandle);
-	}
-	bIsClimbingAndMoving = false;
-	ClimbStaminaDrainEffectClass = nullptr;
-	ClimbStaminaRegenEffectClass = nullptr;
-}
-
-void ATHPlayerCharacter::Server_SetClimbingWallNormal_Implementation(const FVector& InWallNormal)
-{
-	ClimbingWallNormal = InWallNormal;
-	OnRep_ClimbingWallNormal();
-}
-
-void ATHPlayerCharacter::Server_UpdateClimbingMovementState_Implementation(bool bNewIsMoving)
-{
-	bIsClimbingAndMoving = bNewIsMoving;
-	SwitchClimbStaminaEffect(!bNewIsMoving); 
 }
 
 void ATHPlayerCharacter::Server_HandleInteract_Implementation(ATHItemBox* InteractableBox)
@@ -984,4 +568,36 @@ bool ATHPlayerCharacter::Server_HandleInteract_Validate(ATHItemBox* Interactable
 bool ATHPlayerCharacter::Server_HandleBaseItemInteract_Validate(ATHBaseItem* InteractableItem)
 {
 	return true;
+}
+
+void ATHPlayerCharacter::OnMantleStart()
+{
+	if (GetCapsuleComponent())
+	{
+	   GetCapsuleComponent()->SetCollisionProfileName(FName("Mantling"));
+	}
+	if (GetSpringArm())
+	{
+	   GetSpringArm()->bDoCollisionTest = false;
+	}
+	if (GetCharacterMovement())
+	{
+	   GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	}
+}
+
+void ATHPlayerCharacter::OnMantleEnd()
+{
+	if (GetSpringArm())
+	{
+	   GetSpringArm()->bDoCollisionTest = true;
+	}
+	if (GetCapsuleComponent())
+	{
+	   GetCapsuleComponent()->SetCollisionProfileName(FName("Pawn"));
+	}
+	if (GetCharacterMovement())
+	{
+	   GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+	}
 }
