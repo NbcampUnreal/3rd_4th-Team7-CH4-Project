@@ -1,9 +1,11 @@
 #include "ParkourComponent/THMovementComponent.h"
+#include "AbilitySystemBlueprintLibrary.h"
 #include "PlayerCharacter/THPlayerCharacter.h"
 #include "Components/CapsuleComponent.h"
 #include "MotionWarpingComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Game/GameFlowTags.h"
 #include "Net/UnrealNetwork.h"
 
 void UTHMovementComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -44,22 +46,41 @@ void UTHMovementComponent::PhysCustom(float deltaTime, int32 Iterations)
 void UTHMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
 {
 	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
-
+	
 	if (IsClimbing())
 	{
 		bOrientRotationToMovement = false;
-		CharacterOwner->GetCapsuleComponent()->SetCapsuleHalfHeight(48.f);
+		CharacterOwner->GetCapsuleComponent()->SetCapsuleHalfHeight(40.f);
+		
+		if (UAbilitySystemComponent* ASC = OwningPlayerCharacter->GetAbilitySystemComponent())
+		{
+			FGameplayTagContainer SprintAbilityTag;
+			SprintAbilityTag.AddTag(TAG_Ability_Sprint);
+			ASC->CancelAbilities(&SprintAbilityTag);
+		}
+		
+		if (OwningPlayerCharacter)
+		{
+			OwningPlayerCharacter->bIsClimbing = true;
+		}
+
 		OnEnterClimbStateDelegate.ExecuteIfBound();
 	}
-
+	
 	if (PreviousMovementMode == MOVE_Custom && PreviousCustomMode == ECustomMovementMode::MOVE_Climb)
 	{
 		bOrientRotationToMovement = true;
-		CharacterOwner->GetCapsuleComponent()->SetCapsuleHalfHeight(96.f);
+		CharacterOwner->GetCapsuleComponent()->SetCapsuleHalfHeight(80.f);
 
 		const FRotator DirtyRotation = UpdatedComponent->GetComponentRotation();
 		const FRotator CleanStandRotation = FRotator(0.f, DirtyRotation.Yaw, 0.f);
 		UpdatedComponent->SetRelativeRotation(CleanStandRotation);
+		
+		if (OwningPlayerCharacter)
+		{
+			OwningPlayerCharacter->bIsClimbing = false;
+			OwningPlayerCharacter->ClimbMovementDirection = FVector2D::ZeroVector;
+		}
 
 		StopMovementImmediately();
 		OnExitClimbStateDelegate.ExecuteIfBound();
@@ -145,10 +166,23 @@ FHitResult UTHMovementComponent::DoLineTraceSingleForObject(const FVector& Start
 
 bool UTHMovementComponent::TraceClimbableSurfaces()
 {
-	const FVector StartOffset = UpdatedComponent->GetForwardVector() * 30.f;
-	const FVector Start = UpdatedComponent->GetComponentLocation() + StartOffset;
-	const FVector End = Start + UpdatedComponent->GetForwardVector();
-	ClimbableSurfacesTracedResults = DoCapsuleTraceMultiForObjects(Start, End);
+	const FVector Forward = UpdatedComponent->GetForwardVector();
+	const FVector Start = UpdatedComponent->GetComponentLocation();
+	const FVector End = Start + Forward * 150.f;
+	const FVector BoxHalfSize = FVector(10.f, 50.f, 70.f);
+	const FRotator Orientation = UpdatedComponent->GetComponentRotation();
+    
+	TArray<AActor*> Ignore;
+	Ignore.Add(CharacterOwner);
+
+	ClimbableSurfacesTracedResults.Reset();
+
+	UKismetSystemLibrary::BoxTraceMultiForObjects(
+		this, Start, End, BoxHalfSize, Orientation,
+		ClimbableSurfaceTraceTypes, false, Ignore,
+		EDrawDebugTrace::None, ClimbableSurfacesTracedResults, false
+	);
+
 	return !ClimbableSurfacesTracedResults.IsEmpty();
 }
 
@@ -263,26 +297,26 @@ bool UTHMovementComponent::CheckShouldStopClimbing() const
 
 bool UTHMovementComponent::CheckHasReachedFloor() const
 {
-	if (GetUnrotatedClimbVelocity().Z > -10.f) return false;
+    if (GetUnrotatedClimbVelocity().Z > -10.f) return false;
 
-	const FVector DownVector = -UpdatedComponent->GetUpVector();
-	const FVector StartOffset = DownVector * 80.f;
-	const FVector Start = UpdatedComponent->GetComponentLocation() + StartOffset;
-	const FVector End = Start + DownVector;
+    const float CapsuleHalfHeight = CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+    const FVector DownVector = -UpdatedComponent->GetUpVector();
+    const FVector Start = UpdatedComponent->GetComponentLocation();
+    const FVector End = Start + DownVector * (CapsuleHalfHeight + 5.f);
 
-	TArray<FHitResult> PossibleFloorHits = DoCapsuleTraceMultiForObjects(Start, End);
+    TArray<FHitResult> PossibleFloorHits = DoCapsuleTraceMultiForObjects(Start, End);
 
-	if (PossibleFloorHits.IsEmpty()) return false;
+    if (PossibleFloorHits.IsEmpty()) return false;
 
-	for (const FHitResult& HitResult : PossibleFloorHits)
-	{
-		if (FVector::Parallel(-HitResult.ImpactNormal, FVector::UpVector))
-		{
-			return true;
-		}
-	}
+    for (const FHitResult& HitResult : PossibleFloorHits)
+    {
+        if (HitResult.bBlockingHit && FVector::DotProduct(HitResult.ImpactNormal, FVector::UpVector) > GetWalkableFloorZ())
+        {
+            return true;
+        }
+    }
 
-	return false;
+    return false;
 }
 
 bool UTHMovementComponent::CanClimbDownLedge() const
@@ -312,21 +346,22 @@ bool UTHMovementComponent::CanClimbDownLedge() const
 
 bool UTHMovementComponent::CheckHasReachedLedge() const
 {
-	if (GetUnrotatedClimbVelocity().Z < 10.f) return false;
+    if (GetUnrotatedClimbVelocity().Z < 10.f) return false;
 
-	FHitResult LedgeHit = TraceFromEyeHeight(100.f, 50.f);
-	if (!LedgeHit.bBlockingHit)
-	{
-		const FVector WalkableSurfaceTraceStart = LedgeHit.TraceEnd;
-		const FVector DownVector = -UpdatedComponent->GetUpVector();
-		const FVector WalkableSurfaceTraceEnd = WalkableSurfaceTraceStart + DownVector * 100.f;
-		FHitResult WalkableSurfaceHit = DoLineTraceSingleForObject(WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd);
-		if (WalkableSurfaceHit.bBlockingHit)
-		{
-			return true;
-		}
-	}
-	return false;
+    FHitResult LedgeHit = TraceFromEyeHeight(100.f, 80.f);
+    if (!LedgeHit.bBlockingHit)
+    {
+        const FVector WalkableSurfaceTraceStart = LedgeHit.TraceEnd;
+        const FVector DownVector = -UpdatedComponent->GetUpVector();
+        const FVector WalkableSurfaceTraceEnd = WalkableSurfaceTraceStart + DownVector * 150.f;
+        FHitResult WalkableSurfaceHit = DoLineTraceSingleForObject(WalkableSurfaceTraceStart, WalkableSurfaceTraceEnd);
+
+        if (WalkableSurfaceHit.bBlockingHit && FVector::DotProduct(WalkableSurfaceHit.ImpactNormal, FVector::UpVector) > GetWalkableFloorZ())
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 FQuat UTHMovementComponent::GetClimbRotation(float DeltaTime) const
@@ -348,19 +383,24 @@ void UTHMovementComponent::SnapMovementToClimbableSurfaces(float DeltaTime) cons
 	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
 	const FVector ProjectedCharacterToSurface = (CurrentClimbableSurfaceLocation - ComponentLocation).ProjectOnTo(ComponentForward);
 	const FVector SnapVector = -CurrentClimbableSurfaceNormal * ProjectedCharacterToSurface.Length();
-	UpdatedComponent->MoveComponent(SnapVector * DeltaTime * MaxClimbSpeed, UpdatedComponent->GetComponentQuat(), true);
+	FQuat TargetRot = GetClimbRotation(DeltaTime);
+	UpdatedComponent->MoveComponent(SnapVector, TargetRot, true);
 }
 
 void UTHMovementComponent::ToggleClimbing(bool bEnableClimb)
 {
 	if (bEnableClimb)
 	{
+		StopMovementImmediately();
+
 		if (CanStartClimbing())
 		{
+			StartClimbing();
 			PlayClimbMontage(IdleToClimbMontage);
 		}
 		else if (CanClimbDownLedge())
 		{
+			StartClimbing();
 			PlayClimbMontage(ClimbDownLedgeMontage);
 		}
 		else
@@ -451,8 +491,6 @@ void UTHMovementComponent::OnClimbMontageEnded(UAnimMontage* MontageToPlay, bool
 {
 	if (MontageToPlay == IdleToClimbMontage || MontageToPlay == ClimbDownLedgeMontage)
 	{
-		StartClimbing();
-		StopMovementImmediately();
 	}
 	else if (MontageToPlay == ClimbToTopMontage || MontageToPlay == VaultingMontage)
 	{

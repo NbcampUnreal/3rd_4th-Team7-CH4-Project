@@ -42,8 +42,14 @@ protected:
 	uint8 bIsCrouching : 1;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State|Climb")
-	uint8 bIsClimbing : 1;
-	
+	bool bIsClimbing;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State|Climb")
-	FVector ClimbVelocity;
+	float ClimbDirectionX;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State|Climb")
+	float ClimbDirectionY;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "State|Climb")
+	float ClimbingBlendSpeed = 10.f;
 };
