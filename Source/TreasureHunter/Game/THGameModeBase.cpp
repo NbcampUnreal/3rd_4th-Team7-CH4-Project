@@ -66,7 +66,7 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 	ATHTitlePlayerController* TitlePlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
 	if (IsValid(TitlePlayerController))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PostLogin 호출: %s"), *NewPlayer->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("PostLogin : %s"), *NewPlayer->GetName());
 		EnterTitlePlayerControllers(TitlePlayerController);
 	}
 
@@ -74,6 +74,11 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 	if (GameModeFlow == TAG_Game_Phase_Play && IsValid(PlayerController))
 	{
 		ReconnectPlayer(PlayerController);
+	}
+
+	if (ATHPlayerController* PC = Cast<ATHPlayerController>(NewPlayer))
+	{
+		PC->Client_DisablePlayerControl();
 	}
 }
 
@@ -136,7 +141,7 @@ void ATHGameModeBase::Logout(AController* Exiting)
 	{
 		ATHTitlePlayerController* ExitingWaitPC = Cast<ATHTitlePlayerController>(Exiting);
 		if (!IsValid(ExitingWaitPC)) return;
-		UE_LOG(LogTemp, Warning, TEXT("Logout 호출: %s"), *ExitingWaitPC->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("Logout : %s"), *ExitingWaitPC->GetName());
 		--ServerEnterPlayerNum;
 
 		if (GameModeFlow == TAG_Game_Phase_Wait)
@@ -695,7 +700,6 @@ void ATHGameModeBase::OnLevelLoadedReady()
 
 			GetWorldTimerManager().SetTimerForNextTick([this]()
 				{
-					// 2초 후 실행
 					FTimerHandle CheckPlayerStatesHandle;
 					GetWorldTimerManager().SetTimer(CheckPlayerStatesHandle, [this]()
 						{
@@ -723,25 +727,30 @@ void ATHGameModeBase::CourseCalculate()
 	{
 		UGameplayStatics::GetAllActorsWithTag(GetWorld(), PosActorTags[i], FoundActors);
 	}
-
-	for (int32 i = 0; i < FoundActors.Num(); i++)
+	for (int32 i = 0; i < PosActorTags.Num(); i++)
 	{
-		if (!IsValid(FoundActors[i])) continue;
-		
-		if (FoundActors[i]->ActorHasTag(FName("Start")))
+		FoundActors.Empty();
+		UGameplayStatics::GetAllActorsWithTag(GetWorld(), PosActorTags[i], FoundActors);
+
+		for (int32 j = 0; j < FoundActors.Num(); j++)
 		{
-			StartActor = FoundActors[i];
-			StartPos = StartActor->GetActorLocation();
-		}
-		else if (FoundActors[i]->ActorHasTag(FName("Check")))
-		{
-			CheckActor = FoundActors[i];
-			CheckPos = CheckActor->GetActorLocation();
-		}
-		else if (FoundActors[i]->ActorHasTag(FName("Finish")))
-		{
-			FinishActor = FoundActors[i];
-			FinishPos = FinishActor->GetActorLocation();
+			if (!IsValid(FoundActors[j])) continue;
+
+			if (FoundActors[j]->ActorHasTag(FName("Start")))
+			{
+				StartActor = FoundActors[j];
+				StartPos = StartActor->GetActorLocation();
+			}
+			else if (FoundActors[j]->ActorHasTag(FName("Check")))
+			{
+				CheckActor = FoundActors[j];
+				CheckPos = CheckActor->GetActorLocation();
+			}
+			else if (FoundActors[j]->ActorHasTag(FName("Finish")))
+			{
+				FinishActor = FoundActors[j];
+				FinishPos = FinishActor->GetActorLocation();
+			}
 		}
 	}
 
@@ -858,5 +867,35 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 			}
 		}
 		Player->Client_UpdateWinner(bBunnyHasBeenWinning);
+	}
+}
+
+
+
+void ATHGameModeBase::NotifyClientLoaded(AController* ClientController)
+{
+	if (HasAuthority())
+	{
+		if (!LoadedPlayers.Contains(ClientController))
+		{
+			LoadedPlayers.Add(ClientController);
+
+			TryStartGame();
+		}
+	}
+}
+
+void ATHGameModeBase::TryStartGame()
+{
+	if (LoadedPlayers.Num() >= NumExpectedPlayers)
+	{
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			ATHPlayerController* PC = Cast<ATHPlayerController>(*It);
+			if (PC)
+			{
+				PC->Client_EnablePlayerControl();
+			}
+		}
 	}
 }

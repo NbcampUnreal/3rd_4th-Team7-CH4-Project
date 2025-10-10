@@ -19,6 +19,16 @@
 #include "Kismet/GameplayStatics.h"
 
 
+#include "CoreMinimal.h"
+#include "GameFramework/PlayerController.h"
+#include "TimerManager.h"
+#include "Engine/LevelStreaming.h"
+#include "Engine/TextureStreamingTypes.h"
+#include "Engine/Texture2D.h"
+#include "GameFramework/Character.h"
+
+FTimerHandle ReadyPollHandle;
+
 #pragma region General
 void ATHPlayerController::BeginPlay()
 {
@@ -27,6 +37,7 @@ void ATHPlayerController::BeginPlay()
 	{
 		return;
 	}
+	Client_DisablePlayerControl();
 
 	EnsureHUD();
 	InitHUDBindingsFromPlayerState();
@@ -41,6 +52,7 @@ void ATHPlayerController::BeginPlay()
 		GS->OnPhaseChanged.AddDynamic(this, &ATHPlayerController::HandlePhaseChange);
 		GS->OnRematchChanged.AddDynamic(this, &ThisClass::HandleRematchChanged);
 	}
+	CheckStreamingFinished();
 }
 
 void ATHPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -379,3 +391,62 @@ void ATHPlayerController::HandleRematchChanged(FGameplayTag NewTag)
 	}
 }
 #pragma endregion
+
+
+void ATHPlayerController::CheckStreamingFinished()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	bool bStillLoading = false;
+	for (ULevelStreaming* StreamingLevel : World->GetStreamingLevels())
+	{
+		if (StreamingLevel && !StreamingLevel->IsLevelLoaded())
+		{
+			bStillLoading = true;
+			break;
+		}
+	}
+
+	if (bStillLoading)
+	{
+		World->GetTimerManager().SetTimerForNextTick(this, &ATHPlayerController::CheckStreamingFinished);
+		return;
+	}
+
+	
+	ReadyPollHandle.Invalidate();
+	const float TextureLoadSafetyDelay = 0.5f;
+
+	World->GetTimerManager().SetTimer(ReadyPollHandle, this, &ATHPlayerController::FinishLoading, TextureLoadSafetyDelay, false);
+}
+
+void ATHPlayerController::Server_NotifyClientLoaded_Implementation()
+{
+	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
+	{
+		GM->NotifyClientLoaded(this);
+	}
+}
+
+void ATHPlayerController::Client_DisablePlayerControl_Implementation()
+{
+	if (ACharacter* MyChar = GetCharacter())
+		MyChar->DisableInput(this);
+}
+
+void ATHPlayerController::Client_EnablePlayerControl_Implementation()
+{
+	if (ACharacter* MyChar = GetCharacter())
+		MyChar->EnableInput(this);
+}
+
+void ATHPlayerController::FinishLoading()
+{
+	if (GetNetMode() == NM_DedicatedServer || !IsLocalController())
+	{
+		return;
+	}
+
+	Server_NotifyClientLoaded();
+}
