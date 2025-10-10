@@ -57,11 +57,11 @@ private:
 	void InitializeAbilitySystemCallbacks();
 	
 	void HandleMoveInput(const FInputActionValue& InValue);
-	void HandleClimbMoveInput(const FInputActionValue& InValue);
 	void HandleLookInput(const FInputActionValue& InValue);
 	
 	void OnClimbActionStarted(const FInputActionValue& Value);
 	void OnClimbHopActionStarted(const FInputActionValue& Value);
+	void OnMoveInputCompleted(const FInputActionValue& InValue);
 
 	UFUNCTION(Server, Reliable)
 	void Server_ToggleClimbing();
@@ -99,9 +99,6 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> MoveAction;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-	TObjectPtr<UInputAction> ClimbMoveAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
 	TObjectPtr<UInputAction> LookAction;
@@ -148,6 +145,12 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UTHMovementComponent> THMovementComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Climb")
+	bool bIsClimbing = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Climb")
+	FVector2D ClimbMovementDirection = FVector2D::ZeroVector;
 
 private:
 	UPROPERTY()

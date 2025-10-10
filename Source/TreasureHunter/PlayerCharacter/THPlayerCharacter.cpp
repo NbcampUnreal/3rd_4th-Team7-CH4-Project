@@ -125,7 +125,7 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	if (EIC)
 	{
 		EIC->BindAction(MoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleMoveInput);
-		EIC->BindAction(ClimbMoveAction, ETriggerEvent::Triggered, this, &ThisClass::HandleClimbMoveInput);
+		EIC->BindAction(MoveAction, ETriggerEvent::Completed, this, &ThisClass::OnMoveInputCompleted);
 		EIC->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::HandleLookInput);
 		EIC->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ThisClass::Jump);
 		EIC->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
@@ -138,7 +138,6 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EIC->BindAction(SlotUse1Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot1);
 		EIC->BindAction(SlotUse2Action, ETriggerEvent::Triggered, this, &ThisClass::OnUseItemSlot2);
 		EIC->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &ThisClass::ToggleCrouch);
-
 		EIC->BindAction(ClimbAction, ETriggerEvent::Started, this, &ThisClass::OnClimbActionStarted);
 		EIC->BindAction(ClimbHopAction, ETriggerEvent::Started, this, &ThisClass::OnClimbHopActionStarted);
 	}
@@ -146,30 +145,31 @@ void ATHPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
 {
-	if (IsValid(Controller))
+	if (THMovementComponent && THMovementComponent->IsClimbing())
 	{
-		const FVector2D InMovementVector = InValue.Get<FVector2D>();
-		const FRotator ControlRotation = Controller->GetControlRotation();
-		const FRotator ControlYawRotation(0.0f, ControlRotation.Yaw, 0.0f);
-		const FVector ForwardDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::X);
-		const FVector RightDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::Y);
-
-		AddMovementInput(ForwardDirection, InMovementVector.X);
-		AddMovementInput(RightDirection, InMovementVector.Y);
+		const FVector2D MovementVector = InValue.Get<FVector2D>();
+		this->ClimbMovementDirection = MovementVector;
+		const FVector UpDirection = GetActorUpVector();
+		const FVector RightDirection = GetActorRightVector();
+		
+		AddMovementInput(UpDirection, MovementVector.X);
+		AddMovementInput(RightDirection, MovementVector.Y);
 	}
-}
 
-void ATHPlayerCharacter::HandleClimbMoveInput(const FInputActionValue& InValue)
-{
-	if (!THMovementComponent || !THMovementComponent->IsClimbing()) return;
+	else
+	{
+		if (IsValid(Controller))
+		{
+			const FVector2D InMovementVector = InValue.Get<FVector2D>();
+			const FRotator ControlRotation = Controller->GetControlRotation();
+			const FRotator ControlYawRotation(0.0f, ControlRotation.Yaw, 0.0f);
+			const FVector ForwardDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::X);
+			const FVector RightDirection = FRotationMatrix(ControlYawRotation).GetUnitAxis(EAxis::Y);
 
-	const FVector2D MovementVector = InValue.Get<FVector2D>();
-	const FVector WallNormal = THMovementComponent->GetClimbableSurfaceNormal();
-	const FVector RightDirection = FVector::CrossProduct(WallNormal, FVector::UpVector).GetSafeNormal();
-	const FVector UpDirection = FVector::CrossProduct(RightDirection, WallNormal).GetSafeNormal();
-
-	AddMovementInput(UpDirection, MovementVector.Y);
-	AddMovementInput(RightDirection, MovementVector.X);
+			AddMovementInput(ForwardDirection, InMovementVector.X);
+			AddMovementInput(RightDirection, InMovementVector.Y);
+		}
+	}
 }
 
 void ATHPlayerCharacter::OnMoveInputReleased(const FInputActionValue& InValue)
@@ -208,6 +208,14 @@ void ATHPlayerCharacter::OnClimbActionStarted(const FInputActionValue& Value)
 	}
 }
 
+void ATHPlayerCharacter::OnMoveInputCompleted(const FInputActionValue& InValue)
+{
+	if (THMovementComponent && THMovementComponent->IsClimbing())
+	{
+		ClimbMovementDirection = FVector2D::ZeroVector;
+	}
+}
+
 void ATHPlayerCharacter::OnClimbHopActionStarted(const FInputActionValue& Value)
 {
 	if (!THMovementComponent) return;
@@ -240,12 +248,10 @@ void ATHPlayerCharacter::Server_RequestHopping_Implementation()
 
 void ATHPlayerCharacter::OnPlayerEnterClimbState()
 {
-	AddInputMappingContext(ClimbMappingContext, 1);
 }
 
 void ATHPlayerCharacter::OnPlayerExitClimbState()
 {
-	RemoveInputMappingContext(ClimbMappingContext);
 }
 
 void ATHPlayerCharacter::AddInputMappingContext(const UInputMappingContext* ContextToAdd, const int32 InPriority) const

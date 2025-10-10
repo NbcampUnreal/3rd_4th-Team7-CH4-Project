@@ -35,11 +35,19 @@ void UTHAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		
 		bIsFalling = THMovementComponent->IsFalling();
 		bIsCrouching = THMovementComponent->IsCrouching();
-		bIsClimbing = THMovementComponent->IsClimbing();
-
-		if (bIsClimbing)
+		
+		FVector2D TargetDirection = FVector2D::ZeroVector;
+		if (PlayerCharacter->bIsClimbing)
 		{
-			ClimbVelocity = THMovementComponent->GetUnrotatedClimbVelocity();
+			TargetDirection = PlayerCharacter->ClimbMovementDirection;
 		}
+       
+		const FVector2D CurrentDirection = FVector2D(ClimbDirectionX, ClimbDirectionY);
+		const FVector2D InterpedDirection = FMath::Vector2DInterpTo(CurrentDirection, TargetDirection, DeltaSeconds, ClimbingBlendSpeed);
+       
+		ClimbDirectionX = InterpedDirection.X;
+		ClimbDirectionY = InterpedDirection.Y;
+       
+		bIsClimbing = PlayerCharacter->bIsClimbing;
 	}
 }
