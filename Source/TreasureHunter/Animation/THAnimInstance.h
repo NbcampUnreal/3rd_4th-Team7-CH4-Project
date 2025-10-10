@@ -5,7 +5,7 @@
 #include "THAnimInstance.generated.h"
 
 class ATHPlayerCharacter;
-class UCharacterMovementComponent;
+class UTHMovementComponent;
 
 UCLASS()
 class TREASUREHUNTER_API UTHAnimInstance : public UAnimInstance
@@ -14,43 +14,42 @@ class TREASUREHUNTER_API UTHAnimInstance : public UAnimInstance
 
 public:
 	virtual void NativeInitializeAnimation() override;
-
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 
 protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character")
 	TObjectPtr<ATHPlayerCharacter> PlayerCharacter;
         
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	TObjectPtr<UCharacterMovementComponent> CharacterMovementComponent;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character")
+	TObjectPtr<UTHMovementComponent> THMovementComponent;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	FVector Velocity;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	float GroundSpeed;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Direction;
         
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	uint8 bShouldMove : 1;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	uint8 bIsFalling : 1;
         
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State")
 	uint8 bIsCrouching : 1;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	uint8 bIsClimbing : 1;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State|Climb")
+	bool bIsClimbing;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State|Climb")
 	float ClimbDirectionX;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "State|Climb")
 	float ClimbDirectionY;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Climb")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "State|Climb")
 	float ClimbingBlendSpeed = 10.f;
 };
