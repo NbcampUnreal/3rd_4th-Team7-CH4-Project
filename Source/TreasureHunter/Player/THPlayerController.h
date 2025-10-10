@@ -97,4 +97,21 @@ private:
 	UFUNCTION()
 	void HandleRematchChanged(FGameplayTag NewTag);
 #pragma endregion
+
+
+public:
+	UFUNCTION(Server, Reliable)
+	void Server_NotifyClientLoaded();
+
+	UFUNCTION(Client, Reliable)
+	void Client_EnablePlayerControl();
+
+	UFUNCTION(Client, Reliable)
+	void Client_DisablePlayerControl();
+
+	UFUNCTION()
+	void CheckStreamingFinished();
+
+	void FinishLoading();
+
 };
