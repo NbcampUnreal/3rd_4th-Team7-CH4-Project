@@ -224,4 +224,21 @@ public:
 private:
 	void ReMatchGame();
 #pragma endregion
+
+
+public:
+	
+
+	UPROPERTY(Transient)
+	TArray<AController*> LoadedPlayers;
+
+	int32 NumExpectedPlayers = 2;
+
+	void NotifyClientLoaded(AController* ClientController);
+
+protected:
+	void TryStartGame();
+
+private:
+	mutable bool bPassedCheckLine = false;
 };
