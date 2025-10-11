@@ -272,7 +272,7 @@ void ATHGameModeBase::GameStart()
 
 	for (ATHPlayerController* Player : StartPlayerControllers)
 	{
-		ACRevisionValueZ = Player->GetTargetLocation().Z;
+		ACRevisionValueZ = Player->GetTargetLocation().Z - StartPos.Z;;
 		ManipluateController(Player, false);
 	}
 
