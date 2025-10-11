@@ -237,7 +237,8 @@ public:
 	void NotifyClientLoaded(AController* ClientController);
 
 protected:
-
 	void TryStartGame();
 
+private:
+	mutable bool bPassedCheckLine = false;
 };
