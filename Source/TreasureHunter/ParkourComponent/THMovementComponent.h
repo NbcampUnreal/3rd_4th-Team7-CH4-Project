@@ -55,7 +55,6 @@ private:
 	void PhysClimb(float DeltaTime, int32 Iterations);
 	void ProcessClimbableSurfaceInfo();
 	bool CheckShouldStopClimbing() const;
-	bool CheckHasReachedFloor() const;
 	bool CanClimbDownLedge() const;
 	bool CheckHasReachedLedge() const;
 	FQuat GetClimbRotation(float DeltaTime) const;
