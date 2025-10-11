@@ -73,6 +73,11 @@ void UTHAttributeSet::OnRep_SprintSpeed(const FGameplayAttributeData& OldSprintS
     GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, SprintSpeed, OldSprintSpeed);
 }
 
+void UTHAttributeSet::OnRep_CrouchSpeed(const FGameplayAttributeData& OldCrouchSpeed)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, SprintSpeed, OldCrouchSpeed);
+}
+
 void UTHAttributeSet::OnRep_JumpPower(const FGameplayAttributeData& OldJumpPower)
 {
 	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, JumpPower, OldJumpPower);
