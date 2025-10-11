@@ -188,10 +188,16 @@ bool UTHMovementComponent::TraceClimbableSurfaces()
 
 FHitResult UTHMovementComponent::TraceFromEyeHeight(float TraceDistance, float TraceStartOffset, bool bShowDebugShape, bool bDrawPersistantShapes) const
 {
-	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
-	const FVector EyeHeightOffset = UpdatedComponent->GetUpVector() * (CharacterOwner->BaseEyeHeight + TraceStartOffset);
-	const FVector Start = ComponentLocation + EyeHeightOffset;
-	const FVector End = Start + UpdatedComponent->GetForwardVector() * TraceDistance;
+	const UCapsuleComponent* Cap = CharacterOwner->GetCapsuleComponent();
+	if (!ensure(Cap)) return FHitResult();
+
+	const FVector Up = UpdatedComponent->GetUpVector();
+	const FVector Fwd = UpdatedComponent->GetForwardVector();
+	const float Half = Cap->GetScaledCapsuleHalfHeight();
+	const float EyeOffsetFromTop = 10.f;
+	const FVector Start = Cap->GetComponentLocation() + Up * (Half - EyeOffsetFromTop + TraceStartOffset);
+	const FVector End = Start + Fwd * TraceDistance;
+
 	return DoLineTraceSingleForObject(Start, End, bShowDebugShape, bDrawPersistantShapes);
 }
 
@@ -223,7 +229,7 @@ void UTHMovementComponent::PhysClimb(float DeltaTime, int32 Iterations)
 	TraceClimbableSurfaces();
 	ProcessClimbableSurfaceInfo();
 
-	if (CheckShouldStopClimbing() || CheckHasReachedFloor())
+	if (CheckShouldStopClimbing())
 	{
 		StopClimbing();
 		return;
@@ -237,7 +243,6 @@ void UTHMovementComponent::PhysClimb(float DeltaTime, int32 Iterations)
 	}
 
 	ApplyRootMotionToVelocity(DeltaTime);
-
 	const FVector OldLocation = UpdatedComponent->GetComponentLocation();
 	const FVector Adjusted = Velocity * DeltaTime;
 	FHitResult Hit(1.f);
@@ -293,30 +298,6 @@ bool UTHMovementComponent::CheckShouldStopClimbing() const
 	}
 
 	return false;
-}
-
-bool UTHMovementComponent::CheckHasReachedFloor() const
-{
-    if (GetUnrotatedClimbVelocity().Z > -10.f) return false;
-
-    const float CapsuleHalfHeight = CharacterOwner->GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
-    const FVector DownVector = -UpdatedComponent->GetUpVector();
-    const FVector Start = UpdatedComponent->GetComponentLocation();
-    const FVector End = Start + DownVector * (CapsuleHalfHeight + 5.f);
-
-    TArray<FHitResult> PossibleFloorHits = DoCapsuleTraceMultiForObjects(Start, End);
-
-    if (PossibleFloorHits.IsEmpty()) return false;
-
-    for (const FHitResult& HitResult : PossibleFloorHits)
-    {
-        if (HitResult.bBlockingHit && FVector::DotProduct(HitResult.ImpactNormal, FVector::UpVector) > GetWalkableFloorZ())
-        {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 bool UTHMovementComponent::CanClimbDownLedge() const
