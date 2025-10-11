@@ -5,6 +5,7 @@
 #include "ParkourComponent/THParkourComponent.h"
 #include "Game/GameFlowTags.h"
 #include "MotionWarpingComponent.h"
+#include "Player/THPlayerState.h"
 
 UTHMantleAbility::UTHMantleAbility()
 {
@@ -137,6 +138,30 @@ void UTHMantleAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const
 		FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(SprintCooldownEffect, GetAbilityLevel());
 
 		(void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+	}
+
+	if (ActorInfo && ActorInfo->AvatarActor.IsValid())
+	{
+		UAbilitySystemComponent* ASC = GetAbilitySystemComponentFromActorInfo_Ensured();
+		const UTHAttributeSet* AttributeSet = ASC ? ASC->GetSet<UTHAttributeSet>() : nullptr;
+        
+		if (ASC && AttributeSet)
+		{
+			if (HasAuthority(&ActivationInfo) && AttributeSet->GetStamina() < AttributeSet->GetMaxStamina())
+			{
+				AActor* OwnerActor = ASC->GetOwnerActor();
+				if (const ATHPlayerState* PS = Cast<ATHPlayerState>(OwnerActor))
+				{
+					TSubclassOf<UGameplayEffect> DefaultRegenEffect = PS->GetStaminaRegenEffectClass();
+					if (DefaultRegenEffect)
+					{
+						FGameplayEffectSpecHandle SpecHandle = MakeOutgoingGameplayEffectSpec(DefaultRegenEffect, GetAbilityLevel());
+
+						(void)ApplyGameplayEffectSpecToOwner(Handle, ActorInfo, ActivationInfo, SpecHandle);
+					}
+				}
+			}
+		}
 	}
 	
 	Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);

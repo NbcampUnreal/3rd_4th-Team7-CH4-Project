@@ -392,6 +392,7 @@ void ATHPlayerCharacter::BindToAttributeChanges()
 		 ASC->GetGameplayAttributeValueChangeDelegate(AS->GetWalkSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnWalkSpeedChanged);
 		 ASC->GetGameplayAttributeValueChangeDelegate(AS->GetSprintSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnSprintSpeedChanged);
 		 ASC->GetGameplayAttributeValueChangeDelegate(AS->GetJumpPowerAttribute()).AddUObject(this, &ATHPlayerCharacter::OnJumpPowerChanged);
+	   	 ASC->GetGameplayAttributeValueChangeDelegate(AS->GetCrouchSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnCrouchSpeedChanged);
 	   }
 	}
 }
@@ -425,6 +426,14 @@ void ATHPlayerCharacter::OnSprintSpeedChanged(const FOnAttributeChangeData& Data
 	if (bIsSprinting && THMovementComponent)
 	{
 	   THMovementComponent->MaxWalkSpeed = Data.NewValue;
+	}
+}
+
+void ATHPlayerCharacter::OnCrouchSpeedChanged(const FOnAttributeChangeData& Data)
+{
+	if (THMovementComponent)
+	{
+		THMovementComponent->MaxWalkSpeedCrouched = Data.NewValue;
 	}
 }
 

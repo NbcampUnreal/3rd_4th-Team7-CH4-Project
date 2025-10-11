@@ -82,6 +82,7 @@ private:
 	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
 	void OnJumpPowerChanged(const FOnAttributeChangeData& Data);
 	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
+	void OnCrouchSpeedChanged(const FOnAttributeChangeData& Data);
 	
 	void OnMoveInputReleased(const FInputActionValue& InValue);
 	void OnSprintPressed(const FInputActionValue&);
