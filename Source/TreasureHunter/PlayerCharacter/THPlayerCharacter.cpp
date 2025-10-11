@@ -198,6 +198,14 @@ void ATHPlayerCharacter::OnClimbActionStarted(const FInputActionValue& Value)
 {
 	if (!THMovementComponent) return;
 
+	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
+	{
+		if (ASC->HasMatchingGameplayTag(TAG_Status_State_Mantling)) return;
+		if (ASC->HasMatchingGameplayTag(TAG_State_Debuff_Stun)) return;
+		if (ASC->HasMatchingGameplayTag(TAG_Status_Stamina_Empty)) return;
+	}
+	if (bIsCrouched) return;
+	
 	if (HasAuthority())
 	{
 		THMovementComponent->ToggleClimbing(!THMovementComponent->IsClimbing());
@@ -345,6 +353,8 @@ void ATHPlayerCharacter::ToggleCrouch()
 
 void ATHPlayerCharacter::OnSprintPressed(const FInputActionValue&)
 {
+	if (THMovementComponent && THMovementComponent->IsClimbing()) return;
+	
 	if (UAbilitySystemComponent* ASC = GetAbilitySystemComponent())
 	{
 	   FGameplayTagContainer SprintTags(TAG_Ability_Sprint);
