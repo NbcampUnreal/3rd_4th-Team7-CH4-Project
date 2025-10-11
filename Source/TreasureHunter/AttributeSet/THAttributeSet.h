@@ -39,6 +39,10 @@ public:
     FGameplayAttributeData SprintSpeed;
     ATTRIBUTE_ACCESSORS(UTHAttributeSet, SprintSpeed)
 
+	UPROPERTY(BlueprintReadOnly, Category = "Movement", ReplicatedUsing = OnRep_CrouchSpeed)
+    FGameplayAttributeData CrouchSpeed;
+    ATTRIBUTE_ACCESSORS(UTHAttributeSet, CrouchSpeed)
+
 	UPROPERTY(BlueprintReadOnly, Category = "Movement", ReplicatedUsing = OnRep_JumpPower)
 	FGameplayAttributeData JumpPower;
 	ATTRIBUTE_ACCESSORS(UTHAttributeSet, JumpPower)
@@ -59,6 +63,9 @@ protected:
 
     UFUNCTION()
     virtual void OnRep_SprintSpeed(const FGameplayAttributeData& OldSprintSpeed);
+
+	UFUNCTION()
+    virtual void OnRep_CrouchSpeed(const FGameplayAttributeData& OldCrouchSpeed);
 
 	UFUNCTION()
 	virtual void OnRep_JumpPower(const FGameplayAttributeData& OldJumpPower);
