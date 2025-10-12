@@ -19,7 +19,7 @@ ATHGameModeBase::ATHGameModeBase()
 	bUseSeamlessTravel = true;
 
 	MaxMatchPlayerNum = 2;
-	MatchWaitTime = 5.0f;
+	MatchWaitTime = 180.0f;
 	SetGameModeFlow(TAG_Game_Phase_Wait);
 }
 
@@ -73,12 +73,12 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 	ATHPlayerController* PlayerController = Cast<ATHPlayerController>(NewPlayer);
 	if (GameModeFlow == TAG_Game_Phase_Play && IsValid(PlayerController))
 	{
-		ReconnectPlayer(PlayerController);
+		//ReconnectPlayer(PlayerController);
 	}
 
 	if (ATHPlayerController* PC = Cast<ATHPlayerController>(NewPlayer))
 	{
-		PC->Client_DisablePlayerControl();
+		//PC->Client_DisablePlayerControl();
 	}
 }
 
@@ -89,12 +89,7 @@ void ATHGameModeBase::HandleStartingNewPlayer_Implementation(APlayerController* 
 	ATHPlayerController* MatchPlayerController = Cast<ATHPlayerController>(NewPlayer);
 	if (IsValid(MatchPlayerController))
 	{
-		if (!StartPlayerControllers.Contains(MatchPlayerController))
-		{
-			StartPlayerControllers.Add(MatchPlayerController);
-		}
-
-		ACRevisionValueZ = MatchPlayerController->GetTargetLocation().Z;
+		ManipluateController(MatchPlayerController, true);
 		GameStartPlayerControllers(MatchPlayerController);
 	}
 
@@ -116,7 +111,7 @@ void ATHGameModeBase::BeginPlay()
 		UTHGameInstance* GI = Cast<UTHGameInstance>(GetGameInstance());
 		if (GI)
 		{
-			FString ServerAddress = TEXT("3.38.244.81");
+			FString ServerAddress = TEXT("13.209.65.244");
 			GI->HostSession(FName("StartSession"), 2, ServerAddress, 7777);
 		}
 	}
@@ -556,7 +551,7 @@ void ATHGameModeBase::GetSeamlessTravelActorList(bool bToTransition, TArray<AAct
 		for (ATHTitlePlayerController* MatchPC : MatchPlayerControllers)
 		{
 			ATHPlayerState* MatchPS = Cast<ATHPlayerState>(MatchPC->PlayerState);
-			if (!IsValid(MatchPS)) return;
+			if (!IsValid(MatchPS)) continue;
 			
 			EnteredPlayerStates.Add(MatchPS);
 			ActorList.Add(MatchPS);
@@ -591,7 +586,7 @@ void ATHGameModeBase::HandleSeamlessTravelPlayer(AController*& C)
 			UE_LOG(LogTemp, Warning, TEXT("PlayerState is Null"));
 			for (ATHPlayerState* OldPS : EnteredPlayerStates)
 			{
-				if (OldPS && OldPS->GetUniqueID() == PlayerPC->PlayerState->GetUniqueID())
+				if (OldPS && PlayerPC)
 				{
 					PlayerPC->PlayerState = OldPS;
 					UE_LOG(LogTemp, Warning, TEXT("PlayerState Change!"));
@@ -628,7 +623,6 @@ void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
 		}
 	}
 
-	//ManipluateController(Player, true);
 	CheckPlayReady();
 }
 
@@ -674,41 +668,7 @@ void ATHGameModeBase::OnLevelLoadedReady()
 	UWorld* LoadedWorld = OpenLevelPath.Get();
 	if (LoadedWorld)
 	{
-		CollectGarbage(GARBAGE_COLLECTION_KEEPFLAGS);
-		GetWorldTimerManager().ClearAllTimersForObject(this);
-
-		if (OpenLevelPath == PlayLevelPath)
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Level Loaded. Start ServerTravel"));
-			FTimerHandle TimerHandle;
-			GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
-				{
-					const FPlatformMemoryStats MemStats = FPlatformMemory::GetStats();
-					UE_LOG(LogTemp, Error, TEXT("UsedVirtual: %lld MB"), MemStats.UsedVirtual / (1024 * 1024));
-				}, 1.f, false);
-		}
-		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true, false);
-
-		if (OpenLevelPath == PlayLevelPath)
-		{
-			FTimerHandle TimerHandle;
-			GetWorld()->GetTimerManager().SetTimer(TimerHandle, [this]()
-				{
-					const FPlatformMemoryStats MemStats = FPlatformMemory::GetStats();
-					UE_LOG(LogTemp, Error, TEXT("UsedVirtual: %lld MB"), MemStats.UsedVirtual / (1024 * 1024));
-				}, 1.f, false);
-
-			GetWorldTimerManager().SetTimerForNextTick([this]()
-				{
-					FTimerHandle CheckPlayerStatesHandle;
-					GetWorldTimerManager().SetTimer(CheckPlayerStatesHandle, [this]()
-						{
-							TArray<AActor*> AllStates;
-							UGameplayStatics::GetAllActorsOfClass(GetWorld(), ATHPlayerState::StaticClass(), AllStates);
-							UE_LOG(LogTemp, Error, TEXT("PlayerStates in world after travel: %d"), AllStates.Num());
-						}, 10.0f, false);
-				});
-		}
+		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true);
 	}
 }
 
@@ -725,32 +685,29 @@ void ATHGameModeBase::CourseCalculate()
 	
 	for (int32 i = 0; i < PosActorTags.Num(); i++)
 	{
-		UGameplayStatics::GetAllActorsWithTag(GetWorld(), PosActorTags[i], FoundActors);
+		TArray<AActor*> TempActors;
+		UGameplayStatics::GetAllActorsWithTag(GetWorld(), PosActorTags[i], TempActors);
+		FoundActors.Append(TempActors);
 	}
-	for (int32 i = 0; i < PosActorTags.Num(); i++)
+
+	for (int32 i = 0; i < FoundActors.Num(); i++)
 	{
-		FoundActors.Empty();
-		UGameplayStatics::GetAllActorsWithTag(GetWorld(), PosActorTags[i], FoundActors);
+		if (!IsValid(FoundActors[i])) continue;
 
-		for (int32 j = 0; j < FoundActors.Num(); j++)
+		if (FoundActors[i]->ActorHasTag(FName("Start")))
 		{
-			if (!IsValid(FoundActors[j])) continue;
-
-			if (FoundActors[j]->ActorHasTag(FName("Start")))
-			{
-				StartActor = FoundActors[j];
-				StartPos = StartActor->GetActorLocation();
-			}
-			else if (FoundActors[j]->ActorHasTag(FName("Check")))
-			{
-				CheckActor = FoundActors[j];
-				CheckPos = CheckActor->GetActorLocation();
-			}
-			else if (FoundActors[j]->ActorHasTag(FName("Finish")))
-			{
-				FinishActor = FoundActors[j];
-				FinishPos = FinishActor->GetActorLocation();
-			}
+			StartActor = FoundActors[i];
+			StartPos = StartActor->GetActorLocation();
+		}
+		else if (FoundActors[i]->ActorHasTag(FName("Check")))
+		{
+			CheckActor = FoundActors[i];
+			CheckPos = CheckActor->GetActorLocation();
+		}
+		else if (FoundActors[i]->ActorHasTag(FName("Finish")))
+		{
+			FinishActor = FoundActors[i];
+			FinishPos = FinishActor->GetActorLocation();
 		}
 	}
 
@@ -766,10 +723,6 @@ void ATHGameModeBase::CourseCalculate()
 
 bool ATHGameModeBase::IsInFlatSection(const FVector& PlayerPos) const
 {
-	// 이미 한 번 넘었으면 무조건 false
-	if (bPassedCheckLine)
-		return false;
-
 	// 방향 벡터
 	FVector LineDir = (FinishPos - StartPos).GetSafeNormal();
 
