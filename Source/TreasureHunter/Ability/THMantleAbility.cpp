@@ -15,7 +15,8 @@ UTHMantleAbility::UTHMantleAbility()
 	FGameplayTagContainer AbilityTagsContainer;
 	AbilityTagsContainer.AddTag(TAG_Ability_Mantle);
 	SetAssetTags(AbilityTagsContainer);
-	
+
+	BlockAbilitiesWithTag.AddTag(TAG_Ability_Push);
 	ActivationOwnedTags.AddTag(TAG_Status_State_Mantling);
 	ActivationBlockedTags.AddTag(TAG_Status_Stamina_Empty);
 }
