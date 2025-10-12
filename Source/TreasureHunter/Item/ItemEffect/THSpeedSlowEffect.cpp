@@ -19,8 +19,10 @@ UTHSpeedSlowEffect::UTHSpeedSlowEffect()
     Modifiers.Add(SprintModifier);
 
     FGameplayModifierInfo CrouchModifier;
-    SprintModifier.Attribute = UTHAttributeSet::GetCrouchSpeedAttribute();
-    SprintModifier.ModifierOp = EGameplayModOp::Additive;
-    SprintModifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(-100.f));
+    CrouchModifier.Attribute = UTHAttributeSet::GetCrouchSpeedAttribute();
+    CrouchModifier.ModifierOp = EGameplayModOp::Additive;
+    CrouchModifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(-100.f));
     Modifiers.Add(CrouchModifier);
+
+    
 }

@@ -9,6 +9,7 @@ UTHAttributeSet::UTHAttributeSet()
 	InitMaxStamina(100.f);
 	InitWalkSpeed(200.f);
 	InitSprintSpeed(600.f);
+	InitCrouchSpeed(200.f);
 	InitJumpPower(420.f);
 	InitOverlayWidget(0.f);
 }
