@@ -39,6 +39,11 @@ private:
 private:
 	void CreateGameOverWidget();
 	void EnsureGameOver();
+
+	void SetSettingForGame();
+	void SetSettingModeForUI();
+	void DisableMovement();
+	void EnableMovement();
 #pragma endregion
 
 #pragma region HUD
@@ -98,7 +103,7 @@ private:
 	void HandleRematchChanged(FGameplayTag NewTag);
 #pragma endregion
 
-
+#pragma region Loading 
 public:
 	UFUNCTION(Server, Reliable)
 	void Server_NotifyClientLoaded();
@@ -113,5 +118,5 @@ public:
 	void CheckStreamingFinished();
 
 	void FinishLoading();
-
+#pragma endregion
 };

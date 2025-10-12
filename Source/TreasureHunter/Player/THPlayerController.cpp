@@ -26,6 +26,7 @@
 #include "Engine/TextureStreamingTypes.h"
 #include "Engine/Texture2D.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 FTimerHandle ReadyPollHandle;
 
@@ -37,6 +38,7 @@ void ATHPlayerController::BeginPlay()
 	{
 		return;
 	}
+	SetSettingForGame();
 	Client_DisablePlayerControl();
 
 	EnsureHUD();
@@ -135,6 +137,7 @@ void ATHPlayerController::CreateGameOverWidget()
 	if (GameOverWidget)
 	{
 		GameOverWidget->AddToViewport();
+		SetSettingModeForUI();
 	}
 }
 
@@ -143,6 +146,64 @@ void ATHPlayerController::EnsureGameOver()
 	if (!GameOverWidget)
 	{
 		CreateGameOverWidget();
+	}
+}
+
+void ATHPlayerController::SetSettingForGame()
+{
+	EnableMovement();
+
+	FInputModeGameOnly Mode;
+	Mode.SetConsumeCaptureMouseDown(false);
+	SetInputMode(Mode);
+
+	bShowMouseCursor = false;
+}
+
+void ATHPlayerController::SetSettingModeForUI()
+{
+	DisableMovement();
+
+	FInputModeGameAndUI Mode;
+	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+	SetInputMode(Mode);
+
+	bShowMouseCursor = true;
+}
+
+void ATHPlayerController::DisableMovement()
+{
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
+
+	if (APawn* P = GetPawn())
+	{
+		P->DisableInput(this);
+		if (ACharacter* C = Cast<ACharacter>(P))
+		{
+			if (auto* Move = C->GetCharacterMovement())
+			{
+				Move->DisableMovement();
+			}
+		}
+	}
+}
+
+void ATHPlayerController::EnableMovement()
+{
+	SetIgnoreMoveInput(false);
+	SetIgnoreLookInput(false);
+
+	if (APawn* P = GetPawn())
+	{
+		if (ACharacter* C = Cast<ACharacter>(P))
+		{
+			if (auto* Move = C->GetCharacterMovement())
+			{
+				Move->SetMovementMode(MOVE_Walking);
+			}
+		}
+		P->EnableInput(this);
 	}
 }
 #pragma endregion
