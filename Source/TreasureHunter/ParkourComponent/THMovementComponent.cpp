@@ -354,7 +354,9 @@ FQuat UTHMovementComponent::GetClimbRotation(float DeltaTime) const
 		return CurrentQuat;
 	}
 
-	const FQuat TargetQuat = FRotationMatrix::MakeFromX(-CurrentClimbableSurfaceNormal).ToQuat();
+	const FVector HorizontalNormal = FVector(CurrentClimbableSurfaceNormal.X, CurrentClimbableSurfaceNormal.Y, 0.f).GetSafeNormal();
+	const FQuat TargetQuat = FRotationMatrix::MakeFromX(-HorizontalNormal).ToQuat();
+
 	return FMath::QInterpTo(CurrentQuat, TargetQuat, DeltaTime, 5.f);
 }
 
