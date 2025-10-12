@@ -20,7 +20,7 @@ void ATHTitlePlayerController::BeginPlay()
 		if (GI)
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Travel ½ÃÀÛ: %s"), *GetName());
-			FString ServerAddress = TEXT("3.38.244.81");
+			FString ServerAddress = TEXT("13.209.65.244");
 			GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda([this, ServerAddress]() {
 				UTHGameInstance* GI = Cast<UTHGameInstance>(UGameplayStatics::GetGameInstance(this));
 				if (GI) GI->JoinServer(ServerAddress);
