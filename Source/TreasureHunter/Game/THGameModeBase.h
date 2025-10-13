@@ -13,6 +13,21 @@ struct FPlayerData
 	FString PlayerUniqueId;
 };
 
+USTRUCT()
+struct FDisconnectedPlayerData
+{
+	GENERATED_BODY()
+
+	FString PlayerAddress;
+	FString PlayerUniqueId;
+	FString PlayerName;
+	FVector LastKnownLocation;
+	TWeakObjectPtr<APlayerState> CachedPlayerState;
+	TWeakObjectPtr<UAbilitySystemComponent> CachedASC;
+	float DisconnectTime;
+	FTimerHandle ExpireHandle;
+};
+
 class UUserWidget;
 class ATHTitlePlayerController;
 class ATHPlayerController;
@@ -43,6 +58,10 @@ private:
 	TArray<ATHTitlePlayerController*> MatchPlayerControllers;
 
 	TArray<ATHPlayerController*> StartPlayerControllers;
+
+	TMap<FString, FDisconnectedPlayerData> DisconnectedPlayers;
+
+	float DisconnectedRetentionTime = 600.f;
 
 protected:
 	virtual void PreLogin(const FString& Options, 
@@ -76,6 +95,8 @@ private:
 	void EnterTitlePlayerControllers(ATHTitlePlayerController* NewPlayer);
 
 	void GameStartPlayerControllers(ATHPlayerController* NewPlayer);
+
+	void DisconnectPlaying(AController* DisPlayer);
 
 	void ReconnectPlayer(ATHPlayerController* RePlayer);
 
