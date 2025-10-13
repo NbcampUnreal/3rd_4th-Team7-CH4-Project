@@ -59,8 +59,6 @@ void ATHGameModeBase::ApproveLogin(const FString& Options, const FString& Addres
 
 void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 {
-	UE_LOG(LogTemp, Warning, TEXT("PostLogin called. Player=%s"), NewPlayer ? *NewPlayer->GetName() : TEXT("NULL"));
-
 	Super::PostLogin(NewPlayer);
 
 	ATHTitlePlayerController* TitlePlayerController = Cast<ATHTitlePlayerController>(NewPlayer);
@@ -73,7 +71,7 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 	ATHPlayerController* PlayerController = Cast<ATHPlayerController>(NewPlayer);
 	if (GameModeFlow == TAG_Game_Phase_Play && IsValid(PlayerController))
 	{
-		//ReconnectPlayer(PlayerController);
+		ReconnectPlayer(PlayerController);
 	}
 
 	if (ATHPlayerController* PC = Cast<ATHPlayerController>(NewPlayer))
@@ -130,7 +128,6 @@ void ATHGameModeBase::Logout(AController* Exiting)
 	Super::Logout(Exiting);
 	
 	ATHPlayerState* ExitingPS = Cast<ATHPlayerState>(Exiting->PlayerState);
-	if (!IsValid(ExitingPS)) return;
 
 	if (GameModeFlow == TAG_Game_Phase_Wait || GameModeFlow == TAG_Game_Phase_Match)
 	{
@@ -159,9 +156,7 @@ void ATHGameModeBase::Logout(AController* Exiting)
 	}
 	else if (GameModeFlow == TAG_Game_Phase_Play)
 	{
-		ATHPlayerController* ExitingPlayPC = Cast<ATHPlayerController>(Exiting);
-		if (!IsValid(ExitingPlayPC)) return;
-		
+		DisconnectPlaying(Exiting);
 	}
 }
 
@@ -178,7 +173,7 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 
 	if (GameModeFlow == TAG_Game_Phase_Play)
 	{
-		GameStart();
+		//GameStart();
 	}
 	else if (GameModeFlow == TAG_Game_Phase_Finish)
 	{
@@ -626,8 +621,107 @@ void ATHGameModeBase::GameStartPlayerControllers(ATHPlayerController* Player)
 	CheckPlayReady();
 }
 
+void ATHGameModeBase::DisconnectPlaying(AController* DisPlayer)
+{
+	ATHPlayerController* ExitingPC = Cast<ATHPlayerController>(DisPlayer);
+	ATHPlayerState* ExitingPS = Cast<ATHPlayerState>(DisPlayer->PlayerState);
+	if (!IsValid(ExitingPC) || !IsValid(ExitingPS))
+	{
+		StartPlayerControllers.RemoveAll([DisPlayer](ATHPlayerController* PC)
+			{
+				return PC == nullptr || PC == DisPlayer;
+			});
+
+		GetWorld()->GetTimerManager().ClearTimer(AccumulateUpdateTimerHandle);
+		return;
+	}
+
+	FString Address = ExitingPS->PlayerAddress;
+
+	FDisconnectedPlayerData Data;
+	Data.PlayerAddress = Address;
+	Data.PlayerUniqueId = ExitingPS->PlayerUniqueId;
+	Data.PlayerName = ExitingPS->Nickname;
+	Data.LastKnownLocation = ExitingPC->GetPawn() ? ExitingPC->GetPawn()->GetActorLocation() : FVector::ZeroVector;
+	Data.CachedPlayerState = ExitingPS;
+	Data.DisconnectTime = GetWorld()->GetTimeSeconds();
+	if (UAbilitySystemComponent* ASC = ExitingPS->GetAbilitySystemComponent())
+	{
+		Data.CachedASC = ASC;
+	}
+
+	StartPlayerControllers.RemoveAll([ExitingPC](ATHPlayerController* PC) { return PC == nullptr || PC == ExitingPC; });
+
+	FTimerHandle& TimerHandle = Data.ExpireHandle;
+	GetWorld()->GetTimerManager().SetTimer(
+		TimerHandle,
+		FTimerDelegate::CreateLambda
+		([this, Address]()
+			{
+				if (DisconnectedPlayers.Contains(Address))
+				{
+					DisconnectedPlayers.Remove(Address);
+				}
+			}),
+		DisconnectedRetentionTime,
+		false
+	);
+
+	DisconnectedPlayers.Add(Address, MoveTemp(Data));
+}
+
 void ATHGameModeBase::ReconnectPlayer(ATHPlayerController* RePlayer)
 {
+	if (!IsValid(RePlayer)) return;
+
+	UNetConnection* NewConnection = RePlayer->GetNetConnection();
+	FString Address;
+	if (IsValid(NewConnection))
+	{
+		Address = NewConnection->GetRemoteAddr()->ToString(false);
+	}
+
+	if (FDisconnectedPlayerData* Found = DisconnectedPlayers.Find(Address))
+	{
+		if (Found->ExpireHandle.IsValid())
+		{
+			GetWorld()->GetTimerManager().ClearTimer(Found->ExpireHandle);
+		}
+
+		if (Found->CachedPlayerState.IsValid())
+		{
+			RePlayer->PlayerState = Found->CachedPlayerState.Get();
+
+			ATHPlayerState* RePlayerState = Cast<ATHPlayerState>(RePlayer->PlayerState);
+			if (IsValid(RePlayerState))
+			{
+				RePlayerState->PlayerAddress = Found->PlayerAddress;
+				RePlayerState->PlayerUniqueId = Found->PlayerUniqueId;
+				RePlayerState->Nickname = Found->PlayerName;
+				RePlayerState->OnRep_Nickname();
+			}
+
+			if (RePlayer->GetPawn())
+			{
+				RePlayer->GetPawn()->SetActorLocation(Found->LastKnownLocation);
+			}
+		}
+
+		StartPlayerControllers.Add(RePlayer);
+		DisconnectedPlayers.Remove(Address);
+
+		if (!GetWorld()->GetTimerManager().IsTimerActive(AccumulateUpdateTimerHandle))
+		{
+			GetWorld()->GetTimerManager().SetTimer
+			(
+				AccumulateUpdateTimerHandle, 
+				this, 
+				&ATHGameModeBase::AccumulatePlayerDistance, 
+				0.1f, 
+				true
+			);
+		}
+	}
 }
 
 void ATHGameModeBase::StartLevelLoad(TSoftObjectPtr<UWorld> LevelToLoad)
@@ -760,8 +854,9 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 {
 	for (ATHPlayerController* Player : StartPlayerControllers)
 	{
+		if (!IsValid(Player)) continue;
 		APawn* PlayerPawn = Player->GetPawn();
-		if (!PlayerPawn) continue;
+		if (!IsValid(PlayerPawn)) continue;
 
 		FVector PlayerPos = PlayerPawn->GetActorLocation();
 
@@ -790,9 +885,10 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 		{
 			for (ATHPlayerController* Other : StartPlayerControllers)
 			{
+				if (!IsValid(Other)) continue;
 				if (Other == Player) continue;
 				APawn* OtherPawn = Other->GetPawn();
-				if (!OtherPawn) continue;
+				if (!IsValid(OtherPawn)) continue;
 
 				FVector OtherPos = OtherPawn->GetActorLocation();
 
@@ -864,5 +960,6 @@ void ATHGameModeBase::TryStartGame()
 				PC->Client_EnablePlayerControl();
 			}
 		}
+		GameStart();
 	}
 }
