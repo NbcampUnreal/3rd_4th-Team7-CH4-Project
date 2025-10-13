@@ -35,7 +35,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float PushRange = 200.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float PushForce = 500.0f;
+	float PushForce = 900.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float ZForce = 200.0f;
+
+	
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	UAnimMontage* PushMontage;
