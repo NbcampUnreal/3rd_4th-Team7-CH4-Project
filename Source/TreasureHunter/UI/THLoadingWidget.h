@@ -28,7 +28,7 @@ private:
 
 	float Accumulate;
 	float LoadTime = 0.01f;
-	float TotalLoadTime = 2.0f;
+	float TotalLoadTime = 10.0f;
 	
 private:
 	void UpdateProgress();
