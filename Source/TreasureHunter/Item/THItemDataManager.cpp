@@ -133,7 +133,7 @@ const FTHItemData* ATHItemDataManager::GetItemDataByRow(const FName& RowName)
 
 UTexture2D* ATHItemDataManager::GetItemIconByRow(FName RowName)
 {
-    if (TWeakObjectPtr<UTexture2D>* Cached = IconCache.Find(RowName))
+    if (TObjectPtr<UTexture2D>* Cached = IconCache.Find(RowName))
     {
         return Cached->Get();
     }
