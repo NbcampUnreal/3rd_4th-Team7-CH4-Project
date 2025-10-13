@@ -343,6 +343,7 @@ void ATHGameModeBase::PlayerDetected(AActor* Player)
 void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlayerController* Requester)
 {
 	RequestRematchState = AfterGameOver;
+	if (RequestRematchState == AfterGameOver) return;
 	ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState);
 	if (!IsValid(GS)) return;
 	GS->SetRematchTag(RequestRematchState);
@@ -391,8 +392,8 @@ void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlay
 		FTimerDelegate TimerDel = FTimerDelegate::CreateLambda([WeakGM]()
 			{
 				if (!WeakGM.IsValid()) return;
-				WeakGM->SetGameModeFlow(TAG_Game_Phase_Wait);
 				WeakGM->OpenChangeLevel(TAG_Game_Phase_Wait);
+				WeakGM->SetGameModeFlow(TAG_Game_Phase_Wait);
 				WeakGM->RequestRematchState = FGameplayTag();
 				if (ATHGameStateBase* LGS = Cast<ATHGameStateBase>(WeakGM->GameState))
 				{
@@ -822,31 +823,7 @@ bool ATHGameModeBase::IsInFlatSection(const FVector& PlayerPos) const
 
 	float Projection = FVector::DotProduct(StartToPlayer, StartToCheck.GetSafeNormal());
 
-	return Projection <= 0.f && Projection < FlatSectionDist;
-
-	//// 방향 벡터
-	//FVector LineDir = (FinishPos - StartPos).GetSafeNormal();
-
-	//// 스타트 → 체크
-	//FVector StartToCheck = CheckPos - StartPos;
-	//float CheckProjection = FVector::DotProduct(StartToCheck, LineDir);
-
-	//// 스타트 → 플레이어
-	//FVector StartToPlayer = PlayerPos - StartPos;
-	//float PlayerProjection = FVector::DotProduct(StartToPlayer, LineDir);
-
-	//// 체크 지점 넘어감?
-	//if (PlayerProjection >= CheckProjection)
-	//{
-	//	bPassedCheckLine = true;
-
-	//	UE_LOG(LogTemp, Warning, TEXT("[IsInFlatSection] Player passed Check line. (Projection: %.2f / Check: %.2f)"),
-	//		PlayerProjection, CheckProjection);
-
-	//	return false;
-	//}
-
-	//return true;
+	return Projection < FlatSectionDist;
 }
 
 void ATHGameModeBase::ReMatchGame()
