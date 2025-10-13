@@ -274,15 +274,23 @@ void UTHMovementComponent::ProcessClimbableSurfaceInfo()
 	CurrentClimbableSurfaceNormal = FVector::ZeroVector;
 
 	if (ClimbableSurfacesTracedResults.IsEmpty()) return;
+	
+	FHitResult SteepestHitResult;
+	float MinAbsDotZ = 1.0f;
 
 	for (const FHitResult& HitResult : ClimbableSurfacesTracedResults)
 	{
-		CurrentClimbableSurfaceLocation += HitResult.ImpactPoint;
-		CurrentClimbableSurfaceNormal += HitResult.ImpactNormal;
+		const float CurrentDotZ = FMath::Abs(FVector::DotProduct(HitResult.ImpactNormal, FVector::UpVector));
+		
+		if (CurrentDotZ < MinAbsDotZ)
+		{
+			MinAbsDotZ = CurrentDotZ;
+			SteepestHitResult = HitResult;
+		}
 	}
-
-	CurrentClimbableSurfaceLocation /= ClimbableSurfacesTracedResults.Num();
-	CurrentClimbableSurfaceNormal = CurrentClimbableSurfaceNormal.GetSafeNormal();
+	
+	CurrentClimbableSurfaceLocation = SteepestHitResult.ImpactPoint;
+	CurrentClimbableSurfaceNormal = SteepestHitResult.ImpactNormal.GetSafeNormal();
 }
 
 bool UTHMovementComponent::CheckShouldStopClimbing() const
@@ -290,9 +298,8 @@ bool UTHMovementComponent::CheckShouldStopClimbing() const
 	if (ClimbableSurfacesTracedResults.IsEmpty()) return true;
 
 	const float DotResult = FVector::DotProduct(CurrentClimbableSurfaceNormal, FVector::UpVector);
-	const float DegreeDiff = FMath::RadiansToDegrees(FMath::Acos(DotResult));
-
-	if (DegreeDiff <= 60.f)
+	
+	if (DotResult >= GetWalkableFloorZ())
 	{
 		return true;
 	}
@@ -374,15 +381,15 @@ void UTHMovementComponent::ToggleClimbing(bool bEnableClimb)
 {
 	if (bEnableClimb)
 	{
-		StopMovementImmediately();
-
 		if (CanStartClimbing())
 		{
+			StopMovementImmediately();
 			StartClimbing();
 			PlayClimbMontage(IdleToClimbMontage);
 		}
 		else if (CanClimbDownLedge())
 		{
+			StopMovementImmediately();
 			StartClimbing();
 			PlayClimbMontage(ClimbDownLedgeMontage);
 		}
@@ -427,6 +434,7 @@ void UTHMovementComponent::TryStartVaulting()
 	FVector VaultStartPosition, VaultLandPosition;
 	if (CanStartVaulting(VaultStartPosition, VaultLandPosition))
 	{
+		StopMovementImmediately();
 		SetMotionWarpingTarget(FName("VaultStartPoint"), VaultStartPosition);
 		SetMotionWarpingTarget(FName("VaultLandPoint"), VaultLandPosition);
 		StartClimbing();
