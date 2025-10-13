@@ -817,29 +817,36 @@ void ATHGameModeBase::CourseCalculate()
 
 bool ATHGameModeBase::IsInFlatSection(const FVector& PlayerPos) const
 {
-	// 방향 벡터
-	FVector LineDir = (FinishPos - StartPos).GetSafeNormal();
-
-	// 스타트 → 체크
 	FVector StartToCheck = CheckPos - StartPos;
-	float CheckProjection = FVector::DotProduct(StartToCheck, LineDir);
-
-	// 스타트 → 플레이어
 	FVector StartToPlayer = PlayerPos - StartPos;
-	float PlayerProjection = FVector::DotProduct(StartToPlayer, LineDir);
 
-	// 체크 지점 넘어감?
-	if (PlayerProjection >= CheckProjection)
-	{
-		bPassedCheckLine = true;
+	float Projection = FVector::DotProduct(StartToPlayer, StartToCheck.GetSafeNormal());
 
-		UE_LOG(LogTemp, Warning, TEXT("[IsInFlatSection] Player passed Check line. (Projection: %.2f / Check: %.2f)"),
-			PlayerProjection, CheckProjection);
+	return Projection <= 0.f && Projection < FlatSectionDist;
 
-		return false;
-	}
+	//// 방향 벡터
+	//FVector LineDir = (FinishPos - StartPos).GetSafeNormal();
 
-	return true;
+	//// 스타트 → 체크
+	//FVector StartToCheck = CheckPos - StartPos;
+	//float CheckProjection = FVector::DotProduct(StartToCheck, LineDir);
+
+	//// 스타트 → 플레이어
+	//FVector StartToPlayer = PlayerPos - StartPos;
+	//float PlayerProjection = FVector::DotProduct(StartToPlayer, LineDir);
+
+	//// 체크 지점 넘어감?
+	//if (PlayerProjection >= CheckProjection)
+	//{
+	//	bPassedCheckLine = true;
+
+	//	UE_LOG(LogTemp, Warning, TEXT("[IsInFlatSection] Player passed Check line. (Projection: %.2f / Check: %.2f)"),
+	//		PlayerProjection, CheckProjection);
+
+	//	return false;
+	//}
+
+	//return true;
 }
 
 void ATHGameModeBase::ReMatchGame()
