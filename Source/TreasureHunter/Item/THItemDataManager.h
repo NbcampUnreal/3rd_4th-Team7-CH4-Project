@@ -52,7 +52,10 @@ private:
     static TWeakObjectPtr<ATHItemDataManager> CachedInstance;
 
     TMap<FName, const FTHItemData*> RowCache;
-    TMap<FName, TWeakObjectPtr<UTexture2D>> IconCache;
+    //TMap<FName, TWeakObjectPtr<UTexture2D>> IconCache;
+
+    UPROPERTY() // UPROPERTY를 붙여야 GC가 이 포인터를 추적하여 강한 참조로 인식합니다.
+    TMap<FName, TObjectPtr<UTexture2D>> IconCache;
 
     
 };
