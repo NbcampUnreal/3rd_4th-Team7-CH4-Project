@@ -1,6 +1,8 @@
 # Treasure Hunter - Multiplayer 1 vs 1 Game
 
-> UE5.5· GAS 기반 · AWS 전용 서버 · 온라인 세션(로비) 매칭 · 커스텀 이동(클라임/맨틀) · 캐릭터 상호작용 (머리밟기/밀치기) · 아이템 시스템(Ability/Effect/Tag) · 단계별 UI 흐름
+**기존의 main 브랜치와는 다른 OSS-Steam을 사용하여 만들어진 스팀 출시용 코드입니다**
+
+> UE5.5· GAS 기반 · OSS-Steam · 온라인 세션(로비) 매칭 · 커스텀 이동(클라임/맨틀) · 캐릭터 상호작용 (머리밟기/밀치기) · 아이템 시스템(Ability/Effect/Tag) · 단계별 UI 흐름
 
 게임 인트로 영상 보기: 
 [Trasure Hunter Game Intro](https://youtu.be/36j_MGRbPsY)
