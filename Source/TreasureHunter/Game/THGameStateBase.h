@@ -77,6 +77,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Matchmaking")
 	bool AreBothReady() const;
 
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnSlotsUpdated();
+	
 	UFUNCTION(BlueprintCallable, Category = "Matchmaking")
 	FORCEINLINE bool AreSlotsLockedIn() const { return bSlotsLockedIn; }
 

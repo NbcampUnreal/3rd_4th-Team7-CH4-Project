@@ -117,6 +117,12 @@ void ATHPlayerState::Server_SetReady(bool bReady)
 	{
 		AbilitySystemComponent->RemoveLooseGameplayTag(TAG_Player_Ready);
 	}
+
+	if (ATHGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
+	{
+		GS->bSlotsLockedIn = GS->AreSlotsFilled() && GS->AreBothReady();
+		GS->Multicast_OnSlotsUpdated();
+	}
 }
 
 bool ATHPlayerState::HasReadyTag() const
