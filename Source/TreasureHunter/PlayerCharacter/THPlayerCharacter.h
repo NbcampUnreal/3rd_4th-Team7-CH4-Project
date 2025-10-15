@@ -8,6 +8,7 @@
 #include "GameplayEffectTypes.h"
 #include "Item/THItemBox.h"
 #include "Item/THBaseItem.h"
+#include "Net/UnrealNetwork.h"
 #include "THPlayerCharacter.generated.h"
 
 class UCameraComponent;
@@ -32,6 +33,7 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void NotifyControllerChanged() override;
 
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; }
@@ -146,10 +148,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UTHMovementComponent> THMovementComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Climb")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_IsClimbing, Category = "Climb")
 	bool bIsClimbing = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Climb")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Climb")
 	FVector2D ClimbMovementDirection = FVector2D::ZeroVector;
 
 private:
@@ -158,6 +160,9 @@ private:
 	
 	UPROPERTY()
 	ATHBaseItem* InteractableBaseItem;
+
+	UFUNCTION()
+	void OnRep_IsClimbing();
 	
 public:	
 	void SetInteractableActor(ATHItemBox* NewItemBox);
