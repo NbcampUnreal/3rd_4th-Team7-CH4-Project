@@ -71,6 +71,9 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestHopping();
 	
+	UFUNCTION(Server, Unreliable)
+    void Server_SetClimbMovementDirection(const FVector2D& InDirection);
+	
 	void OnPlayerEnterClimbState();
 	void OnPlayerExitClimbState();
 	void AddInputMappingContext(const UInputMappingContext* ContextToAdd, int32 InPriority) const;
