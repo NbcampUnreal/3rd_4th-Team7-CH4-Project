@@ -13,6 +13,7 @@
 #include "OnlineSubsystemTypes.h"
 #include "OnlineSubsystemUtils.h"
 #include "Engine/World.h"
+#include "PlayerCharacter/THPlayerCharacter.h"
 
 ATHGameModeBase::ATHGameModeBase()
 {
@@ -71,6 +72,7 @@ void ATHGameModeBase::PostLogin(APlayerController* NewPlayer)
 	ATHPlayerController* PlayerController = Cast<ATHPlayerController>(NewPlayer);
 	if (GameModeFlow == TAG_Game_Phase_Play && IsValid(PlayerController))
 	{
+		UE_LOG(LogTemp, Error, TEXT("ReconnectPlayer!!"));
 		ReconnectPlayer(PlayerController);
 	}
 
@@ -633,7 +635,10 @@ void ATHGameModeBase::DisconnectPlaying(AController* DisPlayer)
 				return PC == nullptr || PC == DisPlayer;
 			});
 
-		GetWorld()->GetTimerManager().ClearTimer(AccumulateUpdateTimerHandle);
+		if (GetWorld())
+		{
+			GetWorld()->GetTimerManager().ClearTimer(AccumulateUpdateTimerHandle);
+		}
 		return;
 	}
 
@@ -643,12 +648,15 @@ void ATHGameModeBase::DisconnectPlaying(AController* DisPlayer)
 	Data.PlayerAddress = Address;
 	Data.PlayerUniqueId = ExitingPS->PlayerUniqueId;
 	Data.PlayerName = ExitingPS->Nickname;
-	Data.LastKnownLocation = ExitingPC->GetPawn() ? ExitingPC->GetPawn()->GetActorLocation() : FVector::ZeroVector;
+	Data.LastKnownLocation = ExitingPC->GetPawn() ? ExitingPC->GetPawn()->GetActorLocation() : StartPos;
 	Data.CachedPlayerState = ExitingPS;
 	Data.DisconnectTime = GetWorld()->GetTimeSeconds();
 	if (UAbilitySystemComponent* ASC = ExitingPS->GetAbilitySystemComponent())
 	{
-		Data.CachedASC = ASC;
+		FGameplayTagContainer TempTags;
+		ASC->GetOwnedGameplayTags(TempTags);
+
+		Data.CachedASCTags = MoveTemp(TempTags);
 	}
 
 	StartPlayerControllers.RemoveAll([ExitingPC](ATHPlayerController* PC) { return PC == nullptr || PC == ExitingPC; });
@@ -680,6 +688,7 @@ void ATHGameModeBase::ReconnectPlayer(ATHPlayerController* RePlayer)
 	if (IsValid(NewConnection))
 	{
 		Address = NewConnection->GetRemoteAddr()->ToString(false);
+		UE_LOG(LogTemp, Error, TEXT("Connect New Address"));
 	}
 
 	if (FDisconnectedPlayerData* Found = DisconnectedPlayers.Find(Address))
@@ -688,39 +697,55 @@ void ATHGameModeBase::ReconnectPlayer(ATHPlayerController* RePlayer)
 		{
 			GetWorld()->GetTimerManager().ClearTimer(Found->ExpireHandle);
 		}
+		UE_LOG(LogTemp, Error, TEXT("Found Disconnect Address"));
 
+		//SteamDev 수정 끝나면 여기 체크행야함.
 		if (Found->CachedPlayerState.IsValid())
 		{
+			UE_LOG(LogTemp, Error, TEXT("Found PS"));
 			RePlayer->PlayerState = Found->CachedPlayerState.Get();
 
 			ATHPlayerState* RePlayerState = Cast<ATHPlayerState>(RePlayer->PlayerState);
 			if (IsValid(RePlayerState))
 			{
+				UE_LOG(LogTemp, Error, TEXT("IsValid PS"));
 				RePlayerState->PlayerAddress = Found->PlayerAddress;
 				RePlayerState->PlayerUniqueId = Found->PlayerUniqueId;
 				RePlayerState->Nickname = Found->PlayerName;
 				RePlayerState->OnRep_Nickname();
+
+				FGameplayTagContainer TempTags;
+				if (UAbilitySystemComponent * NewASC = RePlayerState->GetAbilitySystemComponent())
+				{
+					for (const FGameplayTag& Tag : Found->CachedASCTags)
+					{
+						NewASC->AddLooseGameplayTag(Tag);
+						UE_LOG(LogTemp, Error, TEXT("Tag: %s"), *Tag.ToString());
+					}
+				}
+
+				APawn* RePawn = RePlayer->GetPawn();
+				if (IsValid(RePawn))
+				{
+					RePawn->SetActorLocation(StartPos);
+					ATHPlayerCharacter* PlayerChar = Cast<ATHPlayerCharacter>(RePawn);
+				}
+
+				StartPlayerControllers.Add(RePlayer);
+				DisconnectedPlayers.Remove(RePlayerState->PlayerAddress);
+
+				if (!GetWorld()->GetTimerManager().IsTimerActive(AccumulateUpdateTimerHandle))
+				{
+					GetWorld()->GetTimerManager().SetTimer
+					(
+						AccumulateUpdateTimerHandle,
+						this,
+						&ATHGameModeBase::AccumulatePlayerDistance,
+						0.1f,
+						true
+					);
+				}
 			}
-
-			if (RePlayer->GetPawn())
-			{
-				RePlayer->GetPawn()->SetActorLocation(Found->LastKnownLocation);
-			}
-		}
-
-		StartPlayerControllers.Add(RePlayer);
-		DisconnectedPlayers.Remove(Address);
-
-		if (!GetWorld()->GetTimerManager().IsTimerActive(AccumulateUpdateTimerHandle))
-		{
-			GetWorld()->GetTimerManager().SetTimer
-			(
-				AccumulateUpdateTimerHandle, 
-				this, 
-				&ATHGameModeBase::AccumulatePlayerDistance, 
-				0.1f, 
-				true
-			);
 		}
 	}
 }

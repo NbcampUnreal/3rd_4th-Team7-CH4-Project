@@ -27,6 +27,7 @@
 #include "Engine/Texture2D.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Game/THGameInstance.h"
 
 FTimerHandle ReadyPollHandle;
 
@@ -38,6 +39,23 @@ void ATHPlayerController::BeginPlay()
 	{
 		return;
 	}
+	
+	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
+	{
+		if (GM->GetGameModeFlow() != TAG_Game_Phase_Play) return;
+
+		UTHGameInstance* GI = Cast<UTHGameInstance>(UGameplayStatics::GetGameInstance(this));
+		if (GI)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Travel 시작: %s"), *GetName());
+			FString ServerAddress = TEXT("13.209.65.244");
+			GetWorld()->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateLambda([this, ServerAddress]() {
+				UTHGameInstance* GI = Cast<UTHGameInstance>(UGameplayStatics::GetGameInstance(this));
+				if (GI) GI->JoinServer(ServerAddress);
+				}));
+		}
+	}
+
 	SetSettingForGame();
 	Client_DisablePlayerControl();
 

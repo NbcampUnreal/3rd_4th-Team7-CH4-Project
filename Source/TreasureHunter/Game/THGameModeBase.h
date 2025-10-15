@@ -23,7 +23,7 @@ struct FDisconnectedPlayerData
 	FString PlayerName;
 	FVector LastKnownLocation;
 	TWeakObjectPtr<APlayerState> CachedPlayerState;
-	TWeakObjectPtr<UAbilitySystemComponent> CachedASC;
+	FGameplayTagContainer CachedASCTags;
 	float DisconnectTime;
 	FTimerHandle ExpireHandle;
 };
@@ -49,14 +49,17 @@ private:
 
 	TArray<FPlayerData> LoginPlayerData;
 
+	UPROPERTY()
 	TArray<ATHPlayerState*> EnteredPlayerStates;
 
+	UPROPERTY()
 	TArray<APlayerController*> LoginPlayerControllers;
 
 	TArray<ATHTitlePlayerController*> MatchWaitPlayerControllers;
 
 	TArray<ATHTitlePlayerController*> MatchPlayerControllers;
 
+	UPROPERTY()
 	TArray<ATHPlayerController*> StartPlayerControllers;
 
 	TMap<FString, FDisconnectedPlayerData> DisconnectedPlayers;
