@@ -75,8 +75,8 @@ void ATHPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	DOREPLIFETIME_CONDITION(ATHPlayerCharacter, ClimbMovementDirection, COND_SkipOwner);
 	DOREPLIFETIME(ATHPlayerCharacter, bIsClimbing);
-	DOREPLIFETIME(ATHPlayerCharacter, ClimbMovementDirection);
 }
 
 void ATHPlayerCharacter::OnRep_PlayerState()
@@ -160,7 +160,8 @@ void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
 	if (THMovementComponent && THMovementComponent->IsClimbing())
 	{
 		const FVector2D MovementVector = InValue.Get<FVector2D>();
-		this->ClimbMovementDirection = MovementVector;
+		Server_SetClimbMovementDirection(MovementVector);
+
 		const FVector UpDirection = GetActorUpVector();
 		const FVector RightDirection = GetActorRightVector();
 		
@@ -232,7 +233,7 @@ void ATHPlayerCharacter::OnMoveInputCompleted(const FInputActionValue& InValue)
 {
 	if (THMovementComponent && THMovementComponent->IsClimbing())
 	{
-		ClimbMovementDirection = FVector2D::ZeroVector;
+		Server_SetClimbMovementDirection(FVector2D::ZeroVector);
 	}
 }
 
@@ -248,6 +249,11 @@ void ATHPlayerCharacter::OnClimbHopActionStarted(const FInputActionValue& Value)
 	{
 		Server_RequestHopping();
 	}
+}
+
+void ATHPlayerCharacter::Server_SetClimbMovementDirection_Implementation(const FVector2D& InDirection)
+{
+	ClimbMovementDirection = InDirection;
 }
 
 void ATHPlayerCharacter::Server_ToggleClimbing_Implementation()
