@@ -180,6 +180,13 @@ void UTHMatchmakingWidget::RefreshUI()
 		if (bIAmHost && FirstPButton)        FirstPButton->SetIsEnabled(false);
 		if (!bIAmHost && SecondPButton)      SecondPButton->SetIsEnabled(false);
 	}
+		
+	if (InviteFriendButton)
+	{
+		InviteFriendButton->SetVisibility((Owner0 && Owner0 != MyPS) || (Owner1 && Owner1 != MyPS)
+			? ESlateVisibility::Collapsed
+			: ESlateVisibility::Visible);
+	}
 
 	if (MatchStartButton) MatchStartButton->SetIsEnabled(bLocked);
 }
