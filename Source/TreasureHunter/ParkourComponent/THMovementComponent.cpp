@@ -264,7 +264,7 @@ void UTHMovementComponent::PhysClimb(float DeltaTime, int32 Iterations)
 
 	if (CheckHasReachedLedge())
 	{
-		PlayClimbMontage(ClimbToTopMontage);
+		Multicast_PlayMontage(ClimbToTopMontage);
 	}
 }
 
@@ -403,6 +403,12 @@ void UTHMovementComponent::SnapMovementToClimbableSurfaces(float DeltaTime) cons
 	}
 }
 
+void UTHMovementComponent::Multicast_PlayMontage_Implementation(UAnimMontage* MontageToPlay)
+{
+	if (!MontageToPlay || !OwningPlayerAnimInstance || OwningPlayerAnimInstance->IsAnyMontagePlaying()) return;
+	OwningPlayerAnimInstance->Montage_Play(MontageToPlay);
+}
+
 void UTHMovementComponent::ToggleClimbing(bool bEnableClimb)
 {
 	if (bEnableClimb)
@@ -411,13 +417,13 @@ void UTHMovementComponent::ToggleClimbing(bool bEnableClimb)
 		{
 			StopMovementImmediately();
 			StartClimbing();
-			PlayClimbMontage(IdleToClimbMontage);
+			Multicast_PlayMontage(IdleToClimbMontage);
 		}
 		else if (CanClimbDownLedge())
 		{
 			StopMovementImmediately();
 			StartClimbing();
-			PlayClimbMontage(ClimbDownLedgeMontage);
+			Multicast_PlayMontage(ClimbDownLedgeMontage);
 		}
 		else
 		{
@@ -464,7 +470,7 @@ void UTHMovementComponent::TryStartVaulting()
 		SetMotionWarpingTarget(FName("VaultStartPoint"), VaultStartPosition);
 		SetMotionWarpingTarget(FName("VaultLandPoint"), VaultLandPosition);
 		StartClimbing();
-		PlayClimbMontage(VaultingMontage);
+		Multicast_PlayMontage(VaultingMontage);
 	}
 }
 
@@ -498,11 +504,11 @@ bool UTHMovementComponent::CanStartVaulting(FVector& OutVaultStartPosition, FVec
 	return !OutVaultStartPosition.IsZero() && !OutVaultLandPosition.IsZero();
 }
 
-void UTHMovementComponent::PlayClimbMontage(UAnimMontage* MontageToPlay) const
-{
-	if (!MontageToPlay || !OwningPlayerAnimInstance || OwningPlayerAnimInstance->IsAnyMontagePlaying()) return;
-	OwningPlayerAnimInstance->Montage_Play(MontageToPlay);
-}
+// void UTHMovementComponent::PlayClimbMontage(UAnimMontage* MontageToPlay) const
+// {
+// 	if (!MontageToPlay || !OwningPlayerAnimInstance || OwningPlayerAnimInstance->IsAnyMontagePlaying()) return;
+// 	OwningPlayerAnimInstance->Montage_Play(MontageToPlay);
+// }
 
 void UTHMovementComponent::OnClimbMontageEnded(UAnimMontage* MontageToPlay, bool bInterrupted)
 {
@@ -527,7 +533,7 @@ void UTHMovementComponent::HandleHopUp() const
 	if (CheckCanHopUp(TargetPosition))
 	{
 		SetMotionWarpingTarget(FName("HopUpTargetPoint"), TargetPosition);
-		PlayClimbMontage(HopUpMontage);
+		const_cast<UTHMovementComponent*>(this)->Multicast_PlayMontage(HopUpMontage);
 	}
 }
 
@@ -548,7 +554,7 @@ void UTHMovementComponent::HandleHopDown() const
 	if (CheckCanHopDown(TargetPosition))
 	{
 		SetMotionWarpingTarget(FName("HopDownTargetPoint"), TargetPosition);
-		PlayClimbMontage(HopDownMontage);
+		const_cast<UTHMovementComponent*>(this)->Multicast_PlayMontage(HopDownMontage);
 	}
 }
 

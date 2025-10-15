@@ -136,6 +136,12 @@ void ATHGameStateBase::OnRep_SlotsLockedIn()
 {
 	OnSlotsUpdated.Broadcast();
 }
+
+void ATHGameStateBase::Multicast_OnSlotsUpdated_Implementation()
+{
+	OnSlotsUpdated.Broadcast();
+}
+
 #pragma endregion
 
 #pragma region Rematch
