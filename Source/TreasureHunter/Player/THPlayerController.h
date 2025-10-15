@@ -39,10 +39,14 @@ private:
 private:
 	void CreateGameOverWidget();
 	void EnsureGameOver();
+
+	void SetSettingForGame();
+	void SetSettingModeForUI();
+	void DisableMovement();
+	void EnableMovement();
 #pragma endregion
 
 #pragma region HUD
-
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UTHPlayerHUDWidget> PlayerHUDWidgetClass;
@@ -96,5 +100,22 @@ public:
 private:
 	UFUNCTION()
 	void HandleRematchChanged(FGameplayTag NewTag);
+#pragma endregion
+
+#pragma region Loading
+public:
+	UFUNCTION(Server, Reliable)
+	void Server_NotifyClientLoaded();
+
+	UFUNCTION(Client, Reliable)
+	void Client_DisablePlayerControl();
+
+	UFUNCTION(Client, Reliable)
+	void Client_EnablePlayerControl();
+
+	UFUNCTION()
+	void CheckStreamingFinished();
+
+	void FinishLoading();
 #pragma endregion
 };

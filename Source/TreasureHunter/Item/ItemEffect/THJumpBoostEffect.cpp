@@ -11,7 +11,7 @@ UTHJumpBoostEffect::UTHJumpBoostEffect()
 	FGameplayModifierInfo JumpPowerModifier;
 	JumpPowerModifier.Attribute = UTHAttributeSet::GetJumpPowerAttribute();
 	JumpPowerModifier.ModifierOp = EGameplayModOp::Additive;
-	JumpPowerModifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(150.f));
+	JumpPowerModifier.ModifierMagnitude = FGameplayEffectModifierMagnitude(FScalableFloat(300.f));
 	Modifiers.Add(JumpPowerModifier);
 }
 

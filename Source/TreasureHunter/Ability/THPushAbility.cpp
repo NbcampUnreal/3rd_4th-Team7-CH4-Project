@@ -14,12 +14,12 @@
 UTHPushAbility::UTHPushAbility()
 {
 	InstancingPolicy = EGameplayAbilityInstancingPolicy::InstancedPerActor;
-	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
-
+	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::ServerInitiated;
+	
 	FGameplayTagContainer Tags = GetAssetTags();
 	Tags.AddTag(TAG_Ability_Push);
 	SetAssetTags(Tags);
-
+	
 	AbilityTags.AddTag(TAG_Ability_Push);
 
 	//CooldownGameplayEffectClass = UCoolDownEffect_Push::StaticClass();
@@ -37,82 +37,86 @@ void UTHPushAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
 	const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo,
 	const FGameplayEventData* TriggerEventData)
 {
-    Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
-    ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
-	
-    if (HasAuthorityOrPredictionKey(ActorInfo, &ActivationInfo)) 
-    {
-       if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
-       {
-          EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-          return;
-       }
-       
-       if (PlayerCharacter)
-       {
-          FVector Start = PlayerCharacter->GetActorLocation();
-          FVector Forward = PlayerCharacter->GetActorForwardVector();
-          
-          const FVector Center = Start + Forward * (PushRange * 0.5f);
-          TArray<FOverlapResult> OverlapResults;
-          FRotator Rotation = PlayerCharacter->GetActorRotation();
+	ATHPlayerCharacter* PlayerCharacter = Cast<ATHPlayerCharacter>(ActorInfo->AvatarActor.Get());
 
-          FCollisionObjectQueryParams ObjectQueryParams;
-          ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
+	if (PlayerCharacter->HasAuthority())
+	{
+		if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+		{
+			EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+			return;
+		}
+		
+		if (PlayerCharacter)
+		{
+			FVector Start = PlayerCharacter->GetActorLocation();
+			FVector Forward = PlayerCharacter->GetActorForwardVector();
+			//FVector End = Start + (Forward * PushRange);
 
-          FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(PushOverlap), false, PlayerCharacter);
+			const FVector Center = Start + Forward * (PushRange * 0.5f);
+			TArray<FOverlapResult> OverlapResults;
 
-          bool bHit = GetWorld()->OverlapMultiByObjectType(
-             OverlapResults,
-             Center,
-             Rotation.Quaternion(), 
-             ObjectQueryParams,
-             FCollisionShape::MakeBox(FVector(PushRange * 0.5f, PushBoxSize.Y, PushBoxSize.Z)),
-             QueryParams
-             );
+			//TArray<FHitResult> HitResults;
+			//FCollisionShape Box = FCollisionShape::MakeBox(PushBoxSize);
+			FRotator Rotation = PlayerCharacter->GetActorRotation();
 
-          if (bHit)
-          {
-             for (FOverlapResult& Hit : OverlapResults)
-             {
-                if (ACharacter* Target = Cast<ACharacter>(Hit.GetActor()))
-                {
-                   if (Target == PlayerCharacter) continue;
+			FCollisionObjectQueryParams ObjectQueryParams;
+			ObjectQueryParams.AddObjectTypesToQuery(ECC_Pawn);
 
-                   const FVector Dir = (Target->GetActorLocation() - PlayerCharacter->GetActorLocation()).GetSafeNormal();
-                   Target->LaunchCharacter((Dir * PushForce) + FVector(0,0, 100.0f), true, true);
-       
-                }
-             }
-          }
-       }
-    }
-    
-    if (PushMontage)
-    {
-       UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
-       this, 
-       NAME_None, 
-       PushMontage, 
-       1.2f
-       );
+			FCollisionQueryParams QueryParams(SCENE_QUERY_STAT(PushOverlap), false, PlayerCharacter);
+			//FCollisionQueryParams QueryParams;
+			//QueryParams.AddIgnoredActor(PlayerCharacter);
 
-       if (!Task) 
-       {
-          EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
-          return; 
-       }
+			bool bHit = GetWorld()->OverlapMultiByObjectType(
+				OverlapResults,
+				Center,
+				Rotation.Quaternion(), // [FIX] 회전 적용
+				ObjectQueryParams,
+				FCollisionShape::MakeBox(FVector(PushRange * 0.5f, PushBoxSize.Y, PushBoxSize.Z)),
+				QueryParams
+				);
 
-       Task->OnCompleted.AddDynamic(this, &UTHPushAbility::OnMontageCompleted);
-       Task->OnInterrupted.AddDynamic(this, &UTHPushAbility::OnMontageInterrupted);
-       Task->OnCancelled.AddDynamic(this, &UTHPushAbility::OnMontageInterrupted);
+			if (bHit)
+			{
+				for (FOverlapResult& Hit : OverlapResults)
+				{
+					if (ACharacter* Target = Cast<ACharacter>(Hit.GetActor()))
+					{
+						if (Target == PlayerCharacter) continue;
 
-       Task->ReadyForActivation();
-       return;
-    }
+						FVector Dir = (Target->GetActorLocation() - PlayerCharacter->GetActorLocation());
+						Dir.Z = 0.0f;
+						Target->LaunchCharacter((Dir.GetSafeNormal() * PushForce) + ZForce, true, true);
+		
+					}
 
-    EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+				}
+			}
+		}
+	}
+
+	if (PushMontage)
+	{
+		UAbilityTask_PlayMontageAndWait* Task = UAbilityTask_PlayMontageAndWait::CreatePlayMontageAndWaitProxy(
+		this, 
+		NAME_None, 
+		PushMontage, 
+		1.2f
+		);
+
+		if (!Task) return;
+
+		Task->OnCompleted.AddDynamic(this, &UTHPushAbility::OnMontageCompleted);
+		Task->OnInterrupted.AddDynamic(this, &UTHPushAbility::OnMontageInterrupted); // [FIX]
+		Task->OnCancelled.AddDynamic(this, &UTHPushAbility::OnMontageInterrupted);   // [FIX]
+
+		Task->ReadyForActivation();
+		return;
+	}
+
+	EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
 }
 
 void UTHPushAbility::EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo,

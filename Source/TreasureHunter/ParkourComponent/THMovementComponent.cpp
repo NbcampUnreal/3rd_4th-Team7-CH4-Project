@@ -361,20 +361,46 @@ FQuat UTHMovementComponent::GetClimbRotation(float DeltaTime) const
 		return CurrentQuat;
 	}
 
-	const FVector HorizontalNormal = FVector(CurrentClimbableSurfaceNormal.X, CurrentClimbableSurfaceNormal.Y, 0.f).GetSafeNormal();
-	const FQuat TargetQuat = FRotationMatrix::MakeFromX(-HorizontalNormal).ToQuat();
+	const FVector N = CurrentClimbableSurfaceNormal.GetSafeNormal();
+	const FVector WorldUp = FVector::UpVector;
+
+	FVector ClimbUp = (WorldUp - FVector::DotProduct(WorldUp, N) * N).GetSafeNormal();
+
+	if (ClimbUp.IsNearlyZero())
+	{
+		const FVector WorldRight = FVector::RightVector;
+		ClimbUp = (WorldRight - FVector::DotProduct(WorldRight, N) * N).GetSafeNormal();
+	}
+
+	const FQuat TargetQuat = FRotationMatrix::MakeFromXZ(-N, ClimbUp).ToQuat();
 
 	return FMath::QInterpTo(CurrentQuat, TargetQuat, DeltaTime, 5.f);
 }
 
+
 void UTHMovementComponent::SnapMovementToClimbableSurfaces(float DeltaTime) const
 {
-	const FVector ComponentForward = UpdatedComponent->GetForwardVector();
-	const FVector ComponentLocation = UpdatedComponent->GetComponentLocation();
-	const FVector ProjectedCharacterToSurface = (CurrentClimbableSurfaceLocation - ComponentLocation).ProjectOnTo(ComponentForward);
-	const FVector SnapVector = -CurrentClimbableSurfaceNormal * ProjectedCharacterToSurface.Length();
-	FQuat TargetRot = GetClimbRotation(DeltaTime);
-	UpdatedComponent->MoveComponent(SnapVector, TargetRot, true);
+	if (CurrentClimbableSurfaceNormal.IsNearlyZero()) return;
+
+	const FVector N = CurrentClimbableSurfaceNormal.GetSafeNormal();
+	const FVector P0 = CurrentClimbableSurfaceLocation;
+	const FVector C = UpdatedComponent->GetComponentLocation(); 
+
+	const float DesiredOffset = 20.f;
+
+	const float signedDist = FVector::DotProduct(C - P0, N);
+	const float delta = DesiredOffset - signedDist;
+
+	const FQuat targetRot = GetClimbRotation(DeltaTime);
+	if (FMath::Abs(delta) > KINDA_SMALL_NUMBER)
+	{
+		const FVector correction = N * delta;
+		UpdatedComponent->MoveComponent(correction, targetRot, /*bSweep=*/true);
+	}
+	else
+	{
+		UpdatedComponent->MoveComponent(FVector::ZeroVector, targetRot, /*bSweep=*/true);
+	}
 }
 
 void UTHMovementComponent::ToggleClimbing(bool bEnableClimb)

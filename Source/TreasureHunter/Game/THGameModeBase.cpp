@@ -99,17 +99,14 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 		{
 			GS->SetPhase(GameModeFlow);
 		}
-
-		if (GameModeFlow == TAG_Game_Phase_Play)
-		{
-			GameStart();
-		}
 	}
 }
 
 void ATHGameModeBase::LoadGame()
 {
-	SetGameModeFlow(TAG_Game_Phase_Loading);
+	LastPlayedLevel = PlayLevelPath;
+
+	PrepareForTravel();
 	StartLevelLoad(PlayLevelPath);
 }
 
@@ -217,9 +214,12 @@ void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlay
 		FTimerDelegate LoadMainDel = FTimerDelegate::CreateLambda([WeakThis]()
 			{
 				if (!WeakThis.IsValid()) return;
+
+				WeakThis->PrepareForTravel();
 				WeakThis->SetGameModeFlow(TAG_Game_Phase_Wait);
 				WeakThis->StartLevelLoad(WeakThis->MainLevelPath);
 				WeakThis->RequestRematchState = FGameplayTag();
+
 				if (ATHGameStateBase* LGS = Cast<ATHGameStateBase>(WeakThis->GameState))
 				{
 					LGS->ResetRematchState();
@@ -404,13 +404,15 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 {
 	for (ATHPlayerController* Player : StartPlayerControllers)
 	{
+		if (!IsValid(Player)) continue;
 		APawn* PlayerPawn = Player->GetPawn();
-		if (!PlayerPawn) continue;
+		if (!IsValid(PlayerPawn)) continue;
 
 		FVector PlayerPos = PlayerPawn->GetActorLocation();
 
 		float TotalCurrentProgress = 0.0f;
 		float ClimbProgress = 0.0f;
+
 		if (IsInFlatSection(PlayerPos))
 		{
 			float FlatProgress = FVector::Dist(StartPos, PlayerPos) / FlatSectionDist;
@@ -418,72 +420,105 @@ void ATHGameModeBase::AccumulatePlayerDistance()
 		}
 		else
 		{
-			ClimbProgress = (PlayerPos.Z - CheckPos.Z) / ClimbSectionDist;
+			ClimbProgress = (PlayerPos.Z - CheckPos.Z - ACRevisionValueZ) / ClimbSectionDist;
 			ClimbProgress = FMath::Clamp(ClimbProgress, 0.f, 1.f);
-
 			TotalCurrentProgress = Section1Weight + ClimbProgress * Section2Weight;
 		}
 
 		uint8 ClimbQuantizedProgress = static_cast<uint8>(FMath::Clamp(ClimbProgress, 0.0f, 1.0f) * 255.0f);
 		uint8 QuantizedProgress = static_cast<uint8>(FMath::Clamp(TotalCurrentProgress, 0.0f, 1.0f) * 255.0f);
 
-		uint8 ClimbOpponentProgress = 0;
-		uint8 OpponentProgress = 0;
+		float OpponentTotalProgress = 0.0f;
+		float ClimbOpponentProgressFloat = 0.0f;
+
 		if (StartPlayerControllers.Num() > 1)
 		{
 			for (ATHPlayerController* Other : StartPlayerControllers)
 			{
+				if (!IsValid(Other)) continue;
 				if (Other == Player) continue;
 				APawn* OtherPawn = Other->GetPawn();
-				if (!OtherPawn) continue;
+				if (!IsValid(OtherPawn)) continue;
 
 				FVector OtherPos = OtherPawn->GetActorLocation();
 
-				TotalCurrentProgress = 0.0f;
+				float TotalProgressOther = 0.0f;
+				float ClimbProgressOther = 0.0f;
+
 				if (IsInFlatSection(OtherPos))
 				{
 					float FlatProgress = FVector::Dist(StartPos, OtherPos) / FlatSectionDist;
-					TotalCurrentProgress = FlatProgress * Section1Weight;
+					TotalProgressOther = FlatProgress * Section1Weight;
 				}
 				else
 				{
-					ClimbProgress = (OtherPos.Z - CheckPos.Z) / ClimbSectionDist;
-					ClimbProgress = FMath::Clamp(ClimbProgress, 0.f, 1.f);
-
-					TotalCurrentProgress = Section1Weight + ClimbProgress * Section2Weight;
+					ClimbProgressOther = (OtherPos.Z - CheckPos.Z - ACRevisionValueZ) / ClimbSectionDist;
+					ClimbProgressOther = FMath::Clamp(ClimbProgressOther, 0.f, 1.f);
+					TotalProgressOther = Section1Weight + ClimbProgressOther * Section2Weight;
 				}
 
-				ClimbOpponentProgress = static_cast<uint8>(FMath::Clamp(ClimbProgress, 0.0f, 1.0f) * 255.0f);
-				OpponentProgress = static_cast<uint8>(FMath::Clamp(TotalCurrentProgress, 0.0f, 1.0f) * 255.0f);
+				OpponentTotalProgress = TotalProgressOther;
+				ClimbOpponentProgressFloat = ClimbProgressOther;
+
+				uint8 ClimbOpponentProgress = static_cast<uint8>(ClimbOpponentProgressFloat * 255.0f);
 				Player->Client_UpdateClimb(ClimbQuantizedProgress, ClimbOpponentProgress);
 
 				ATHPlayerState* PlayerState = Cast<ATHPlayerState>(Player->PlayerState);
 				ATHGameStateBase* GS = Cast<ATHGameStateBase>(this->GameState);
+
 				if (PlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_First))
 				{
-					if (QuantizedProgress > OpponentProgress)
-					{
-						bBunnyHasBeenWinning = true;
-					}
-					else if (QuantizedProgress < OpponentProgress)
-					{
-						bBunnyHasBeenWinning = false;
-					}
+					bBunnyHasBeenWinning = (TotalCurrentProgress > OpponentTotalProgress);
 				}
 				else if (PlayerState->GetAbilitySystemComponent()->HasMatchingGameplayTag(TAG_Player_Character_Second))
 				{
-					if (QuantizedProgress > OpponentProgress)
-					{
-						bBunnyHasBeenWinning = false;
-					}
-					else if(QuantizedProgress < OpponentProgress)
-					{
-						bBunnyHasBeenWinning = true;
-					}
+					bBunnyHasBeenWinning = (TotalCurrentProgress < OpponentTotalProgress);
 				}
 				break;
 			}
 		}
+
 		Player->Client_UpdateWinner(bBunnyHasBeenWinning);
 	}
+}
+
+
+void ATHGameModeBase::NotifyClientLoaded(ATHPlayerController* PC)
+{
+	if (!HasAuthority() || !PC) return;
+
+	LoadedControllers.Add(PC);
+	TryStartWhenAllReady();
+}
+
+void ATHGameModeBase::TryStartWhenAllReady()
+{
+	if (!HasAuthority()) return;
+	if (LoadedControllers.Num() < GetNumPlayers())
+		return;
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ATHPlayerController* PC = Cast<ATHPlayerController>(It->Get()))
+		{
+			PC->Client_EnablePlayerControl();
+		}
+	}
+
+	GameStart();
+	LoadedControllers.Empty();
+}
+
+void ATHGameModeBase::PrepareForTravel()
+{
+	LoadedControllers.Empty();
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		if (ATHPlayerController* PC = Cast<ATHPlayerController>(It->Get()))
+		{
+			PC->Client_DisablePlayerControl();
+		}
+	}
+	SetGameModeFlow(TAG_Game_Phase_Loading);
 }

@@ -28,7 +28,7 @@ private:
     UStaticMeshComponent* JumpPadMesh;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "JumpPad", meta = (AllowPrivateAccess = "true"))
-    float LaunchStrength = 1000.f;
+    float LaunchStrength = 2000.f;
 
     UPROPERTY(Replicated)
     bool bIsActivated = true;

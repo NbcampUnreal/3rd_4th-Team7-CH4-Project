@@ -73,12 +73,10 @@ FName ATHItemBox::RandomItemGenerate(ATHPlayerController* PC)
     EItemType DropType;
     if(DataManager->WhoWinner(PC))
     {
-		UE_LOG(LogTemp, Warning, TEXT("Winner Item Drop"));
         DropType = EItemType::Winner;
     }
     else
     {
-		UE_LOG(LogTemp, Warning, TEXT("Loser Item Drop"));
         DropType = EItemType::Loser;
 	}
 

@@ -84,6 +84,7 @@ private:
 	FVector CheckPos;
 	FVector FinishPos;
 
+	float ACRevisionValueZ;
 	float TotalDist;
 	float FlatSectionDist;
 	float ClimbSectionDist;
@@ -95,4 +96,19 @@ public:
 	TArray<APlayerController*> LoginPlayerControllers;
 	TArray<ATHPlayerState*> EnteredPlayerStates;
 	TArray<ATHPlayerController*> StartPlayerControllers;
+
+
+#pragma region Loading
+private:
+	TSoftObjectPtr<UWorld> LastPlayedLevel;
+	TSet<TWeakObjectPtr<AController>> LoadedControllers;
+
+	void PrepareForTravel();
+
+public:
+	void NotifyClientLoaded(ATHPlayerController* PC);
+
+private:
+	void TryStartWhenAllReady();
+#pragma endregion
 };

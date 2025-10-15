@@ -17,7 +17,16 @@
 #include "AbilitySystemInterface.h"
 #include "AttributeSet/THAttributeSet.h"
 #include "Kismet/GameplayStatics.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
+#include "GameFramework/PlayerController.h"
+#include "TimerManager.h"
+#include "Engine/LevelStreaming.h"
+#include "Engine/TextureStreamingTypes.h"
+#include "Engine/Texture2D.h"
+
+FTimerHandle ReadyPollHandle;
 
 #pragma region General
 void ATHPlayerController::BeginPlay()
@@ -27,6 +36,8 @@ void ATHPlayerController::BeginPlay()
 	{
 		return;
 	}
+	SetSettingForGame();
+	Client_DisablePlayerControl();
 
 	EnsureHUD();
 	InitHUDBindingsFromPlayerState();
@@ -41,6 +52,8 @@ void ATHPlayerController::BeginPlay()
 		GS->OnPhaseChanged.AddDynamic(this, &ATHPlayerController::HandlePhaseChange);
 		GS->OnRematchChanged.AddDynamic(this, &ThisClass::HandleRematchChanged);
 	}
+
+	CheckStreamingFinished();
 }
 
 void ATHPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -123,10 +136,7 @@ void ATHPlayerController::CreateGameOverWidget()
 	if (GameOverWidget)
 	{
 		GameOverWidget->AddToViewport();
-		FInputModeGameAndUI InputMode;
-		InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-		SetInputMode(InputMode);
-		bShowMouseCursor = true;
+		SetSettingModeForUI();
 	}
 }
 
@@ -135,6 +145,64 @@ void ATHPlayerController::EnsureGameOver()
 	if (!GameOverWidget)
 	{
 		CreateGameOverWidget();
+	}
+}
+
+void ATHPlayerController::SetSettingForGame()
+{
+	EnableMovement();
+
+	FInputModeGameOnly Mode;
+	Mode.SetConsumeCaptureMouseDown(false);
+	SetInputMode(Mode);
+
+	bShowMouseCursor = false;
+}
+
+void ATHPlayerController::SetSettingModeForUI()
+{
+	DisableMovement();
+
+	FInputModeGameAndUI Mode;
+	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+	SetInputMode(Mode);
+
+	bShowMouseCursor = true;
+}
+
+void ATHPlayerController::DisableMovement()
+{
+	SetIgnoreMoveInput(true);
+	SetIgnoreLookInput(true);
+
+	if (APawn* P = GetPawn())
+	{
+		P->DisableInput(this);
+		if (ACharacter* C = Cast<ACharacter>(P))
+		{
+			if (auto* Move = C->GetCharacterMovement())
+			{
+				Move->DisableMovement();
+			}
+		}
+	}
+}
+
+void ATHPlayerController::EnableMovement()
+{
+	SetIgnoreMoveInput(false);
+	SetIgnoreLookInput(false);
+
+	if (APawn* P = GetPawn())
+	{
+		if (ACharacter* C = Cast<ACharacter>(P))
+		{
+			if (auto* Move = C->GetCharacterMovement())
+			{
+				Move->SetMovementMode(MOVE_Walking);
+			}
+		}
+		P->EnableInput(this);
 	}
 }
 #pragma endregion
@@ -383,3 +451,61 @@ void ATHPlayerController::HandleRematchChanged(FGameplayTag NewTag)
 	}
 }
 #pragma endregion
+
+#pragma region Loading
+void ATHPlayerController::CheckStreamingFinished()
+{
+	UWorld* World = GetWorld();
+	if (!World) return;
+
+	bool bStillLoading = false;
+	for (ULevelStreaming* StreamingLevel : World->GetStreamingLevels())
+	{
+		if (StreamingLevel && !StreamingLevel->IsLevelLoaded())
+		{
+			bStillLoading = true;
+			break;
+		}
+	}
+
+	if (bStillLoading)
+	{
+		World->GetTimerManager().SetTimerForNextTick(this, &ATHPlayerController::CheckStreamingFinished);
+		return;
+	}
+
+
+	ReadyPollHandle.Invalidate();
+	const float TextureLoadSafetyDelay = 0.5f;
+
+	World->GetTimerManager().SetTimer(ReadyPollHandle, this, &ATHPlayerController::FinishLoading, TextureLoadSafetyDelay, false);
+}
+
+void ATHPlayerController::Server_NotifyClientLoaded_Implementation()
+{
+	if (ATHGameModeBase* GM = GetWorld() ? GetWorld()->GetAuthGameMode<ATHGameModeBase>() : nullptr)
+	{
+		GM->NotifyClientLoaded(this);
+	}
+}
+
+void ATHPlayerController::Client_DisablePlayerControl_Implementation()
+{
+	DisableMovement();
+}
+
+void ATHPlayerController::Client_EnablePlayerControl_Implementation()
+{
+	EnableMovement();
+}
+
+void ATHPlayerController::FinishLoading()
+{
+	if (GetNetMode() == NM_DedicatedServer || !IsLocalController())
+	{
+		return;
+	}
+
+	Server_NotifyClientLoaded();
+}
+#pragma endregion 

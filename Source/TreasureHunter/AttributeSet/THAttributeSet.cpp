@@ -9,6 +9,7 @@ UTHAttributeSet::UTHAttributeSet()
 	InitMaxStamina(100.f);
 	InitWalkSpeed(200.f);
 	InitSprintSpeed(600.f);
+	InitCrouchSpeed(200.f);
 	InitJumpPower(420.f);
 	InitOverlayWidget(0.f);
 }
@@ -71,6 +72,11 @@ void UTHAttributeSet::OnRep_WalkSpeed(const FGameplayAttributeData& OldWalkSpeed
 void UTHAttributeSet::OnRep_SprintSpeed(const FGameplayAttributeData& OldSprintSpeed)
 {
     GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, SprintSpeed, OldSprintSpeed);
+}
+
+void UTHAttributeSet::OnRep_CrouchSpeed(const FGameplayAttributeData& OldCrouchSpeed)
+{
+	GAMEPLAYATTRIBUTE_REPNOTIFY(UTHAttributeSet, SprintSpeed, OldCrouchSpeed);
 }
 
 void UTHAttributeSet::OnRep_JumpPower(const FGameplayAttributeData& OldJumpPower)

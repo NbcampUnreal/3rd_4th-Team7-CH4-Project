@@ -49,20 +49,80 @@ void UTHMatchmakingWidget::NativeDestruct()
 
 void UTHMatchmakingWidget::OnFirstClicked()
 {
-	if (CachedPC.IsValid())
-	{
-		CachedPC->Server_TrySelectSlot(0);
-		CachedPC->Server_SetReady(true);
-	}
+	if (!CachedPC.IsValid()) return;
+
+	ATHGameStateBase* GS = CachedGS.Get();
+	APlayerState* MyPS = CachedPC->GetPlayerState<APlayerState>();
+	if (!GS || !MyPS) return;
+
+	const bool bLocked = GS->AreSlotsLockedIn();
+	const bool bIAmHost = GS->IsHost(MyPS);
+
+	auto IsSlotReady = [](APlayerState* SlotOwner)->bool
+		{
+			if (const ATHPlayerState* TH = Cast<ATHPlayerState>(SlotOwner))
+			{
+				return TH->HasReadyTag();
+			}
+			return false;
+		};
+
+	APlayerState* Owner0 = GS->GetSlotOwner(0);
+	const bool bSlot0Ready = IsSlotReady(Owner0);
+
+	const ATHPlayerState* MyTHPS = Cast<ATHPlayerState>(MyPS);
+	const bool bIAmReady = (MyTHPS && MyTHPS->HasReadyTag());
+	const bool bCanAct =
+		!bLocked &&
+		bIAmHost &&
+		!bIAmReady &&
+		!bSlot0Ready &&
+		(Owner0 == nullptr || Owner0 == MyPS);
+
+	if (!bCanAct) return;
+
+	CachedPC->Server_TrySelectSlot(0);
+	CachedPC->Server_SetReady(true);
 }
+
 
 void UTHMatchmakingWidget::OnSecondClicked()
 {
-	if (CachedPC.IsValid())
-	{
-		CachedPC->Server_TrySelectSlot(1);
-		CachedPC->Server_SetReady(true);
-	}
+	if (!CachedPC.IsValid()) return;
+
+	ATHGameStateBase* GS = CachedGS.Get();
+	APlayerState* MyPS = CachedPC->GetPlayerState<APlayerState>();
+	if (!GS || !MyPS) return;
+
+	const bool bLocked = GS->AreSlotsLockedIn();
+	const bool bIAmHost = GS->IsHost(MyPS);
+
+	auto IsSlotReady = [](APlayerState* SlotOwner)->bool
+		{
+			if (const ATHPlayerState* TH = Cast<ATHPlayerState>(SlotOwner))
+			{
+				return TH->HasReadyTag();
+			}
+			return false;
+		};
+
+	APlayerState* Owner1 = GS->GetSlotOwner(1);
+	const bool bSlot1Ready = IsSlotReady(Owner1);
+
+	const ATHPlayerState* MyTHPS = Cast<ATHPlayerState>(MyPS);
+	const bool bIAmReady = (MyTHPS && MyTHPS->HasReadyTag());
+
+	const bool bCanAct =
+		!bLocked &&
+		!bIAmHost &&
+		!bIAmReady &&
+		!bSlot1Ready &&
+		(Owner1 == nullptr || Owner1 == MyPS);
+
+	if (!bCanAct) return;
+
+	CachedPC->Server_TrySelectSlot(1);
+	CachedPC->Server_SetReady(true);
 }
 
 void UTHMatchmakingWidget::OnStartClicked()
@@ -88,57 +148,39 @@ void UTHMatchmakingWidget::RefreshUI()
 	const bool bLocked = GS->AreSlotsLockedIn();
 	const bool bIAmHost = GS->IsHost(MyPS);
 
-	const bool bSomeoneElseJoined = ((Owner0 && Owner0 != MyPS) || (Owner1 && Owner1 != MyPS));
-	if (InviteFriendButton)
-	{
-		InviteFriendButton->SetIsEnabled(!bSomeoneElseJoined);
-	}
-
 	const ATHPlayerState* MyTHPS = MyPS ? Cast<ATHPlayerState>(MyPS) : nullptr;
 	const bool bIAmReady = (MyTHPS && MyTHPS->HasReadyTag());
 
-	if (FirstPButton)  FirstPButton->SetIsEnabled(false);
-	if (SecondPButton) SecondPButton->SetIsEnabled(false);
+	auto IsSlotReady = [](APlayerState* SlotOwner)->bool
+		{
+			if (const ATHPlayerState* TH = Cast<ATHPlayerState>(SlotOwner))
+			{
+				return TH->HasReadyTag();
+			}
+			return false;
+		};
 
-	if (!bLocked && !bIAmReady)
+	const bool bSlot0Ready = IsSlotReady(Owner0);
+	const bool bSlot1Ready = IsSlotReady(Owner1);
+
+	if (FirstPButton)  FirstPButton->SetIsEnabled(true);
+	if (SecondPButton) SecondPButton->SetIsEnabled(true);
+
+	if (bLocked)
 	{
-		if (bIAmHost)
-		{
-			const bool bCanPressFirst = (Owner0 == nullptr || Owner0 == MyPS);
-			if (FirstPButton) FirstPButton->SetIsEnabled(bCanPressFirst);
-		}
-		else
-		{
-			const bool bCanPressSecond = (Owner1 == nullptr || Owner1 == MyPS);
-			if (SecondPButton) SecondPButton->SetIsEnabled(bCanPressSecond);
-		}
+		if (FirstPButton)  FirstPButton->SetIsEnabled(false);
+		if (SecondPButton) SecondPButton->SetIsEnabled(false);
 	}
 
-	if (bIAmHost)
+	if (bSlot0Ready && FirstPButton)  FirstPButton->SetIsEnabled(false);
+	if (bSlot1Ready && SecondPButton) SecondPButton->SetIsEnabled(false);
+
+	if (bIAmReady)
 	{
-		if (FirstPButton)
-		{
-			FirstPButton->SetVisibility(bIAmReady ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
-		}
-		if (SecondPButton)
-		{
-			SecondPButton->SetVisibility(ESlateVisibility::Visible);
-		}
-	}
-	else
-	{
-		if (SecondPButton)
-		{
-			SecondPButton->SetVisibility(bIAmReady ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
-		}
-		if (FirstPButton)
-		{
-			FirstPButton->SetVisibility(ESlateVisibility::Visible);
-		}
+		if (bIAmHost && FirstPButton)        FirstPButton->SetIsEnabled(false);
+		if (!bIAmHost && SecondPButton)      SecondPButton->SetIsEnabled(false);
 	}
 
-	if (UnlockImage)      UnlockImage->SetVisibility(bLocked ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-	if (LockImage)        LockImage->SetVisibility(bLocked ? ESlateVisibility::Hidden : ESlateVisibility::Visible);
 	if (MatchStartButton) MatchStartButton->SetIsEnabled(bLocked);
 }
 
