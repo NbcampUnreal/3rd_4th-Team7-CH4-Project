@@ -112,12 +112,8 @@ bool ATHGameStateBase::TryAssignSlot(int32 SlotIdx, APlayerState* Requestor)
 		THPS->Server_SetSlotTag(SlotIdx);
 		THPS->Server_SetReady(false);
 	}
-
 	bSlotsLockedIn = AreSlotsFilled() && AreBothReady();
-
-	OnRep_SlotOwners();
-	OnRep_SlotsLockedIn();
-	ForceNetUpdate();
+	
 	return true;
 }
 
@@ -129,12 +125,7 @@ void ATHGameStateBase::ResetSlots()
 	SlotOwners[0] = nullptr;
 	SlotOwners[1] = nullptr;
 	bSlotsLockedIn = false;
-
-	OnRep_SlotOwners();
-	OnRep_SlotsLockedIn();
-	ForceNetUpdate();
 }
-
 
 void ATHGameStateBase::OnRep_SlotOwners()
 {
