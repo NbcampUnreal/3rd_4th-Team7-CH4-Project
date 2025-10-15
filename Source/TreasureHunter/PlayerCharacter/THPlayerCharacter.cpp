@@ -160,6 +160,8 @@ void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
 	if (THMovementComponent && THMovementComponent->IsClimbing())
 	{
 		const FVector2D MovementVector = InValue.Get<FVector2D>();
+		
+		this->ClimbMovementDirection = MovementVector; 
 		Server_SetClimbMovementDirection(MovementVector);
 
 		const FVector UpDirection = GetActorUpVector();
@@ -233,6 +235,7 @@ void ATHPlayerCharacter::OnMoveInputCompleted(const FInputActionValue& InValue)
 {
 	if (THMovementComponent && THMovementComponent->IsClimbing())
 	{
+		ClimbMovementDirection = FVector2D::ZeroVector;
 		Server_SetClimbMovementDirection(FVector2D::ZeroVector);
 	}
 }
