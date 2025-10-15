@@ -71,10 +71,22 @@ void ATHPlayerCharacter::PossessedBy(AController* NewController)
 	InitializeAbilitySystem();
 }
 
+void ATHPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ATHPlayerCharacter, bIsClimbing);
+	DOREPLIFETIME(ATHPlayerCharacter, ClimbMovementDirection);
+}
+
 void ATHPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	InitializeAbilitySystem();
+}
+
+void ATHPlayerCharacter::OnRep_IsClimbing()
+{
 }
 
 void ATHPlayerCharacter::NotifyControllerChanged()
