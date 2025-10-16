@@ -8,6 +8,7 @@
 #include "GameplayEffectTypes.h"
 #include "Item/THItemBox.h"
 #include "Item/THBaseItem.h"
+#include "Net/UnrealNetwork.h"
 #include "THPlayerCharacter.generated.h"
 
 class UCameraComponent;
@@ -32,6 +33,7 @@ public:
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_PlayerState() override;
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void NotifyControllerChanged() override;
 
 	FORCEINLINE USpringArmComponent* GetSpringArm() const { return SpringArm; }
@@ -69,6 +71,9 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_RequestHopping();
 	
+	UFUNCTION(Server, Unreliable)
+    void Server_SetClimbMovementDirection(const FVector2D& InDirection);
+	
 	void OnPlayerEnterClimbState();
 	void OnPlayerExitClimbState();
 	void AddInputMappingContext(const UInputMappingContext* ContextToAdd, int32 InPriority) const;
@@ -82,7 +87,6 @@ private:
 	void OnWalkSpeedChanged(const FOnAttributeChangeData& Data);
 	void OnJumpPowerChanged(const FOnAttributeChangeData& Data);
 	void OnSprintSpeedChanged(const FOnAttributeChangeData& Data);
-	void OnCrouchSpeedChanged(const FOnAttributeChangeData& Data);
 	
 	void OnMoveInputReleased(const FInputActionValue& InValue);
 	void OnSprintPressed(const FInputActionValue&);
@@ -147,10 +151,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UTHMovementComponent> THMovementComponent;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Climb")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_IsClimbing, Category = "Climb")
 	bool bIsClimbing = false;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Climb")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Replicated, Category = "Climb")
 	FVector2D ClimbMovementDirection = FVector2D::ZeroVector;
 
 private:
@@ -159,6 +163,9 @@ private:
 	
 	UPROPERTY()
 	ATHBaseItem* InteractableBaseItem;
+
+	UFUNCTION()
+	void OnRep_IsClimbing();
 	
 public:	
 	void SetInteractableActor(ATHItemBox* NewItemBox);
