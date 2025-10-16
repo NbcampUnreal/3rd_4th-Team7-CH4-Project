@@ -1,0 +1,75 @@
+﻿#include "THUseSpeedBoostAbility.h"
+#include "AbilitySystemComponent.h"
+#include "GameplayEffect.h"
+#include "AttributeSet/THAttributeSet.h"
+#include "GameplayEffectTypes.h"
+#include "Item/ItemEffect/THSpeedBoostEffect.h"
+#include "Game/GameFlowTags.h"
+
+
+
+
+
+void UTHUseSpeedBoostAbility::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
+	const FGameplayAbilityActorInfo* ActorInfo,
+	const FGameplayAbilityActivationInfo ActivationInfo,
+	const FGameplayEventData* TriggerEventData)
+{
+	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+		return;
+	}
+
+
+
+	if (HasAuthority(&ActivationInfo) && ActorInfo && ActorInfo->AbilitySystemComponent.IsValid())
+	{
+		UAbilitySystemComponent* ASC = ActorInfo->AbilitySystemComponent.Get();
+		int32 Level = GetAbilityLevel(Handle, ActorInfo);
+
+
+
+
+		//------태그제거용
+		FGameplayTag SpeedBoostTag = TAG_Item_SpeedBoost_Active;
+		bool bFoundEffect = false;
+
+		FGameplayEffectQuery Query;
+		TArray<FActiveGameplayEffectHandle> ActiveEffects = ASC->GetActiveEffects(Query);
+
+		for (const FActiveGameplayEffectHandle& EffectsHandle : ActiveEffects)
+		{
+			const FActiveGameplayEffect* ActiveGE = ASC->GetActiveGameplayEffect(EffectsHandle);
+			if (ActiveGE)
+			{
+				if (ActiveGE->Spec.DynamicGrantedTags.HasTag(SpeedBoostTag))
+				{
+					ASC->RemoveActiveGameplayEffect(EffectsHandle);
+					break;
+				}
+			}
+		}
+
+
+
+		//------이펙트 추가 적용
+		FGameplayEffectSpecHandle SpeedSpecHandle = MakeOutgoingGameplayEffectSpec(UTHSpeedBoostEffect::StaticClass(), Level);
+		if (SpeedSpecHandle.IsValid() && SpeedSpecHandle.Data.IsValid())
+		{
+			FGameplayEffectSpec* Spec = SpeedSpecHandle.Data.Get();
+						
+			Spec->DynamicGrantedTags.AddTag(TAG_Item_SpeedBoost_Active);
+			
+			ASC->ApplyGameplayEffectSpecToSelf(*Spec);
+			
+			bool bIsServer = (ASC->GetOwnerRole() == ROLE_Authority);
+			
+			FGameplayTagContainer OwnedTags;
+			ASC->GetOwnedGameplayTags(OwnedTags);
+		}
+	}
+	EndAbility(Handle, ActorInfo, ActivationInfo, false, false);
+}
