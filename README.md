@@ -218,6 +218,8 @@ void UTHPlayerHUDWidget::BindAttributeDelegates()
 ### 9) 플레이 이미지/영상
 게임 소개 자료:
 [Treasure Hunter Game Presentation](https://www.canva.com/design/DAG0E8weHBM/rHJ6QK_KS1D-e1dv8uBQbw/edit)
+게임 플레이 영상:
+[Treasure Hunter Game Play Video](https://www.youtube.com/watch?v=YTIUPVMhcVA)
 
 <img width="2880" height="1601" alt="Pub" src="https://github.com/user-attachments/assets/9dcb7cae-a961-424a-8855-edfc1f9fba72" />
 <img width="2575" height="1576" alt="Mountain001" src="https://github.com/user-attachments/assets/4f14d93a-6a97-429d-8b53-5977a20a2d8e" />
