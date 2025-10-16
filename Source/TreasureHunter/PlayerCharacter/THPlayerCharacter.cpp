@@ -71,10 +71,22 @@ void ATHPlayerCharacter::PossessedBy(AController* NewController)
 	InitializeAbilitySystem();
 }
 
+void ATHPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME_CONDITION(ATHPlayerCharacter, ClimbMovementDirection, COND_SkipOwner);
+	DOREPLIFETIME(ATHPlayerCharacter, bIsClimbing);
+}
+
 void ATHPlayerCharacter::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	InitializeAbilitySystem();
+}
+
+void ATHPlayerCharacter::OnRep_IsClimbing()
+{
 }
 
 void ATHPlayerCharacter::NotifyControllerChanged()
@@ -148,7 +160,10 @@ void ATHPlayerCharacter::HandleMoveInput(const FInputActionValue& InValue)
 	if (THMovementComponent && THMovementComponent->IsClimbing())
 	{
 		const FVector2D MovementVector = InValue.Get<FVector2D>();
-		this->ClimbMovementDirection = MovementVector;
+		
+		this->ClimbMovementDirection = MovementVector; 
+		Server_SetClimbMovementDirection(MovementVector);
+
 		const FVector UpDirection = GetActorUpVector();
 		const FVector RightDirection = GetActorRightVector();
 		
@@ -221,6 +236,7 @@ void ATHPlayerCharacter::OnMoveInputCompleted(const FInputActionValue& InValue)
 	if (THMovementComponent && THMovementComponent->IsClimbing())
 	{
 		ClimbMovementDirection = FVector2D::ZeroVector;
+		Server_SetClimbMovementDirection(FVector2D::ZeroVector);
 	}
 }
 
@@ -236,6 +252,11 @@ void ATHPlayerCharacter::OnClimbHopActionStarted(const FInputActionValue& Value)
 	{
 		Server_RequestHopping();
 	}
+}
+
+void ATHPlayerCharacter::Server_SetClimbMovementDirection_Implementation(const FVector2D& InDirection)
+{
+	ClimbMovementDirection = InDirection;
 }
 
 void ATHPlayerCharacter::Server_ToggleClimbing_Implementation()
@@ -402,7 +423,6 @@ void ATHPlayerCharacter::BindToAttributeChanges()
 		 ASC->GetGameplayAttributeValueChangeDelegate(AS->GetWalkSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnWalkSpeedChanged);
 		 ASC->GetGameplayAttributeValueChangeDelegate(AS->GetSprintSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnSprintSpeedChanged);
 		 ASC->GetGameplayAttributeValueChangeDelegate(AS->GetJumpPowerAttribute()).AddUObject(this, &ATHPlayerCharacter::OnJumpPowerChanged);
-	   	 ASC->GetGameplayAttributeValueChangeDelegate(AS->GetCrouchSpeedAttribute()).AddUObject(this, &ATHPlayerCharacter::OnCrouchSpeedChanged);
 	   }
 	}
 }
@@ -436,14 +456,6 @@ void ATHPlayerCharacter::OnSprintSpeedChanged(const FOnAttributeChangeData& Data
 	if (bIsSprinting && THMovementComponent)
 	{
 	   THMovementComponent->MaxWalkSpeed = Data.NewValue;
-	}
-}
-
-void ATHPlayerCharacter::OnCrouchSpeedChanged(const FOnAttributeChangeData& Data)
-{
-	if (THMovementComponent)
-	{
-		THMovementComponent->MaxWalkSpeedCrouched = Data.NewValue;
 	}
 }
 

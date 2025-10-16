@@ -97,29 +97,23 @@ bool ATHGameStateBase::AreBothReady() const
 bool ATHGameStateBase::TryAssignSlot(int32 SlotIdx, APlayerState* Requestor)
 {
 	if (!HasAuthority() || !Requestor || !SlotOwners.IsValidIndex(SlotIdx) || bSlotsLockedIn)
-	{
 		return false;
-	}
-	if (SlotOwners[SlotIdx] && SlotOwners[SlotIdx] != Requestor)
-	{
-		return false;
-	}
+
+	const bool bRequestorIsHost = (Requestor == HostPS);
+	if ((bRequestorIsHost && SlotIdx != 0) || (!bRequestorIsHost && SlotIdx != 1)) return false;
+	if (SlotOwners[SlotIdx] && SlotOwners[SlotIdx] != Requestor) return false;
 
 	if (SlotOwners[0] == Requestor) SlotOwners[0] = nullptr;
 	if (SlotOwners[1] == Requestor) SlotOwners[1] = nullptr;
-	SlotOwners[SlotIdx] = Requestor;
 
+	SlotOwners[SlotIdx] = Requestor;
 	if (ATHPlayerState* THPS = Cast<ATHPlayerState>(Requestor))
 	{
 		THPS->Server_SetSlotTag(SlotIdx);
 		THPS->Server_SetReady(false);
 	}
-
 	bSlotsLockedIn = AreSlotsFilled() && AreBothReady();
-
-	OnRep_SlotOwners();
-	OnRep_SlotsLockedIn();
-	ForceNetUpdate();
+	
 	return true;
 }
 
@@ -131,12 +125,7 @@ void ATHGameStateBase::ResetSlots()
 	SlotOwners[0] = nullptr;
 	SlotOwners[1] = nullptr;
 	bSlotsLockedIn = false;
-
-	OnRep_SlotOwners();
-	OnRep_SlotsLockedIn();
-	ForceNetUpdate();
 }
-
 
 void ATHGameStateBase::OnRep_SlotOwners()
 {
@@ -147,6 +136,12 @@ void ATHGameStateBase::OnRep_SlotsLockedIn()
 {
 	OnSlotsUpdated.Broadcast();
 }
+
+void ATHGameStateBase::Multicast_OnSlotsUpdated_Implementation()
+{
+	OnSlotsUpdated.Broadcast();
+}
+
 #pragma endregion
 
 #pragma region Rematch
@@ -188,5 +183,10 @@ void ATHGameStateBase::SetRematchResponder(APlayerState* Responder)
 	if (!HasAuthority()) return;
 
 	RematchResponder = Responder;
+}
+
+void ATHGameStateBase::OnRep_HostPS()
+{
+	OnSlotsUpdated.Broadcast();
 }
 #pragma endregion

@@ -63,7 +63,9 @@ private:
 	void TryStartVaulting();
 	bool CanStartVaulting(FVector& OutVaultStartPosition, FVector& OutVaultLandPosition) const;
 
-	void PlayClimbMontage(UAnimMontage* MontageToPlay) const;
+	//void PlayClimbMontage(UAnimMontage* MontageToPlay) const;
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayMontage(UAnimMontage* MontageToPlay);
 	UFUNCTION()
 	void OnClimbMontageEnded(UAnimMontage* MontageToPlay, bool bInterrupted);
 	void SetMotionWarpingTarget(const FName& InWarpingTargetName, const FVector& InTargetPosition) const;
