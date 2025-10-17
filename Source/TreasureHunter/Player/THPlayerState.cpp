@@ -145,6 +145,41 @@ void ATHPlayerState::OnRep_Nickname()
 		GS->OnSlotsUpdated.Broadcast();
 	}
 }
+void ATHPlayerState::OrganizeAbilitySystemComponent()
+{
+	if (!IsValid(AbilitySystemComponent)) return;
+
+	AbilitySystemComponent->OnAnyGameplayEffectRemovedDelegate().RemoveAll(nullptr);
+	AbilitySystemComponent->OnActiveGameplayEffectAddedDelegateToSelf.RemoveAll(nullptr);
+
+	FGameplayTagContainer OwnedTags;
+	AbilitySystemComponent->GetOwnedGameplayTags(OwnedTags);
+
+	for (const FGameplayTag& Tag : OwnedTags)
+	{
+		// 기존 델리게이트만 제거
+		AbilitySystemComponent
+			->RegisterGameplayTagEvent(Tag, EGameplayTagEventType::NewOrRemoved)
+			.RemoveAll(this);
+	}
+	
+	/*AbilitySystemComponent->CancelAllAbilities();
+	AbilitySystemComponent->ClearAllAbilities();
+	AbilitySystemComponent->RemoveAllGameplayCues();
+
+	FGameplayTagContainer OwnedTags;
+	AbilitySystemComponent->GetOwnedGameplayTags(OwnedTags);
+	for (const FGameplayTag& Tag : OwnedTags)
+	{
+		AbilitySystemComponent->RemoveLooseGameplayTag(Tag);
+	}
+
+	AbilitySystemComponent->OnGameplayEffectAppliedDelegateToSelf.RemoveAll(this);
+
+	AbilitySystemComponent->InitAbilityActorInfo(nullptr, nullptr);*/
+	
+	//AbilitySystemComponent->DestroyComponent();
+}
 #pragma endregion
 
 #pragma region APlayerStateData

@@ -153,6 +153,11 @@ void ATHGameModeBase::PlayerDetected(AActor* Player)
 
 void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlayerController* Requester)
 {
+	if (RequestRematchState == AfterGameOver) return;
+	if (RequestRematchState == TAG_Game_Rematch_Declined ||
+		RequestRematchState == TAG_Game_Rematch_OpponentLeft ||
+		RequestRematchState == TAG_Game_Rematch_Timeout) return;
+
 	RequestRematchState = AfterGameOver;
 
 	ATHGameStateBase* GS = Cast<ATHGameStateBase>(GameState);
@@ -161,13 +166,18 @@ void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlay
 	GS->SetRematchTag(RequestRematchState);
 
 	ATHPlayerController* OtherPlayer = nullptr;
-	for (ATHPlayerController* Other : StartPlayerControllers)
+
+	for (ATHPlayerController* Player : StartPlayerControllers)
 	{
-		if (IsValid(Other) && Other != Requester)
+		if (IsValid(Player) && Player != Requester)
 		{
-			OtherPlayer = Other;
-			break;
+			OtherPlayer = Player;
 		}
+
+		ATHPlayerState* PS = Cast<ATHPlayerState>(Player->PlayerState);
+		if (!IsValid(PS)) continue;
+
+		PS->OrganizeAbilitySystemComponent();
 	}
 
 	if (RequestRematchState == TAG_Game_Rematch_Pending)
@@ -210,14 +220,19 @@ void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlay
 	{
 		GetWorld()->GetTimerManager().ClearTimer(MatchTimerHandle);
 
+		if (auto* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
+			THGI->bIsHosting = false;
+
+		bUseSeamlessTravel = false;
+
 		TWeakObjectPtr<ATHGameModeBase> WeakThis(this);
 		FTimerDelegate LoadMainDel = FTimerDelegate::CreateLambda([WeakThis]()
 			{
 				if (!WeakThis.IsValid()) return;
 
 				WeakThis->PrepareForTravel();
-				WeakThis->SetGameModeFlow(TAG_Game_Phase_Wait);
 				WeakThis->StartLevelLoad(WeakThis->MainLevelPath);
+				WeakThis->SetGameModeFlow(TAG_Game_Phase_Wait);
 				WeakThis->RequestRematchState = FGameplayTag();
 
 				if (ATHGameStateBase* LGS = Cast<ATHGameStateBase>(WeakThis->GameState))
@@ -301,7 +316,21 @@ void ATHGameModeBase::OnLevelLoadedReady()
 {
 	if (UWorld* LoadedWorld = OpenLevelPath.Get())
 	{
-		GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true);
+		UE_LOG(LogTemp, Error, TEXT("Loaded World"));
+		UWorld* CurreentWorld = GetWorld();
+		FString CurrentMapName = CurreentWorld->GetOutermost()->GetName();
+		FString TargetMapName = OpenLevelPath.ToSoftObjectPath().GetLongPackageName();
+		if (CurrentMapName != TargetMapName)
+		{
+			UE_LOG(LogTemp, Error, TEXT("TRAVEL"));
+			GetWorld()->ServerTravel(OpenLevelPath.ToSoftObjectPath().GetLongPackageName(), true);
+		}
+		else
+		{
+			FString LevelPath = OpenLevelPath.ToSoftObjectPath().GetLongPackageName();
+			FString TravelPath = FString::Printf(TEXT("%s?restart=%d"), *LevelPath, FMath::Rand());
+			GetWorld()->ServerTravel(TravelPath, true, false);
+		}
 	}
 }
 
