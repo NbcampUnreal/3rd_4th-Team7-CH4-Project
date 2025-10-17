@@ -8,11 +8,16 @@
 #include "Game/THGameStateBase.h"
 #include "Player/THTitlePlayerController.h"
 #include "Player/THPlayerState.h"
+#include "Game/THGameInstance.h"
 
 void UTHMatchmakingWidget::NativeConstruct()
 {
 	Super::NativeConstruct();
 
+	if (BackButton)
+	{
+		BackButton->OnClicked.AddDynamic(this, &ThisClass::OnBackClicked);
+	}
 	if (FirstPButton)
 	{
 		FirstPButton->OnClicked.AddDynamic(this, &ThisClass::OnFirstClicked);
@@ -47,6 +52,17 @@ void UTHMatchmakingWidget::NativeDestruct()
 	Super::NativeDestruct();
 }
 
+void UTHMatchmakingWidget::OnBackClicked()
+{
+	if (!CachedPC.IsValid()) return;
+	
+	if (auto* THGI = GetWorld() ? GetWorld()->GetGameInstance<UTHGameInstance>() : nullptr)
+	{
+		if (THGI->bIsHosting)
+			THGI->bIsHosting = false;
+	}
+	CachedPC->BreakMatchSession();
+}
 void UTHMatchmakingWidget::OnFirstClicked()
 {
 	if (!CachedPC.IsValid()) return;

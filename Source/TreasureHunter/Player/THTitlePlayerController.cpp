@@ -135,6 +135,15 @@ void ATHTitlePlayerController::ShowLoadingWidget()
 #pragma endregion
 
 #pragma region Matchmaking
+
+void ATHTitlePlayerController::BreakMatchSession()
+{
+	if (ATHGameStateBase* GS = GetWorld() ? GetWorld()->GetGameState<ATHGameStateBase>() : nullptr)
+	{
+		GS->SetPhase(TAG_Game_Phase_Wait);
+	}
+}
+
 void ATHTitlePlayerController::ClientCancelMatch_Implementation(bool Rematch)
 {
 	if (!MainMenuWidgetClass) return;
