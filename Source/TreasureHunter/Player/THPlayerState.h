@@ -85,5 +85,7 @@ public:
 	FString PlayerUniqueId;
 
 	virtual void CopyProperties(APlayerState* PlayerState) override;
+
+	void OrganizeAbilitySystemComponent();
 #pragma endregion
 };
