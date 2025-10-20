@@ -21,6 +21,8 @@ protected:
 
 protected:
 	UPROPERTY(meta = (BindWidget))
+	UButton* BackButton;
+	UPROPERTY(meta = (BindWidget))
 	UButton* FirstPButton;
 	UPROPERTY(meta = (BindWidget))
 	UButton* SecondPButton;
@@ -46,6 +48,8 @@ private:
 	TWeakObjectPtr<ATHTitlePlayerController> CachedPC;
 
 private:
+	UFUNCTION()
+	void OnBackClicked();
 	UFUNCTION()
 	void OnFirstClicked();
 	UFUNCTION()

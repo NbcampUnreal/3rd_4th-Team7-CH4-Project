@@ -93,8 +93,11 @@ private:
 	bool bBunnyHasBeenWinning;
 
 public:
+	UPROPERTY()
 	TArray<APlayerController*> LoginPlayerControllers;
+	UPROPERTY()
 	TArray<ATHPlayerState*> EnteredPlayerStates;
+	UPROPERTY()
 	TArray<ATHPlayerController*> StartPlayerControllers;
 
 

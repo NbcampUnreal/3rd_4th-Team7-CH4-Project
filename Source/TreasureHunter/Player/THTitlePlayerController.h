@@ -45,6 +45,8 @@ private:
 
 #pragma region Matchmaking
 public:
+	UFUNCTION()
+	void BreakMatchSession();
 	UFUNCTION(Client, Reliable)
 	void ClientCancelMatch(bool Rematch);
 
