@@ -202,7 +202,7 @@ void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlay
 				if (!WeakThis.IsValid()) return;
 				if (WeakThis->RequestRematchState != TAG_Game_Rematch_AcceptedBoth)
 				{
-					UE_LOG(LogTemp, Warning, TEXT("Rematch timeout"));
+					UE_LOG(LogTemp, Warning, TEXT("Rematch timeout"))
 					WeakThis->SetAfterTheGame(TAG_Game_Rematch_Timeout, nullptr);
 				}
 			});
@@ -235,14 +235,15 @@ void ATHGameModeBase::SetAfterTheGame(const FGameplayTag& AfterGameOver, ATHPlay
 				if (!WeakThis.IsValid()) return;
 
 				WeakThis->PrepareForTravel();
-				WeakThis->StartLevelLoad(WeakThis->MainLevelPath);
-				WeakThis->SetGameModeFlow(TAG_Game_Phase_Wait);
 				WeakThis->RequestRematchState = FGameplayTag();
 
 				if (ATHGameStateBase* LGS = Cast<ATHGameStateBase>(WeakThis->GameState))
 				{
 					LGS->ResetRematchState();
 				}
+
+				WeakThis->SetGameModeFlow(TAG_Game_Phase_Wait);
+				WeakThis->StartLevelLoad(WeakThis->MainLevelPath);
 			});
 
 		GetWorldTimerManager().SetTimer(LoadMainTimerHandle, LoadMainDel, 5.0f, false);
