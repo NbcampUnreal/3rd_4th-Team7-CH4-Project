@@ -104,6 +104,10 @@ void ATHGameModeBase::SetGameModeFlow(const FGameplayTag& NewPhase)
 
 void ATHGameModeBase::LoadGame()
 {
+	if (GameModeFlow == TAG_Game_Phase_Loading) return;
+
+	GameModeFlow = TAG_Game_Phase_Loading;
+
 	LastPlayedLevel = PlayLevelPath;
 
 	PrepareForTravel();
